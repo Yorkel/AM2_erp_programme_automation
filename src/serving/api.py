@@ -19,8 +19,10 @@ from contextlib import asynccontextmanager
 
 import numpy as np
 from fastapi import FastAPI, HTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 
+from src.serving import metrics as m
 from src.serving.model_loader import get_model
 
 
@@ -65,7 +67,12 @@ class HealthResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Eagerly load the model at server startup so the first /predict isn't slow.
-    get_model()
+    bundle = get_model()
+    # Stamp model_info gauge so /metrics carries the active run_id label.
+    m.model_info.labels(
+        run_id=bundle.run_id,
+        variant=str(bundle.metadata.get("variant", "unknown")),
+    ).set(1)
     yield
 
 
@@ -75,6 +82,12 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Adds /metrics + standard HTTP metrics (am2_http_requests_total, latency, etc.)
+Instrumentator(
+    should_group_status_codes=False,
+    excluded_handlers=["/metrics", "/health"],
+).instrument(app, metric_namespace="am2", metric_subsystem="").expose(app)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -113,13 +126,25 @@ def predict(request: PredictRequest) -> PredictResponse:
     for i, article in enumerate(request.articles):
         i1, i2 = int(top2_idx[i, 0]), int(top2_idx[i, 1])
         p1, p2 = float(proba[i, i1]), float(proba[i, i2])
+        top1_label = str(classes_arr[i1])
+        gap = p1 - p2
+
+        # Emit per-prediction metrics. Histograms record the distribution shape
+        # over time; counters give cumulative volume per class / threshold.
+        m.top1_confidence.observe(p1)
+        m.confidence_gap.observe(gap)
+        m.input_text_length.observe(len(article.text_clean))
+        m.prediction_class_total.labels(class_name=top1_label).inc()
+        if p1 < m.LOW_CONFIDENCE_THRESHOLD:
+            m.low_confidence_predictions_total.inc()
+
         results.append(PredictionResult(
             article_id=article.article_id,
-            top1=str(classes_arr[i1]),
+            top1=top1_label,
             top1_confidence=round(p1, 6),
             top2=str(classes_arr[i2]),
             top2_confidence=round(p2, 6),
-            confidence_gap=round(p1 - p2, 6),
+            confidence_gap=round(gap, 6),
             model_run_id=bundle.run_id,
         ))
 
