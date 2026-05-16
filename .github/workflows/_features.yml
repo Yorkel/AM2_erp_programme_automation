@@ -1,0 +1,39 @@
+name: Features (manual) — topic modelling / LLM summaries / etc
+
+# Placeholder workflow for Phase 5 feature work (topic modelling, LLM article
+# summaries, semantic dedupe, etc.). Manual trigger only for now; add cron
+# entries here when a feature is ready for automated runs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Which feature to run'
+        required: true
+        type: choice
+        options:
+          - placeholder
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Placeholder
+        run: |
+          echo "No feature implemented yet. Add tasks to this workflow as Phase 5 work lands."
+          echo "Selected task: ${{ inputs.task }}"

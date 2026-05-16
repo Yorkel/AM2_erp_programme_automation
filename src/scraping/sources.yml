@@ -1,0 +1,746 @@
+# sources.yml — runtime registry of every source the pipeline scrapes.
+#
+# AUTO-GENERATED in part from data/sources_master.csv.
+# Atlas entries are hand-tuned. RSS/alert entries are generated.
+# Re-run scripts/generate_sources_yml.py to refresh after CSV edits.
+#
+# Each entry: name, type, scraper (module path), params (kwargs passed to scrape()).
+# Set `disabled: true` to skip a source without deleting it.
+
+sources:
+
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Site-specific custom scrapers (under src/scraping/web/<country>/)
+  # Wired through src.scraping.web.custom_scraper_adapter
+  # ─────────────────────────────────────────────────────────────────────
+
+  - name: dfe
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.england.dfe}
+
+  - name: schoolsweek
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.england.schoolsweek}
+
+  - name: epi
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.england.epi}
+
+  - name: nuffield
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.england.nuffield}
+
+  - name: fft_datalab
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.england.fftlabs}
+
+  - name: fed
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.england.fed}
+
+  - name: gov_scot
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.scotland.gov_scot}
+
+  - name: sera
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.scotland.sera}
+
+  - name: gtcs
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.scotland.gtcs}
+
+  - name: ades
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.scotland.ades}
+
+  - name: children_in_scotland
+    type: web
+    scraper: src.scraping.web.custom_scraper_adapter
+    params: {module: src.scraping.web.scotland.children_in_scotland}
+
+
+  # ─────────────────────────────────────────────────────────────────────
+  # RSS feeds + Google Alerts (auto-generated from sources_master.csv)
+  # 103 entries
+  # ─────────────────────────────────────────────────────────────────────
+
+  - name: children_s_commissioner
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.childrenscommissioner.gov.uk/feed"}
+    # source: Children's commissioner  |  coverage: sector_body
+
+  - name: nesta
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/15730491390096636176"}
+    # source: Nesta  |  coverage: research
+
+  - name: jacobs_foundation
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://jacobsfoundation.org/feed"}
+    # source: Jacobs Foundation  |  coverage: research
+
+  - name: child_poverty_action_group
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://cpag.org.uk/rss.xml"}
+    # source: Child Poverty Action Group  |  coverage: research
+
+  - name: digital_poverty_alliance
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://digitalpovertyalliance.org/category/news-updates/feed/"}
+    # source: Digital Poverty Alliance  |  coverage: edtech
+
+  - name: welsh_government
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
+    # source: Welsh Government  |  coverage: four_nations_wales
+
+  - name: education_select_committee
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/13926965246755916290"}
+    # source: Education Select Committee  |  coverage: gov_uk
+
+  - name: knowledge_exchange_unit_parliament
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11266738736153395130"}
+    # source: Knowledge Exchange Unit - Parliament  |  coverage: gov_uk
+
+  - name: welsh_government_education
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
+    # source: Welsh Government - Education  |  coverage: four_nations_wales
+
+  - name: ippo_international_public_policy_observatory
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://theippo.co.uk/feed"}
+    # source: IPPO - International Public Policy Observatory  |  coverage: research
+
+  - name: future_generation_commissioner_for_wales
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.futuregenerations.wales/feed"}
+    # source: Future Generation Commissioner for Wales  |  coverage: four_nations_wales
+
+  - name: oecd
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/3534224211687581619"}
+    # source: OECD  |  coverage: research
+
+  - name: wales_centre_for_public_policy
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.wcpp.org.uk/feed"}
+    # source: Wales Centre for Public Policy  |  coverage: research
+
+  - name: neu_national_education_union
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/6260853693602182035"}
+    # source: NEU - National Education Union  |  coverage: sector_body
+
+  - name: naht_national_association_of_head_teachers
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/14443930643972055832"}
+    # source: NAHT - National Association of Head Teachers  |  coverage: sector_body
+
+  - name: teacher_tapp
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://teachertapp.com/articles/feed/"}
+    # source: Teacher Tapp  |  coverage: sector_body
+
+  - name: chartered_college_of_teaching
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://chartered.college/feed"}
+    # source: Chartered College of Teaching  |  coverage: sector_body
+
+  - name: technology_pedagogy_and_education_association_tpea
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://tpea.ac.uk/feed"}
+    # source: Technology, Pedagogy and Education Association (TPEA)  |  coverage: edtech
+
+  - name: education_development_trust
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/14420744070532707722"}
+    # source: Education Development Trust  |  coverage: sector_body
+
+  - name: bera
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.bera.ac.uk/feed"}
+    # source: BERA  |  coverage: research
+
+  - name: nfer_national_foundation_for_educational_research
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/9766694915126625289"}
+    # source: NFER - National Foundation for Educational Research  |  coverage: research
+
+  - name: esrc_ukri
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.ukri.org/feed"}
+    # source: ESRC/UKRI  |  coverage: research
+
+  - name: ofsted
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.gov.uk/government/organisations/ofsted.atom"}
+    # source: Ofsted  |  coverage: gov_uk
+
+  - name: confederation_of_school_trusts
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://cstuk.org.uk/rss.xml"}
+    # source: Confederation of school trusts  |  coverage: sector_body
+
+  - name: national_coordinating_centre_for_public_engagement
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.publicengagement.ac.uk/rss.xml"}
+    # source: National coordinating centre for public engagement  |  coverage: research
+
+  - name: future_generations_commissioner_for_wales
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.futuregenerations.wales/feed"}
+    # source: Future Generations Commissioner for Wales  |  coverage: four_nations_wales
+
+  - name: centre_for_education_and_youth
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://cfey.org/feed"}
+    # source: Centre for Education and Youth  |  coverage: research
+
+  - name: belfast_telegraph
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.belfasttelegraph.co.uk/rss"}
+    # source: Belfast Telegraph  |  coverage: four_nations_ni
+
+  - name: sutton_trust
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.suttontrust.com/feed"}
+    # source: Sutton Trust  |  coverage: research
+
+  - name: greater_manchester_combined_authority
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/14443930643972055464"}
+    # source: Greater Manchester Combined Authority  |  coverage: research
+
+  - name: defend_digital_me
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://defenddigitalme.org/feed"}
+    # source: Defend Digital Me  |  coverage: edtech
+
+  - name: the_guardian
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.theguardian.com/education/rss"}
+    # source: The Guardian  |  coverage: media
+
+  - name: institute_for_government
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.instituteforgovernment.org.uk/rss"}
+    # source: Institute for Government  |  coverage: research
+
+  - name: stian_westlake_substack
+    type: rss
+    scraper: src.scraping.rss_adapter
+    type_override: google_alert
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2957436647987380276"}
+    # source: Stian Westlake Substack  |  coverage: media
+
+  - name: lpips
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://lpiphub.bham.ac.uk/feed"}
+    # source: LPIPS  |  coverage: media
+
+  - name: joseph_rowntree_foundation
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.jrf.org.uk/rss.xml"}
+    # source: Joseph Rowntree Foundation  |  coverage: research
+
+  - name: wonkhe
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://wonkhe.com/feed"}
+    # source: WonkHE  |  coverage: media
+
+  - name: hepi
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.hepi.ac.uk/feed"}
+    # source: HEPI  |  coverage: media
+
+  - name: post_parliament
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://post.parliament.uk/feed/"}
+    # source: POST Parliament  |  coverage: gov_uk
+
+  - name: becky_allen_substack
+    type: rss
+    scraper: src.scraping.rss_adapter
+    type_override: google_alert
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/368496622896411396"}
+    # source: Becky Allen Substack  |  coverage: media
+
+  - name: joe_hallgarten_substack
+    type: rss
+    scraper: src.scraping.rss_adapter
+    type_override: google_alert
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/1529581085027157763"}
+    # source: Joe Hallgarten Substack  |  coverage: media
+
+  - name: matthew_evans_substack
+    type: rss
+    scraper: src.scraping.rss_adapter
+    type_override: google_alert
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/1484857039965201972"}
+    # source: Matthew Evans Substack  |  coverage: media
+
+  - name: dr_david_lundie
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10527568061152985679"}
+    # source: Dr David Lundie  |  coverage: pi
+
+  - name: professor_stephen_gorard
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/5920908588105611095"}
+    # source: Professor Stephen Gorard  |  coverage: pi
+
+  - name: dr_alison_porter
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://ripl.uk/feed"}
+    # source: Dr Alison Porter  |  coverage: pi
+
+  - name: professor_rob_klassen
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/5461160758534660961"}
+    # source: Professor Rob Klassen  |  coverage: pi
+
+  - name: sarah_chicken
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11546221543792101603"}
+    # source: Sarah Chicken  |  coverage: pi
+
+  - name: professor_rebecca_eynon
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://edtech.oii.ox.ac.uk/feed"}
+    # source: Professor Rebecca Eynon  |  coverage: pi
+
+  - name: professor_toby_greany
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11120221478670084388"}
+    # source: Professor Toby Greany  |  coverage: pi
+
+  - name: steph_ainsworth
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/9270356820202612331"}
+    # source: Steph Ainsworth  |  coverage: pi
+
+  - name: gemma_moss
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/13473477337536903918"}
+    # source: Gemma Moss  |  coverage: alert
+
+  - name: education_research_programme
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2593139115973507959"}
+    # source: Education Research Programme  |  coverage: alert
+
+  - name: bridget_phillipson
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/15613294058363356382"}
+    # source: Bridget Phillipson  |  coverage: alert
+
+  - name: wales_children_families
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
+    # source: Wales - Children & families  |  coverage: four_nations_wales
+
+  - name: wales_education_skills
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
+    # source: Wales - Education & Skills  |  coverage: four_nations_wales
+
+  - name: wales_children_young_people
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11662897293359611577"}
+    # source: Wales - Children & Young People  |  coverage: four_nations_wales
+
+  - name: wales_children_young_people_committee
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11662897293359611577"}
+    # source: Wales - Children & Young people committee  |  coverage: four_nations_wales
+
+  - name: wales_education
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11662897293359611577"}
+    # source: Wales - Education  |  coverage: four_nations_wales
+
+  - name: scotland_news
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10817736755940111392"}
+    # source: Scotland - News  |  coverage: four_nations_scotland
+
+  - name: scotland_publications
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10817736755940111392"}
+    # source: Scotland - Publications  |  coverage: four_nations_scotland
+
+  - name: scotland_digital_blog
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://blogs.gov.scot/digital/feed"}
+    # source: Scotland - Digital blog  |  coverage: four_nations_scotland
+
+  - name: scotland_scottish_parliament_blog
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://spice-spotlight.scot/feed"}
+    # source: Scotland - Scottish parliament blog  |  coverage: four_nations_scotland
+
+  - name: scotland_scottish_parliament_news
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/13926965246755916290"}
+    # source: Scotland - Scottish parliament news  |  coverage: four_nations_scotland
+
+  - name: scotland_scottish_parliament_children_young_people
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/13926965246755916290"}
+    # source: Scotland - Scottish parliament children & young people commi  |  coverage: four_nations_scotland
+
+  - name: ni_ni_executive_publications
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.northernireland.gov.uk/rss.xml"}
+    # source: Ni - NI Executive Publications  |  coverage: four_nations_ni
+
+  - name: ucl_cepeo_blog
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://blogs.ucl.ac.uk/cepeo/feed/"}
+    # source: UCL/IOE: CEPEO blog  |  coverage: internal_ucl
+
+  - name: ucl_cel
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/6789479393132144502"}
+    # source: UCL/IOE: CEL  |  coverage: internal_ucl
+
+  - name: ucl_research_for_the_real_world_ioe_podcast
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://feeds.transistor.fm/ioe"}
+    # source: UCL/IOE: Research for the real world (IOE Podcast)  |  coverage: internal_ucl
+
+  - name: ucl_ecf_staffroom
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://feeds.transistor.fm/ioe"}
+    # source: UCL/IOE: ECF Staffroom  |  coverage: internal_ucl
+
+  - name: ucl_ioe_blog
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://blogs.ucl.ac.uk/ioe/feed/"}
+    # source: UCL/IOE: IOE Blog  |  coverage: internal_ucl
+
+  - name: ucl_ioe_research_news
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: IOE Research News  |  coverage: internal_ucl
+
+  - name: ucl_ioe_professorial_lectures
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: IOE Professorial lectures  |  coverage: internal_ucl
+
+  - name: ucl_eppi_centre_events_news
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: EPPI Centre Events & News  |  coverage: internal_ucl
+
+  - name: ucl_ioe_in_the_media
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: IOE in the Media  |  coverage: internal_ucl
+
+  - name: ucl_ucl_knowledge_lab
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: UCL Knowledge lab  |  coverage: internal_ucl
+
+  - name: ucl_closer_blog
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://closer.ac.uk/feed"}
+    # source: UCL/IOE: CLOSER blog  |  coverage: internal_ucl
+
+  - name: ucl_hhcp
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: HHCP  |  coverage: internal_ucl
+
+  - name: ucl_ioe_announcements
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: IOE Announcements  |  coverage: internal_ucl
+
+  - name: ucl_echild
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: ECHILD  |  coverage: internal_ucl
+
+  - name: ucl_eppi_centre_evidence_for_policy_and_practice
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: EPPI Centre - Evidence for Policy and Practice  |  coverage: internal_ucl
+
+  - name: ucl_ucl_co_production_collective
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+    # source: UCL/IOE: UCL Co Production Collective  |  coverage: internal_ucl
+
+  - name: bbc_education
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://feeds.bbci.co.uk/news/education/rss.xml"}
+    # source: BBC Education  |  coverage: media
+
+  - name: dr_david_lundie_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10527568061152985679"}
+    # source: Dr David Lundie (Google Alert)  |  coverage: alert
+
+  - name: professor_stephen_gorard_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/5920908588105611095"}
+    # source: Professor Stephen Gorard (Google Alert)  |  coverage: alert
+
+  - name: dr_alison_porter_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8511945294573560178"}
+    # source: Dr Alison Porter (Google Alert)  |  coverage: alert
+
+  - name: professor_rob_klassen_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/5461160758534660961"}
+    # source: Professor Rob Klassen (Google Alert)  |  coverage: alert
+
+  - name: sarah_chicken_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11546221543792101603"}
+    # source: Sarah Chicken (Google Alert)  |  coverage: alert
+
+  - name: professor_rebecca_eynon_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11125855530750904034"}
+    # source: Professor Rebecca Eynon (Google Alert)  |  coverage: alert
+
+  - name: professor_toby_greany_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11120221478670084388"}
+    # source: Professor Toby Greany (Google Alert)  |  coverage: alert
+
+  - name: john_gordon_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17032043891447016883"}
+    # source: John Gordon (Google Alert)  |  coverage: alert
+
+  - name: steph_ainsworth_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/9270356820202612331"}
+    # source: Steph Ainsworth (Google Alert)  |  coverage: alert
+
+  - name: neu_news_mentions_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2233608528354694374"}
+    # source: NEU news mentions (Google Alert)  |  coverage: alert
+
+  - name: scotland_scottish_parliament_children_young_people_four_nati
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11186449324381143780"}
+    # source: Scottish Parliament Education C&YP Committee (Google Alert)  |  coverage: four_nations_scotland
+
+  - name: deni_dept_education_ni_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/13199385849377946421"}
+    # source: Department of Education NI (Google Alert)  |  coverage: four_nations_ni
+
+  - name: nilga_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2310462688456078432"}
+    # source: NILGA - NI Local Govt (Google Alert)  |  coverage: four_nations_ni
+
+  - name: ni_assembly_mentions_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10974653634202701947"}
+    # source: Northern Ireland Assembly (Google Alert, mentions)  |  coverage: four_nations_ni
+
+  - name: education_scotland_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/14114804651598102517"}
+    # source: Education Scotland (Google Alert)  |  coverage: four_nations_scotland
+
+  - name: dfe_site_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/3621259156722633137"}
+    # source: DfE (Google Alert backup)  |  coverage: gov_uk
+
+  - name: senedd_site_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11662897293359611577"}
+    # source: Senedd (Google Alert, site: scope)  |  coverage: four_nations_wales
+
+  - name: wlga_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2702094664807066501"}
+    # source: WLGA - Welsh Local Govt Assoc (Google Alert)  |  coverage: four_nations_wales
+
+  - name: cosla_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/5961784094745897356"}
+    # source: COSLA - Scottish Local Govt (Google Alert)  |  coverage: four_nations_scotland
+
+  - name: uk_gov_broad_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2484746571929288238"}
+    # source: UK Government broad (Google Alert)  |  coverage: gov_uk
+
+  - name: welsh_gov_site_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
+    # source: Welsh Government (Google Alert, site:)  |  coverage: four_nations_wales
+
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Custom HTML scrape sources (via auto_listing adapter)
+  # ─────────────────────────────────────────────────────────────────────
+
+  - name: lga
+    type: web
+    scraper: src.scraping.web.auto_listing
+    params:
+      start_url: https://www.local.gov.uk/about/news
+    # source: Local Government Association
+
+  - name: ascl
+    type: web
+    scraper: src.scraping.web.auto_listing
+    params:
+      start_url: https://www.ascl.org.uk/News/Our-news-and-press-releases
+      max_articles: 50
+    # source: ASCL — Association of School and College Leaders
+
+  - name: eef
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11120119267980206420"}
+    # source: Education Endowment Foundation (via Google Alert — direct /news is 403-blocked)
+
+  - name: ada_lovelace_institute
+    type: web
+    scraper: src.scraping.web.auto_listing
+    params:
+      start_url: https://www.adalovelaceinstitute.org/news/
+    # source: Ada Lovelace Institute
+
+  - name: five_rights
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8993864279844894071"}
+    # source: 5Rights Foundation (via Google Alert — auto_listing miscounted wrappers)
+
+  - name: ucl_ioe_news
+    type: web
+    scraper: src.scraping.web.auto_listing
+    params:
+      start_url: https://www.ucl.ac.uk/ioe/news
+      container_class: base-card
+    # source: UCL IOE news (covers IOE Announcements + general IOE news)
