@@ -1,0 +1,29 @@
+# render.yaml — Render deployment config (Infrastructure as Code).
+#
+# Defines the AM2 classifier API as a Render Web Service built from the
+# repo-root Dockerfile. Push to `main` triggers an automatic redeploy.
+#
+# To deploy:
+#   1. Push this file (and the Dockerfile) to GitHub
+#   2. In Render: New + → Blueprint → connect this GitHub repo
+#   3. Render auto-detects render.yaml and provisions the service
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: am2-classifier
+    runtime: docker
+    plan: free
+    region: frankfurt        # closest free-tier region to UK
+    branch: main
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+
+    # Render auto-injects $PORT — our Dockerfile CMD reads ${PORT:-8000}.
+    # No Supabase env vars needed here: the classifier API receives text via
+    # HTTP and returns predictions. It does not read/write the database.
+    # If we later add drift monitoring or audit logging IN the API, we'd
+    # add SUPABASE_URL and SUPABASE_SERVICE_KEY here as `envVars`.
