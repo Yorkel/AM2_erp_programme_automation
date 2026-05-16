@@ -1,15 +1,15 @@
 """
 web/custom_scraper_adapter.py
-Thin wrapper around the the custom scrapers in src/scraping/web/<country>/ scrapers in src/scraping/web/<country>/.
+Thin wrapper around the per-site custom scrapers in src/scraping/web/<country>/.
 
-Each atlas scraper exposes:
+Each custom scraper exposes:
     scrape_<name>(since_date=None, until_date=None,
                   output_path=None, append=False) -> list[dict]
 
 with row keys: url, title, date, text (+ source-specific extras).
 
 This adapter:
-  - Imports the named atlas module
+  - Imports the named site module
   - Calls its scrape_<...> function
   - Wraps each row in an Article object (so text_clean etc. match our pipeline)
 
@@ -17,7 +17,7 @@ Configured per-source via sources.yml, e.g.:
 
     - name: dfe
       type: web
-      scraper: src.scraping.web.atlas_adapter
+      scraper: src.scraping.web.custom_scraper_adapter
       params:
         module: src.scraping.web.england.dfe
 """
