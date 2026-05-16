@@ -1,0 +1,27 @@
+# Virtual environment — never copy this into the image
+venv/
+
+# Git history
+.git/
+
+# Data files (not needed by the API)
+data/
+
+# Jupyter and IDE files
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+.vscode/
+
+# Environment secrets
+.env
+
+# Documentation
+docs/
+*.md
+
+# MLflow tracking (local only)
+mlruns/
+
+# Dashboard (separate deployment)
+model_pipeline/dashboard/

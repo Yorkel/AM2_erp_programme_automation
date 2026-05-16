@@ -1,0 +1,62 @@
+training_country: eng
+countries:
+  eng:
+    dataset_name: eng_training
+    n_topics: 30
+    model_run: eng_2026-03-24_134826
+    tfidf:
+      min_df: 3
+      max_df: 0.85
+      max_features: 3000
+      ngram_range:
+      - 1
+      - 2
+  sco:
+    dataset_name: sco_training
+    n_topics: 15
+    model_run: sco_2026-03-24_135938
+    tfidf:
+      min_df: 3
+      max_df: 0.85
+      max_features: 2000
+      ngram_range:
+      - 1
+      - 2
+  irl:
+    dataset_name: irl_training
+    n_topics: 15
+    model_run: irl_2026-03-24_140040
+    tfidf:
+      min_df: 3
+      max_df: 0.85
+      max_features: 2000
+      ngram_range:
+      - 1
+      - 2
+nmf:
+  random_state: 42
+  init: nndsvd
+  max_iter: 1000
+evaluation:
+  coherence_topic_range:
+  - 5
+  - 55
+  - 5
+  n_top_words: 10
+  stability_seeds:
+  - 42
+  - 123
+  - 456
+  - 789
+  - 1024
+  stability_init: nndsvda
+  stability_max_iter: 1000
+inference:
+  model_type: nmf
+  countries:
+  - eng
+  - sco
+  - irl
+drift:
+  cadence: monthly
+  baseline: eng_training

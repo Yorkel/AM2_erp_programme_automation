@@ -225,6 +225,14 @@ venv/
 .env
 docs/*.md
 .env
-models/
+# Ignore the heavy training artefacts but TRACK the production-deployed
+# versioned model under models/runs/<run_id>/ — that's the single source of
+# truth for which version is live (see models/runs/active.txt).
+models/*.npy
+models/*.joblib
+models/distilbert_finetuned/
+!models/runs/
+!models/runs/**
+
 outputs/
 deployment/Screenshot 2026-04-05 at 21.14.48.png

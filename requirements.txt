@@ -16,3 +16,7 @@ python-dotenv
 supabase>=2.0.0
 PyYAML>=6.0
 python-dateutil>=2.8.0
+# serving module (src/serving/) — FastAPI model API
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.0.0

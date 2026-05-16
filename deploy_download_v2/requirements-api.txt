@@ -1,0 +1,12 @@
+# API-only dependencies (used by Dockerfile)
+# This is the minimal set needed to run the FastAPI inference API.
+
+fastapi==0.129.0
+uvicorn==0.41.0
+pydantic==2.12.5
+pandas==2.3.3
+numpy==2.3.5
+scikit-learn==1.7.2
+spacy==3.8.11
+joblib==1.5.2
+PyYAML==6.0.3

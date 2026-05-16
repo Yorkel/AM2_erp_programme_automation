@@ -1,0 +1,38 @@
+{
+  "run_id": "v1_2026-05-16",
+  "created_utc": "2026-05-16T16:00:00Z",
+  "model_type": "sklearn LogisticRegression on sentence-transformer embeddings",
+  "variant": "sbert_no_meta",
+  "variant_explanation": "Sentence-BERT embeddings + LogisticRegression, NO metadata features. Originally trained as sbert_classifier_no_meta.joblib. The 'no_meta' variant was chosen over 'with_meta' after SHAP analysis (notebook 09) showed the with-metadata model classified by source-type instead of content (proxy concentration 27.6%). Validation macro-F1 dropped slightly (0.765 → 0.750) but the model now classifies by content, which is robust to new sources.",
+  "variant_alternatives_considered": ["sbert_with_meta", "tfidf_logreg", "distilbert_finetuned"],
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "classes": [
+    "edtech",
+    "four_nations",
+    "policy_practice_research",
+    "political_environment_key_organisations",
+    "teacher_rrd",
+    "update_from_pi",
+    "update_from_programme",
+    "what_matters_ed"
+  ],
+  "training_data": {
+    "source": "ESRC ERP newsletters issues 1-104",
+    "n_items_after_cleaning": 1654,
+    "split": "85/15 train/val stratified",
+    "extraction_script": "src/training_data/s00_extract_newsletters.py"
+  },
+  "metrics": {
+    "val_macro_f1": 0.750,
+    "real_world_weighted_f1": 0.630,
+    "real_world_top2_accuracy": 0.874,
+    "evaluation_notes": "Real-world eval on 264 manually-labelled articles from atlas-ed-data inference output (England, weeks 1-13 2026)"
+  },
+  "deployment": {
+    "first_deployed_utc": null,
+    "host": "Render (planned)",
+    "previous_version": null,
+    "supersedes": null
+  },
+  "notes": "First production model. Sentence-transformer (all-MiniLM-L6-v2) embeddings + sklearn LogisticRegression, no metadata features (per SHAP-driven decision in notebook 09 — metadata version caused source-type proxy classification). See docs/decisions_made_next_steps.md for full context."
+}

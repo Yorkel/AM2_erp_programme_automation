@@ -1,0 +1,72 @@
+# .dockerignore — exclude everything that isn't needed in the serving image.
+# This keeps the image small and the build fast.
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Python build / cache
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.eggs
+build
+dist
+.venv
+venv
+env
+
+# IDE / editor
+.vscode
+.idea
+.cursor
+.claude
+
+# Data and notebooks — not part of the serving runtime
+data/
+notebooks/
+experiments/
+outputs/
+deployment/
+dashboard/
+docs/
+migrations/
+scripts/
+
+# Source code we don't serve (only src/serving/ is needed)
+src/classify/
+src/inference/
+src/training_data/
+src/scraping/
+
+# Old / handoff folders
+deploy_download_v2/
+scraping_knowledge/
+
+# Heavy model artefacts we DON'T serve (kept locally for training)
+models/*.npy
+models/*.joblib
+models/distilbert_finetuned/
+# But DO ship the active versioned run (via the COPY in Dockerfile)
+!models/runs/
+
+# Misc files
+README.md
+LICENSE
+.env
+.env.*
+*.log
+*.xlsx
+*.xlsm
+*.docx
+*.pptx
+*.png
+*.jpg
+
+# Workflows (not needed inside the image)
+.github/
