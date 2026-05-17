@@ -22,3 +22,7 @@ lxml>=4.9                # tree builder for BeautifulSoup HTML scrapers (gov_sco
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
 pydantic>=2.0.0
+# dashboard (dashboard/) — Streamlit curator UI
+streamlit>=1.30
+openpyxl>=3.1            # used by review.py / organise.py for .xlsx download buttons
+prometheus-fastapi-instrumentator>=7.0.0

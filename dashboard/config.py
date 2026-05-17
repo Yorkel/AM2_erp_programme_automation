@@ -1,10 +1,9 @@
 """
 Shared constants: category labels, colors, source labels, brand colors.
+
+Note: DATA_DIR removed 2026-05-17 — dashboard now reads from Supabase
+`v_dashboard` view (see dashboard/data.py), not local CSV.
 """
-
-from pathlib import Path
-
-DATA_DIR = Path("data/modelling")
 
 CATEGORY_LABELS = {
     "teacher_rrd": "Teacher recruitment, retention & development",

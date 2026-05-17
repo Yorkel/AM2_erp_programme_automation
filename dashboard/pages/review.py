@@ -4,8 +4,8 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 
-from ..config import CATEGORY_LABELS, CATEGORY_ORDER, CATEGORY_COLORS, SOURCE_LABELS
-from ..data import save_decisions
+from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, CATEGORY_COLORS, SOURCE_LABELS
+from dashboard.data import record_decision, load_decisions
 
 
 def render(df):
@@ -55,8 +55,11 @@ def render(df):
 
     st.markdown("")
 
+    # Pull current decisions (cached 60s)
+    decisions = load_decisions()
+
     # Sort + Progress
-    n_reviewed = sum(1 for url in filtered["url"] if url in st.session_state.decisions)
+    n_reviewed = sum(1 for url in filtered["url"] if url in decisions)
     col_sort, col_progress = st.columns(2)
     with col_sort:
         sort_by = st.selectbox("Order by", ["Date (newest first)", "Date (oldest first)", "Source"])
@@ -83,7 +86,7 @@ def render(df):
         conf1_color = "#27ae60" if conf1 >= 0.6 else "#f39c12" if conf1 >= 0.4 else "#e74c3c"
         conf2_color = "#27ae60" if conf2 >= 0.6 else "#f39c12" if conf2 >= 0.4 else "#e74c3c"
 
-        decision = st.session_state.decisions.get(url)
+        decision = decisions.get(url)
         total_articles = len(filtered)
 
         st.markdown(f"<div style='border-top:3px solid #1d3461;margin:20px 0;'></div>", unsafe_allow_html=True)
@@ -107,21 +110,18 @@ def render(df):
             col_a, col_b, col_c, col_d = st.columns(4)
             with col_a:
                 if st.button(btn1_label, key=f"acc1_{url}", use_container_width=True, type="primary"):
-                    st.session_state.decisions[url] = {"action": "accept_top1", "label": cat1}
-                    save_decisions()
+                    record_decision(url, "accept_top1", cat1)
                     st.rerun()
             with col_b:
                 if st.button(btn2_label, key=f"acc2_{url}", use_container_width=True, type="tertiary"):
-                    st.session_state.decisions[url] = {"action": "accept_top2", "label": cat2}
-                    save_decisions()
+                    record_decision(url, "accept_top2", cat2)
                     st.rerun()
             with col_c:
                 if st.button("\u270e Manual selection", key=f"man_{url}", use_container_width=True, type="primary"):
                     st.session_state[f"show_manual_{url}"] = True
             with col_d:
                 if st.button("\u2715 Reject", key=f"rej_{url}", use_container_width=True, type="secondary"):
-                    st.session_state.decisions[url] = {"action": "reject", "label": ""}
-                    save_decisions()
+                    record_decision(url, "reject", "")
                     st.rerun()
 
             if st.session_state.get(f"show_manual_{url}", False):
@@ -136,9 +136,8 @@ def render(df):
                 with manual_col2:
                     st.markdown("<br>", unsafe_allow_html=True)
                     if st.button("Confirm", key=f"confirm_man_{url}", use_container_width=True, type="primary"):
-                        st.session_state.decisions[url] = {"action": "manual", "label": manual_cat}
+                        record_decision(url, "manual", manual_cat)
                         st.session_state[f"show_manual_{url}"] = False
-                        save_decisions()
                         st.rerun()
 
             if not decision:
@@ -149,17 +148,17 @@ def render(df):
                 st.markdown(f"<p style='text-align:center;color:#1e8449;font-weight:600;'>Status: Accepted for {CATEGORY_LABELS.get(decision['label'], decision['label'])}</p>", unsafe_allow_html=True)
 
     # Export decisions
-    if st.session_state.decisions:
+    if decisions:
         st.markdown("")
         decision_rows = []
-        for url, dec in st.session_state.decisions.items():
-            if dec["action"] == "reject":
+        for url, dec in decisions.items():
+            if dec.get("action") == "reject":
                 continue
             article = df[df["url"] == url].iloc[0] if url in df["url"].values else {}
             decision_rows.append({
                 "url": url,
                 "title": article.get("title", ""),
-                "curator_label": dec["label"],
+                "curator_label": dec.get("label", ""),
             })
         decisions_df = pd.DataFrame(decision_rows)
 

@@ -6,10 +6,10 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-from .config import NAVY, TEAL
-from .styles import get_css
-from .data import load_classified_articles, init_session_state
-from .pages import about, instructions, add_article, review, organise, draft, sources, feedback
+from dashboard.config import NAVY, TEAL
+from dashboard.styles import get_css
+from dashboard.data import load_classified_articles, init_session_state
+from dashboard.pages import about, instructions, add_article, review, organise, draft, sources, feedback
 
 
 def main():
@@ -34,7 +34,7 @@ def main():
     df = load_classified_articles()
 
     if df.empty and page not in ["About", "Sources"]:
-        st.error("No classified articles found. Place `classified_articles.csv` in `data/modelling/`.")
+        st.error("No classified articles found in Supabase. Run the inference pipeline (s07 → classify_via_api → s10) to populate `classify_newsletter`.")
         st.stop()
 
     if "article_date" in df.columns:
@@ -43,9 +43,8 @@ def main():
     init_session_state()
 
     st.markdown(
-        "<div style='background:#fff3cd;border:1px solid #ffc107;border-radius:5px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#856404;text-align:center;'>"
-        "This is a prototype dashboard. The production version will be private to the programme curators.<br>"
-        "<strong>Warning:</strong> Your selections are saved for this session only and will reset when the page closes. The production version will save decisions permanently.</div>",
+        "<div style='background:#d4edda;border:1px solid #28a745;border-radius:5px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#155724;text-align:center;'>"
+        "Curator decisions and summaries are saved to Supabase and persist across sessions.</div>",
         unsafe_allow_html=True,
     )
 

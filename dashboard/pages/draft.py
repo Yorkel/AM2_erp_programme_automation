@@ -2,8 +2,9 @@ from datetime import datetime
 
 import streamlit as st
 
-from ..config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
-from ..data import get_accepted_articles
+from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
+from dashboard.data import get_accepted_articles, load_decisions, record_summary
+from src.inference.summarise import summarise_article
 
 
 def render(df):
@@ -23,6 +24,9 @@ def render(df):
 
     if "draft_descriptions" not in st.session_state:
         st.session_state.draft_descriptions = {}
+
+    # Pull current decisions (so we can render saved summaries + persist new ones)
+    decisions = load_decisions()
 
     # Header
     st.markdown(f"""
@@ -58,16 +62,38 @@ def render(df):
             if desc_key not in st.session_state.draft_descriptions:
                 st.session_state.draft_descriptions[desc_key] = ""
 
+            # Prefer a saved summary (from the Generate-Summary button); fall back
+            # to whatever the curator has typed in this session.
+            saved_summary = (decisions.get(art_url) or {}).get("summary") or ""
+            if saved_summary and not st.session_state.draft_descriptions.get(desc_key):
+                st.session_state.draft_descriptions[desc_key] = saved_summary
+
             with st.container(border=True):
                 st.markdown(f"**{source_name} - {title}**")
-                edited_desc = st.text_area(
-                    "Description",
-                    value=st.session_state.draft_descriptions[desc_key],
-                    key=desc_key,
-                    height=80,
-                    label_visibility="collapsed",
-                )
-                st.session_state.draft_descriptions[desc_key] = edited_desc
+
+                col_desc, col_btn = st.columns([4, 1])
+                with col_btn:
+                    if st.button("Generate summary", key=f"gen_{art_url}", use_container_width=True):
+                        with st.spinner("Summarising via Claude..."):
+                            new_summary = summarise_article(
+                                title=title,
+                                text=art.get("text_clean", "") or "",
+                                category=art.get("curator_label"),
+                            )
+                        record_summary(art_url, new_summary)
+                        st.session_state.draft_descriptions[desc_key] = new_summary
+                        st.rerun()
+
+                with col_desc:
+                    edited_desc = st.text_area(
+                        "Description",
+                        value=st.session_state.draft_descriptions[desc_key],
+                        key=desc_key,
+                        height=100,
+                        label_visibility="collapsed",
+                    )
+                    st.session_state.draft_descriptions[desc_key] = edited_desc
+
                 if art_url:
                     st.markdown(f"[Here]({art_url})")
 

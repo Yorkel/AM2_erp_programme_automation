@@ -4,8 +4,8 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 
-from ..config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
-from ..data import get_accepted_articles
+from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
+from dashboard.data import get_accepted_articles, record_decision
 
 
 def render(df):
@@ -72,6 +72,8 @@ def render(df):
                     )
                     if move_to:
                         st.session_state.category_overrides[art_url] = move_to
+                        # Persist the override so it survives reloads
+                        record_decision(art_url, "manual", move_to)
                         st.rerun()
 
     # Export

@@ -1,9 +1,9 @@
 from datetime import datetime
 
 import streamlit as st
-import pandas as pd
 
-from ..config import CATEGORY_LABELS, CATEGORY_ORDER, DATA_DIR
+from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER
+from dashboard.data import get_client
 
 
 def render():
@@ -42,17 +42,17 @@ def render():
         submitted = st.form_submit_button("Submit feedback", use_container_width=True)
 
         if submitted:
-            feedback_entry = {
-                "timestamp": datetime.now().isoformat(),
-                "accuracy_rating": accuracy_rating,
-                "problem_categories": ", ".join(problem_cats) if problem_cats else "",
-                "missing_sources": missing_sources,
-                "suggestions": suggestions,
-            }
-            feedback_path = DATA_DIR / "curator_feedback.csv"
-            feedback_df = pd.DataFrame([feedback_entry])
-            if feedback_path.exists():
-                existing = pd.read_csv(feedback_path)
-                feedback_df = pd.concat([existing, feedback_df], ignore_index=True)
-            feedback_df.to_csv(feedback_path, index=False)
-            st.success("Thank you! Your feedback has been saved.")
+            # Persist to Supabase `curator_feedback` table (migration 008 pending).
+            # If the table doesn't exist yet, falls back to printing the message.
+            try:
+                client = get_client()
+                client.table("curator_feedback").insert({
+                    "submitted_at": datetime.now().isoformat(),
+                    "accuracy_rating": accuracy_rating,
+                    "problem_categories": problem_cats or [],
+                    "missing_sources": missing_sources,
+                    "suggestions": suggestions,
+                }).execute()
+                st.success("Thank you! Your feedback has been saved.")
+            except Exception as e:
+                st.warning(f"Feedback table not yet wired in Supabase ({e}). The text was: {suggestions[:200]}")
