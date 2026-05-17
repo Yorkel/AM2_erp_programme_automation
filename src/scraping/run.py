@@ -29,6 +29,11 @@ from pathlib import Path
 
 from src.scraping.common import Article
 from src.scraping.config import load_sources
+from src.scraping.relevance import (
+    DEFAULT_EDUCATION_KEYWORDS,
+    compile_keyword_patterns,
+    log_rejection,
+)
 from src.scraping.supabase_client import (
     get_client,
     log_run,
@@ -49,11 +54,19 @@ def _to_records(items) -> list[dict]:
     return out
 
 
-def _scrape_one(src: dict, *, since: date | None, until: date | None) -> list:
+def _scrape_one(src: dict, *, since: date | None, until: date | None) -> tuple[list, bool, list | None]:
+    """Call the scraper for one source and return (items, apply_filter, require_keywords).
+    Filter params are popped from `params` here so individual scrapers never see them —
+    filtering is applied centrally in `_filter_items` after this returns.
+    """
     params = dict(src.get("params") or {})
     params.setdefault("source", src["name"])
     params["since_date"] = since
     params["until_date"] = until
+
+    # Centralised relevance-filter config: pop from params so scrapers don't see it.
+    apply_filter = bool(params.pop("apply_relevance_filter", False))
+    require_keywords = params.pop("require_keywords", None)
 
     if src["type"] == "newsletter":
         ingestion = src.get("ingestion", "disk")
@@ -63,21 +76,62 @@ def _scrape_one(src: dict, *, since: date | None, until: date | None) -> list:
             mod = importlib.import_module("src.scraping.newsletters.gmail")
         else:
             raise RuntimeError(f"unknown newsletter ingestion '{ingestion}'")
-        return mod.scrape(**params)
-
-    if src["type"] == "web":
+        items = mod.scrape(**params)
+    elif src["type"] == "web":
         scraper_path = src.get("scraper")
         if not scraper_path:
             raise RuntimeError(f"web source {src['name']} must specify 'scraper'")
         mod = importlib.import_module(scraper_path)
-        return mod.scrape(**params)
-
-    if src["type"] in ("rss", "google_alert"):
+        items = mod.scrape(**params)
+    elif src["type"] in ("rss", "google_alert"):
         scraper_path = src.get("scraper") or "src.scraping.rss_adapter"
         mod = importlib.import_module(scraper_path)
-        return mod.scrape(**params)
+        items = mod.scrape(**params)
+    else:
+        raise RuntimeError(f"unknown source type {src['type']}")
 
-    raise RuntimeError(f"unknown source type {src['type']}")
+    return items, apply_filter, require_keywords
+
+
+def _filter_items(items: list, source: str,
+                  apply_filter: bool, require_keywords: list | None) -> list:
+    """Apply the education-relevance filter to Article items. Centralised here so
+    every scraper type (rss_adapter, auto_listing, custom HTML scrapers) gets the
+    same behaviour with one flip of `apply_relevance_filter: true` in sources.yml.
+    Rejected items are logged to data/archive/rejected/<date>_<source>.csv.
+    """
+    if not apply_filter and require_keywords is None:
+        return items
+
+    kws = tuple(require_keywords) if require_keywords is not None else DEFAULT_EDUCATION_KEYWORDS
+    patterns = compile_keyword_patterns(kws)
+
+    kept: list = []
+    n_rejected = 0
+    for item in items:
+        # Only filter Article objects. Pass other shapes through unchanged.
+        if not isinstance(item, Article):
+            kept.append(item)
+            continue
+        haystack = ((item.title or "") + " " + (item.text or item.text_clean or "")).lower()
+        matched = [kw for kw, p in zip(kws, patterns) if p.search(haystack)]
+        if matched:
+            kept.append(item)
+        else:
+            log_rejection(
+                source=source,
+                url=item.url,
+                title=item.title or "",
+                source_type=item.source_type,
+                article_date=item.article_date,
+                matched_keywords_attempted=[],
+            )
+            n_rejected += 1
+
+    if n_rejected:
+        print(f"  {source}: {n_rejected} of {len(items)} rejected by relevance filter "
+              f"(see data/archive/rejected/)")
+    return kept
 
 
 def _weekly_windows(start: date, end: date) -> list[tuple[date, date]]:
@@ -192,7 +246,10 @@ def _execute_run(args):
         status = "ok"
         error: str | None = None
         try:
-            items = _scrape_one(src, since=args.since, until=args.until)
+            items, apply_filter, require_keywords = _scrape_one(
+                src, since=args.since, until=args.until
+            )
+            items = _filter_items(items, name, apply_filter, require_keywords)
             records = _to_records(items)
             rows_scraped = len(records)
             rows_upserted = upsert_articles(

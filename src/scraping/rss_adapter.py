@@ -28,11 +28,6 @@ import feedparser
 from bs4 import BeautifulSoup
 
 from src.scraping.common import Article, build_text_clean
-from src.scraping.relevance import (
-    DEFAULT_EDUCATION_KEYWORDS,
-    compile_keyword_patterns,
-    log_rejection,
-)
 
 _WS_RE = re.compile(r"\s+")
 
@@ -56,6 +51,28 @@ def _unwrap_google_url(link: str) -> str:
         return unquote(inner[0]) if inner else link
     except Exception:
         return link
+
+
+def _domain_as_source(url: str) -> str | None:
+    """Extract a cleaned domain to use as the `source` for an article that came
+    in via a Google Alert. The alert itself aggregates many real publishers; we
+    want the dashboard to show the publisher, not the alert.
+
+    Examples:
+      https://www.bbc.co.uk/news/articles/xyz  →  bbc.co.uk
+      https://schoolsweek.co.uk/some-story     →  schoolsweek.co.uk
+      https://www.gov.uk/government/news/foo   →  gov.uk
+      https://assets.publishing.service.gov.uk/...  →  assets.publishing.service.gov.uk
+    """
+    if not url:
+        return None
+    try:
+        netloc = urlparse(url).netloc.lower()
+        if netloc.startswith("www."):
+            netloc = netloc[4:]
+        return netloc or None
+    except Exception:
+        return None
 
 
 _ORDINAL_RE = re.compile(r"(\d+)(st|nd|rd|th)\b", re.I)
@@ -99,34 +116,21 @@ def _entry_text(entry) -> str:
 def scrape(*, source: str, feed_url: str,
            since_date: date | None = None,
            until_date: date | None = None,
-           apply_relevance_filter: bool = False,
-           require_keywords: tuple[str, ...] | list[str] | None = None,
            **_ignored) -> list[Article]:
     """Parse an RSS / Atom / Google Alert feed, return Articles.
 
-    Filtering options for broad sources (e.g. Belfast Telegraph whole-paper
-    feed, LGA, BBC general):
-      apply_relevance_filter=True  →  use DEFAULT_EDUCATION_KEYWORDS
-      require_keywords=[...]       →  use a custom keyword list
-    Rejected entries are written to data/archive/rejected/<date>_<source>.csv.
-    Narrow sources should leave both unset.
+    Per-source relevance filtering is applied centrally in `run.py` after this
+    function returns — see `apply_relevance_filter` flag on sources in
+    sources.yml. This scraper just produces Articles; it doesn't filter.
     """
     parsed = feedparser.parse(feed_url)
     if parsed.bozo and not parsed.entries:
         print(f"  feedparser bozo for {source}: {parsed.bozo_exception}")
         return []
 
-    # Compile keyword patterns once per scrape (lazy — only if filtering)
-    kw_list: tuple[str, ...] | None = None
-    kw_patterns = None
-    if apply_relevance_filter or require_keywords is not None:
-        kw_list = tuple(require_keywords) if require_keywords is not None else DEFAULT_EDUCATION_KEYWORDS
-        kw_patterns = compile_keyword_patterns(kw_list)
-
     is_google_alert = "google.com/alerts" in feed_url or "google.co.uk/alerts" in feed_url
     articles: list[Article] = []
     seen_urls: set[str] = set()
-    n_rejected = 0
 
     for e in parsed.entries:
         url = e.get("link") or ""
@@ -145,34 +149,23 @@ def scrape(*, source: str, feed_url: str,
         title = _strip_html(e.get("title") or "")
         text = _strip_html(_entry_text(e))
 
-        # Relevance filter — drop entries that don't match any keyword
-        if kw_patterns is not None:
-            haystack = (title + " " + text).lower()
-            matched = [kw for kw, p in zip(kw_list, kw_patterns) if p.search(haystack)]
-            if not matched:
-                log_rejection(
-                    source=source,
-                    url=url,
-                    title=title,
-                    source_type="rss",
-                    article_date=article_date,
-                    matched_keywords_attempted=[],
-                )
-                n_rejected += 1
-                continue
+        # For Google Alerts (which aggregate many publishers behind one feed),
+        # use the article's domain as `source` so the dashboard shows the real
+        # publisher rather than the alert's name. For direct RSS feeds, source
+        # stays as the configured name from sources.yml.
+        article_source = source
+        if is_google_alert:
+            article_source = _domain_as_source(url) or source
 
         articles.append(Article(
             url=url,
             title=title,
             article_date=article_date,
-            source=source,
-            source_type="rss",
+            source=article_source,
+            source_type="google_alert" if is_google_alert else "rss",
             text=text,
             text_clean=build_text_clean(title, text),
+            extra={"alert_name": source} if is_google_alert else {},
         ))
-
-    if kw_patterns is not None and n_rejected:
-        print(f"  {source}: {n_rejected} entries rejected by relevance filter "
-              f"(see data/archive/rejected/)")
 
     return articles

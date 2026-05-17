@@ -1,23 +1,25 @@
-# Disabled Sources — Awaiting Per-Source Keyword Filter
+# Disabled Sources
 
-Sources commented out in `src/scraping/sources.yml` because they publish broad content beyond UK education. To be re-enabled once the per-source keyword filtering feature lands (see the **Future fix** section below).
+History of sources disabled in `src/scraping/sources.yml`. Bucket A (broad-content sources) were re-enabled 2026-05-17 once the per-source `apply_relevance_filter` feature shipped — they now run with the filter active. Bucket B (out-of-scope) remain disabled by design. Bucket C (alternative-ingestion) are pending other solutions.
 
-### Dropped pending keyword-filter (will re-enable)
+### ✅ Bucket A — Re-enabled 2026-05-17 with `apply_relevance_filter: true`
 
-| Source | Date disabled | Reason | Rows deleted |
+Filter implementation: `src/scraping/relevance.py` + central filter in `src/scraping/run.py`. Rejected articles logged to `data/archive/rejected/<date>_<source>.csv`. See `docs/decisions/source_roster_gaps_2026_05_17.md` for the underlying analysis and `notebooks/14_relevance_keyword_analysis.ipynb` for the keyword derivation.
+
+| Source | Disabled | Re-enabled | Original reason for disabling |
 |---|---|---|---|
-| `institute_for_government` | 2026-05-16 | Feed is general UK politics (Westminster, civil service, manifestos, Starmer, Covid fraud). 0/8 sampled titles were education. | 10 |
-| `joseph_rowntree_foundation` | 2026-05-16 | Feed is poverty/housing/welfare focused (rent control, homes, wealth inequality). ~0/8 sampled titles were directly education. | 10 |
-| `child_poverty_action_group` | 2026-05-16 | Feed is welfare-benefits focused (Welfare Rights Bulletins, advising low-income families, LCWRA, cancer treatment guidance). Education tangential. | 4 |
-| `digital_poverty_alliance` | 2026-05-16 | Feed covers digital inclusion broadly (landline switchover, Freeview TV, public devices). Only ~1/8 entries touch education. | 10 |
-| `post_parliament` | 2026-05-16 | POST publishes science briefings across ALL policy areas (airport health, conspiracy theories, defence R&D, flood resilience). 0/8 sampled were education. Same shape as IfG/JRF. | 10 |
-| `ippo_international_public_policy_observatory` | 2026-05-16 | Broad policy content (data-led policy, carbon footprint of doorstep deliveries, international policymaking). 0/4 sampled were education. | 1 |
-| `wales_centre_for_public_policy` | 2026-05-16 | Broad Welsh policy (local govt model, net zero, social cohesion, probation, child poverty in Wales). 0/7 specifically education. | 10 |
-| `lpips` | 2026-05-16 | LPIPS (Birmingham) publishes broad place/skills/industrial-policy content (Japan secondments, fashion/textiles, AI in local govt, MG Rover, Green Industrial Policy). 0/7 schools/education. | 10 |
-| `scotland_digital_blog` | 2026-05-16 | Scottish Gov Digital Services blog (data access, supplier assurance, LiDAR, ScotAccount). 0/7 education — wrong gov.scot blog (it's the IT/data one, not the education one). | 9 |
-| `scotland_scottish_parliament_blog` | 2026-05-16 | SPICe Spotlight publishes broad parliamentary explainers (committees, Parliamentary Bureau, party formation). 0/7 specifically education. | 10 |
-| `ni_ni_executive_publications` | 2026-05-16 | NI Executive blanket publications feed covers ALL departments. ~2/7 sampled were education. Alternative: NI Department of Education-specific feed. | 0 |
-| `ucl_research_for_the_real_world_ioe_podcast` | 2026-05-16 | IOE podcast feed mixes academic life, research ethics, PhD experiences with some education content. | 0 |
+| `institute_for_government` | 2026-05-16 | 2026-05-17 | Feed is general UK politics (Westminster, civil service, manifestos, Starmer, Covid fraud). 0/8 sampled titles were education. |
+| `joseph_rowntree_foundation` | 2026-05-16 | 2026-05-17 | Feed is poverty/housing/welfare focused (rent control, homes, wealth inequality). ~0/8 sampled titles were directly education. |
+| `child_poverty_action_group` | 2026-05-16 | 2026-05-17 | Feed is welfare-benefits focused (Welfare Rights Bulletins, advising low-income families, LCWRA, cancer treatment guidance). Education tangential. |
+| `digital_poverty_alliance` | 2026-05-16 | 2026-05-17 | Feed covers digital inclusion broadly (landline switchover, Freeview TV, public devices). Only ~1/8 entries touch education. |
+| `post_parliament` | 2026-05-16 | 2026-05-17 | POST publishes science briefings across ALL policy areas (airport health, conspiracy theories, defence R&D, flood resilience). 0/8 sampled were education. Same shape as IfG/JRF. |
+| `ippo_international_public_policy_observatory` | 2026-05-16 | 2026-05-17 | Broad policy content (data-led policy, carbon footprint of doorstep deliveries, international policymaking). 0/4 sampled were education. |
+| `wales_centre_for_public_policy` | 2026-05-16 | 2026-05-17 | Broad Welsh policy (local govt model, net zero, social cohesion, probation, child poverty in Wales). 0/7 specifically education. |
+| `lpips` | 2026-05-16 | 2026-05-17 | LPIPS (Birmingham) publishes broad place/skills/industrial-policy content (Japan secondments, fashion/textiles, AI in local govt, MG Rover, Green Industrial Policy). 0/7 schools/education. |
+| `scotland_digital_blog` | 2026-05-16 | 2026-05-17 | Scottish Gov Digital Services blog (data access, supplier assurance, LiDAR, ScotAccount). 0/7 education — wrong gov.scot blog (it's the IT/data one, not the education one). |
+| `scotland_scottish_parliament_blog` | 2026-05-16 | 2026-05-17 | SPICe Spotlight publishes broad parliamentary explainers (committees, Parliamentary Bureau, party formation). 0/7 specifically education. |
+| `ni_ni_executive_publications` | 2026-05-16 | 2026-05-17 | NI Executive blanket publications feed covers ALL departments. ~2/7 sampled were education. |
+| `ucl_research_for_the_real_world_ioe_podcast` | 2026-05-16 | 2026-05-17 | IOE podcast feed mixes academic life, research ethics, PhD experiences with some education content. |
 
 ### Dropped out of scope (will NOT re-enable)
 

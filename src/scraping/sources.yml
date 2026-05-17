@@ -94,23 +94,25 @@ sources:
     params: {feed_url: "https://jacobsfoundation.org/feed"}
     # source: Jacobs Foundation  |  coverage: research
 
-  # DISABLED 2026-05-16 — CPAG's feed is welfare/benefits focused (Welfare Rights Bulletins,
-  # advising low-income families, LCWRA). Education is tangential. Re-enable with per-source
-  # keyword filter so we can capture only the school/child-poverty education overlap.
-  # - name: child_poverty_action_group
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://cpag.org.uk/rss.xml"}
-  #   # source: Child Poverty Action Group  |  coverage: research
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — CPAG feed mixes welfare/benefits with
+  # education-relevant child-poverty content; filter captures the education overlap only.
+  - name: child_poverty_action_group
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://cpag.org.uk/rss.xml"
+      apply_relevance_filter: true
+    # source: Child Poverty Action Group  |  coverage: research
 
-  # DISABLED 2026-05-16 — DPA's feed covers digital inclusion broadly (landline switchover,
-  # Freeview TV, public devices recycling). Only ~1/8 entries explicitly touch education.
-  # Re-enable with per-source keyword filter to capture digital-in-education content only.
-  # - name: digital_poverty_alliance
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://digitalpovertyalliance.org/category/news-updates/feed/"}
-  #   # source: Digital Poverty Alliance  |  coverage: edtech
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — DPA covers digital inclusion broadly
+  # (landline switchover, Freeview TV); filter captures only digital-in-education content.
+  - name: digital_poverty_alliance
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://digitalpovertyalliance.org/category/news-updates/feed/"
+      apply_relevance_filter: true
+    # source: Digital Poverty Alliance  |  coverage: edtech
 
   - name: welsh_government
     type: google_alert
@@ -136,14 +138,15 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
     # source: Welsh Government - Education  |  coverage: four_nations_wales
 
-  # DISABLED 2026-05-16 — IPPO publishes broad policy content (data-led policy, carbon
-  # footprint of doorstep deliveries, international policymaking). 0/4 sampled were education.
-  # Re-enable with per-source keyword filter.
-  # - name: ippo_international_public_policy_observatory
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://theippo.co.uk/feed"}
-  #   # source: IPPO - International Public Policy Observatory  |  coverage: research
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — IPPO publishes broad policy content;
+  # filter captures only education-relevant entries.
+  - name: ippo_international_public_policy_observatory
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://theippo.co.uk/feed"
+      apply_relevance_filter: true
+    # source: IPPO - International Public Policy Observatory  |  coverage: research
 
 
   - name: oecd
@@ -152,14 +155,15 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/3534224211687581619"}
     # source: OECD  |  coverage: research
 
-  # DISABLED 2026-05-16 — WCPP covers broad Welsh policy (local govt operating model, net zero,
-  # social cohesion, probation, child poverty in Wales). 0/7 sampled were specifically education.
-  # Re-enable with per-source keyword filter.
-  # - name: wales_centre_for_public_policy
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://www.wcpp.org.uk/feed"}
-  #   # source: Wales Centre for Public Policy  |  coverage: research
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — WCPP covers broad Welsh policy;
+  # filter captures only education-relevant entries.
+  - name: wales_centre_for_public_policy
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://www.wcpp.org.uk/feed"
+      apply_relevance_filter: true
+    # source: Wales Centre for Public Policy  |  coverage: research
 
   - name: neu_national_education_union
     type: google_alert
@@ -303,14 +307,15 @@ sources:
     params: {feed_url: "https://www.theguardian.com/education/rss"}
     # source: The Guardian  |  coverage: media
 
-  # DISABLED 2026-05-16 — IfG publishes general UK politics (Westminster, civil service,
-  # manifestos), not education-specific. Re-enable when per-source keyword filtering lands
-  # so we can ingest only entries that mention schools/teachers/pupils/universities/etc.
-  # - name: institute_for_government
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://www.instituteforgovernment.org.uk/rss"}
-  #   # source: Institute for Government  |  coverage: research
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — IfG publishes general UK politics;
+  # filter captures only entries mentioning schools/teachers/education/etc.
+  - name: institute_for_government
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://www.instituteforgovernment.org.uk/rss"
+      apply_relevance_filter: true
+    # source: Institute for Government  |  coverage: research
 
   - name: stian_westlake_substack
     type: rss
@@ -319,24 +324,25 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2957436647987380276"}
     # source: Stian Westlake Substack  |  coverage: media
 
-  # DISABLED 2026-05-16 — LPIPS (Local Policy Innovation Partnership, Birmingham) publishes
-  # broad place/skills/industrial-policy content (intergovernmental capability from Japan,
-  # policy fragmentation in fashion/textiles, AI in local govt, Green Industrial Policy, MG
-  # Rover lessons). 0/7 sampled were schools/education. Re-enable with per-source keyword filter.
-  # - name: lpips
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://lpiphub.bham.ac.uk/feed"}
-  #   # source: LPIPS  |  coverage: media
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — LPIPS publishes broad place/skills
+  # policy; filter captures only education-related entries.
+  - name: lpips
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://lpiphub.bham.ac.uk/feed"
+      apply_relevance_filter: true
+    # source: LPIPS  |  coverage: media
 
-  # DISABLED 2026-05-16 — JRF publishes poverty/housing/welfare content (rent control, homes,
-  # wealth inequality), not education-specific. Some entries touch child poverty + education
-  # but the bulk is off-topic. Re-enable when per-source keyword filtering lands.
-  # - name: joseph_rowntree_foundation
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://www.jrf.org.uk/rss.xml"}
-  #   # source: Joseph Rowntree Foundation  |  coverage: research
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — JRF publishes poverty/housing/welfare;
+  # filter captures only child-poverty/education overlap.
+  - name: joseph_rowntree_foundation
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://www.jrf.org.uk/rss.xml"
+      apply_relevance_filter: true
+    # source: Joseph Rowntree Foundation  |  coverage: research
 
   # DISABLED 2026-05-16 — WonkHE covers the higher-education sector exclusively (university
   # mergers, OfS, student loans, university governance). Newsletter scope is schools/pre-HE/FE,
@@ -356,15 +362,15 @@ sources:
   #   params: {feed_url: "https://www.hepi.ac.uk/feed"}
   #   # source: HEPI  |  coverage: media
 
-  # DISABLED 2026-05-16 — POST (Parliamentary Office of Science & Technology) publishes
-  # cross-policy briefings across ALL domains (airport health, conspiracy theories, flood
-  # resilience, defence R&D, pregnancy mental health). 0/8 sampled were education.
-  # Re-enable with per-source keyword filter.
-  # - name: post_parliament
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://post.parliament.uk/feed/"}
-  #   # source: POST Parliament  |  coverage: gov_uk
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — POST publishes cross-policy briefings;
+  # filter captures only education-relevant entries.
+  - name: post_parliament
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://post.parliament.uk/feed/"
+      apply_relevance_filter: true
+    # source: POST Parliament  |  coverage: gov_uk
 
   - name: becky_allen_substack
     type: rss
@@ -495,23 +501,25 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10817736755940111392"}
     # source: Scotland - Publications  |  coverage: four_nations_scotland
 
-  # DISABLED 2026-05-16 — Scottish Gov's Digital Services blog (data access, supplier assurance,
-  # LiDAR, ScotAccount, comms & engagement). 0/7 sampled were schools/education — it's the gov
-  # IT/data blog, not the education blog. Re-enable with per-source keyword filter.
-  # - name: scotland_digital_blog
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://blogs.gov.scot/digital/feed"}
-  #   # source: Scotland - Digital blog  |  coverage: four_nations_scotland
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — Scottish Gov Digital Services blog;
+  # filter captures only education-relevant entries (rare but worth catching).
+  - name: scotland_digital_blog
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://blogs.gov.scot/digital/feed"
+      apply_relevance_filter: true
+    # source: Scotland - Digital blog  |  coverage: four_nations_scotland
 
-  # DISABLED 2026-05-16 — SPICe Spotlight publishes broad parliamentary explainers (how
-  # committees are established, Parliamentary Bureau, how parties form government, King's
-  # Speech). 0/7 sampled were specifically education. Re-enable with per-source keyword filter.
-  # - name: scotland_scottish_parliament_blog
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://spice-spotlight.scot/feed"}
-  #   # source: Scotland - Scottish parliament blog  |  coverage: four_nations_scotland
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — SPICe Spotlight publishes broad
+  # parliamentary explainers; filter captures only education-relevant entries.
+  - name: scotland_scottish_parliament_blog
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://spice-spotlight.scot/feed"
+      apply_relevance_filter: true
+    # source: Scotland - Scottish parliament blog  |  coverage: four_nations_scotland
 
   - name: scotland_scottish_parliament_news
     type: google_alert
@@ -525,15 +533,15 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/13926965246755916290"}
     # source: Scotland - Scottish parliament children & young people commi  |  coverage: four_nations_scotland
 
-  # DISABLED 2026-05-16 — NI Executive's blanket publications feed covers ALL departments
-  # (Programme for Govt, Christmas scams, Economic stats, FE Sector Activity, Domiciliary Care,
-  # A1 Junctions). ~2/7 sampled were education. Re-enable with per-source keyword filter — or
-  # find an NI-Department-of-Education-specific feed.
-  # - name: ni_ni_executive_publications
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://www.northernireland.gov.uk/rss.xml"}
-  #   # source: Ni - NI Executive Publications  |  coverage: four_nations_ni
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — NI Executive blanket publications;
+  # filter captures only education-relevant entries.
+  - name: ni_ni_executive_publications
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://www.northernireland.gov.uk/rss.xml"
+      apply_relevance_filter: true
+    # source: Ni - NI Executive Publications  |  coverage: four_nations_ni
 
   - name: ucl_cepeo_blog
     type: rss
@@ -547,14 +555,15 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/6789479393132144502"}
     # source: UCL/IOE: CEL  |  coverage: internal_ucl
 
-  # DISABLED 2026-05-16 — UCL IOE podcast feed (Transistor.fm) covers academic life, research
-  # ethics, PhD experiences, and some education research mixed together. Drop for now; revisit
-  # with per-source keyword filter or topic-specific filtering.
-  # - name: ucl_research_for_the_real_world_ioe_podcast
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://feeds.transistor.fm/ioe"}
-  #   # source: UCL/IOE: Research for the real world (IOE Podcast)  |  coverage: internal_ucl
+  # RE-ENABLED 2026-05-17 with apply_relevance_filter — UCL IOE podcast feed mixes academic
+  # life / research ethics with education research; filter captures the education entries.
+  - name: ucl_research_for_the_real_world_ioe_podcast
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://feeds.transistor.fm/ioe"
+      apply_relevance_filter: true
+    # source: UCL/IOE: Research for the real world (IOE Podcast)  |  coverage: internal_ucl
 
   # DISABLED 2026-05-16 — DUPLICATE feed_url with ucl_research_for_the_real_world_ioe_podcast
   # above (both point at feeds.transistor.fm/ioe). The ECF Staffroom podcast must have its own
