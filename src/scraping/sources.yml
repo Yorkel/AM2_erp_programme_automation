@@ -274,7 +274,9 @@ sources:
   - name: belfast_telegraph
     type: rss
     scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.belfasttelegraph.co.uk/news/education/rss"}
+    params:
+      feed_url: "https://www.belfasttelegraph.co.uk/news/education/rss"
+      apply_relevance_filter: true   # whole-paper feed, ~10% noise (sport, GAA, etc.)
     # source: Belfast Telegraph  |  coverage: four_nations_ni
 
   - name: sutton_trust
@@ -642,7 +644,9 @@ sources:
   - name: bbc_education
     type: rss
     scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://feeds.bbci.co.uk/news/education/rss.xml"}
+    params:
+      feed_url: "https://feeds.bbci.co.uk/news/education/rss.xml"
+      apply_relevance_filter: true   # education-tagged feed but still ~24% noise (baby sleep, online-safety)
     # source: BBC Education  |  coverage: media
 
   - name: dr_david_lundie_alert
@@ -762,7 +766,9 @@ sources:
   - name: uk_gov_broad_alert
     type: google_alert
     scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2484746571929288238"}
+    params:
+      feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2484746571929288238"
+      apply_relevance_filter: true   # broad UK-gov catch-all alert, needs filtering
     # source: UK Government broad (Google Alert)  |  coverage: gov_uk
 
   - name: welsh_gov_site_alert
