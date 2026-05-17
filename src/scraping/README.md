@@ -1,7 +1,7 @@
 # src/scraping/
 
 In-house scraping pipeline. Replaces the external `atlas-ed-data` feed that
-used to populate Supabase `articles_topics`. Output flows straight into the
+used to populate Supabase `articles` (formerly `articles_topics`). Output flows straight into the
 existing inference pipeline ([src/inference/s07_pull_supabase.py](../inference/s07_pull_supabase.py))
 unchanged.
 
@@ -104,10 +104,13 @@ python src/pipeline.py --inference
 
 ## Schema
 
-Apply `migrations/001_articles_topics.sql` to a Supabase project. Sets up:
+Apply `migrations/001_articles_topics.sql` to a Supabase project (original migration; table since renamed to `articles`). Then apply migrations 002, 003, 004 for the predictions / decisions / view layer. Sets up:
 
-- `articles_topics` — column names match what `s07_pull_supabase.py` already SELECTs (`url, title, article_date, source, text_clean, week_number`), plus `text` (full body) and `source_type` (`web`/`newsletter`/`rss`).
+- `articles` (originally `articles_topics`) — column names match what `s07_pull_supabase.py` already SELECTs (`url, title, article_date, source, text_clean, week_number`), plus `text` (full body) and `source_type` (`web`/`newsletter`/`rss`).
 - `scrape_runs` — one row per source per orchestrator run for monitoring.
+- `classify_newsletter` — model predictions (migration 002).
+- `curator_decisions` — curator accept/reject decisions (migration 003).
+- `v_dashboard` — view joining articles + predictions for the curator dashboard (migration 004).
 
 ## Environment
 

@@ -2,10 +2,10 @@
 s07_pull_supabase.py
 Pull weekly inference articles from Supabase.
 
-Fetches England inference articles from the articles_topics table,
+Fetches England inference articles from the articles table,
 saves locally for classification.
 
-Input:  Supabase articles_topics table (requires SUPABASE_URL + SUPABASE_SERVICE_KEY in .env)
+Input:  Supabase articles table (requires SUPABASE_URL + SUPABASE_SERVICE_KEY in .env)
 Output: data/modelling/supabase_inference_articles.csv
 """
 
@@ -42,7 +42,7 @@ def main():
 
     # Pull articles (optionally bounded by article_date)
     q = (
-        client.table("articles_topics")
+        client.table("articles")
         .select("url, title, article_date, source, text_clean, week_number")
         .eq("country", COUNTRY)
         .eq("dataset_type", DATASET_TYPE)

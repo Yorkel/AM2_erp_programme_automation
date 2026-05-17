@@ -1,4 +1,4 @@
-name: Scrape sources → articles_topics
+name: Scrape sources → articles
 
 on:
   schedule:
@@ -45,6 +45,6 @@ jobs:
           from dotenv import load_dotenv; load_dotenv()
           from src.scraping.supabase_client import get_client
           c = get_client()
-          r = c.table('articles_topics').select('id', count='exact').limit(1).execute()
-          print(f'## articles_topics total rows: {r.count}')
+          r = c.table('articles').select('id', count='exact').limit(1).execute()
+          print(f'## articles total rows: {r.count}')
           " >> $GITHUB_STEP_SUMMARY

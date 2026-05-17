@@ -1,7 +1,7 @@
 """
 run.py
 Orchestrator. Iterates every enabled source in sources.yml, runs each,
-upserts into Supabase articles_topics, and logs one scrape_runs row per source.
+upserts into Supabase articles, and logs one scrape_runs row per source.
 
 Modes:
 

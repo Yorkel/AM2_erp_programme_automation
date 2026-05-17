@@ -201,15 +201,15 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/14420744070532707722"}
     # source: Education Development Trust  |  coverage: sector_body
 
-  # DISABLED 2026-05-16 — bera.ac.uk/feed returns 0 entries. BERA (British Educational
-  # Research Association) is a legitimate education research org worth ingesting — find an
-  # alternative ingestion method (Google Alert for site:bera.ac.uk, or scrape their blog/news
-  # listing via auto_listing) before re-enabling.
-  # - name: bera
-  #   type: rss
-  #   scraper: src.scraping.rss_adapter
-  #   params: {feed_url: "https://www.bera.ac.uk/feed"}
-  #   # source: BERA  |  coverage: research
+  # RE-ENABLED 2026-05-17 — bera.ac.uk/feed is behind a JS bot-protection challenge that our
+  # scraper can't pass (returns HTTP 415 on direct requests, an HTML challenge page on browser
+  # UA). Switched to a Google Alert for site:bera.ac.uk which fetches via Google's
+  # infrastructure and re-serves as RSS.
+  - name: bera
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17040882705894707633"}
+    # source: BERA  |  coverage: research
 
   - name: nfer_national_foundation_for_educational_research
     type: google_alert

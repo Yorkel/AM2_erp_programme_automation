@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 # Article row shape
 # -----------------------------------------------------------------------
 # Every source (web scraper or newsletter parser) returns Article objects.
-# `to_record()` produces a dict ready for upsert into articles_topics.
+# `to_record()` produces a dict ready for upsert into articles.
 
 MAX_SNIPPET_WORDS = 80  # match s02b_scrape.py — keeps text_clean shape consistent with training
 

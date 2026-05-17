@@ -63,16 +63,14 @@ def main():
         df.to_csv(all_path, index=False)
         print(f"  Saved → {all_path}")
 
-    # Prepare rows for upsert
+    # Prepare rows for upsert — lean schema (A2): predictions only, no duplicated article fields.
+    # Article metadata (title, source, article_date, week_number, text_clean) lives in the articles table
+    # and is joined in via the v_dashboard view, not duplicated here.
     now = datetime.now().isoformat()
     rows = []
     for _, row in df.iterrows():
         record = {
             "url": row.get("url"),
-            "title": row.get("title"),
-            "text_clean": row.get("text_clean"),
-            "source": row.get("source"),
-            "week_number": int(row["week_number"]) if pd.notna(row.get("week_number")) else None,
             "top1": row["top1"],
             "top1_confidence": float(row["top1_confidence"]),
             "top2": row.get("top2"),
@@ -80,11 +78,6 @@ def main():
             "confidence_gap": float(row["confidence_gap"]) if pd.notna(row.get("confidence_gap")) else None,
             "classified_at": now,
         }
-
-        # Handle article_date
-        if pd.notna(row.get("article_date")):
-            record["article_date"] = str(row["article_date"])
-
         rows.append(record)
 
     # Upsert in batches (Supabase has a row limit per request)

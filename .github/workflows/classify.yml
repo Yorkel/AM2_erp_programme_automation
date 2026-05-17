@@ -2,7 +2,7 @@ name: Classify pending articles → classify_newsletter
 
 on:
   workflow_run:
-    workflows: ["Scrape sources → articles_topics"]
+    workflows: ["Scrape sources → articles"]
     types: [completed]
   workflow_dispatch:        # also allow manual triggering
 

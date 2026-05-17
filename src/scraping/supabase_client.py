@@ -2,7 +2,7 @@
 supabase_client.py
 Thin Supabase wrapper. Two responsibilities:
   - get_client(): build a Supabase client from .env (SUPABASE_URL + SUPABASE_SERVICE_KEY)
-  - upsert_articles(): batched upsert into articles_topics with on_conflict=url
+  - upsert_articles(): batched upsert into articles with on_conflict=url
   - log_run(): one row in scrape_runs per source per orchestrator run
 
 Lifted/stripped from atlas-ed-data's seed_supabase.py — kernel only,
@@ -25,7 +25,7 @@ except ImportError:
 from supabase import Client, create_client
 
 BATCH_SIZE = 500
-ARTICLES_TABLE = "articles_topics"
+ARTICLES_TABLE = "articles"
 RUNS_TABLE = "scrape_runs"
 
 
@@ -39,7 +39,7 @@ def get_client() -> Client:
 
 def upsert_articles(client: Client, records: list[dict], *, label: str = "",
                     dry_run: bool = False) -> int:
-    """Upsert article records into articles_topics. Returns rows upserted."""
+    """Upsert article records into articles. Returns rows upserted."""
     if not records:
         print(f"  {label}: no rows to upsert")
         return 0

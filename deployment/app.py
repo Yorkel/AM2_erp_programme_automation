@@ -839,7 +839,7 @@ elif page == "Sources":
 
     st.markdown("")
 
-    # Sources actually in the pipeline (from Supabase articles_topics table):
+    # Sources actually in the pipeline (from Supabase articles table):
     # epi, fed, fft, gov (DfE), schoolsweek — everything else is not yet automated
     SOURCES = [
         # Government & Parliament
