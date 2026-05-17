@@ -217,6 +217,14 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/9766694915126625289"}
     # source: NFER - National Foundation for Educational Research  |  coverage: research
 
+  # ADDED 2026-05-17 — TES (Times Educational Supplement), 3 missed newsletter items in
+  # source-roster gap analysis (docs/decisions/source_roster_gaps_2026_05_17.md).
+  - name: tes
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/13664655203432829524"}
+    # source: TES - Times Educational Supplement  |  coverage: media
+
   # DISABLED 2026-05-16 — misconfigured: ukri.org/feed is the general UKRI feed (MRC funding,
   # neutrino experiments, spin-out dashboards), NOT ESRC-specific. Need to find the actual ESRC
   # subdomain feed (esrc.ukri.org or similar), or set up a Google Alert for site:esrc.ukri.org.

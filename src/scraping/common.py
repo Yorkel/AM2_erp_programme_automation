@@ -39,6 +39,11 @@ class Article:
     def to_record(self) -> dict:
         if not self.text_clean:
             self.text_clean = build_text_clean(self.title, self.text)
+        # Derive ISO week number from article_date if not already set by the scraper.
+        # Matches `extract(week from article_date)` in Postgres — used by the
+        # Supabase backfill SQL and consumed by the dashboard's week filter.
+        if self.week_number is None and self.article_date is not None:
+            self.week_number = self.article_date.isocalendar().week
         rec = {
             "url": self.url,
             "title": self.title,
