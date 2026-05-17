@@ -1,0 +1,120 @@
+# Source authority weights — used by src/inference/scoring.py
+# Curator-editable: change a number, and the next pipeline run picks it up.
+#
+# Range: 0.0 (untrusted / off-scope) → 1.0 (highest authority).
+# Used as one of five components in composite_score. See scoring.py.
+#
+# Sources NOT listed default to `_default` below.
+#
+# Add new entries by domain (e.g. "tes.com") or by the in-house source name
+# (e.g. "schoolsweek"). Match is case-insensitive.
+
+_default: 0.6
+
+# Government — primary sources
+gov.uk: 1.0
+dfe: 1.0
+ofsted: 1.0
+ofqual: 1.0
+assets.publishing.service.gov.uk: 1.0
+educationhub.blog.gov.uk: 0.95
+consult.education.gov.uk: 0.95
+
+# Parliament & policy
+parliament.uk: 0.9
+committees.parliament.uk: 0.9
+commonslibrary.parliament.uk: 0.9
+researchbriefings.files.parliament.uk: 0.9
+
+# Specialist education news
+schoolsweek.co.uk: 0.95
+schoolsweek: 0.95
+tes.com: 0.9
+tes: 0.9
+fenews.co.uk: 0.85
+the_guardian: 0.85
+theguardian.com: 0.85
+bbc.co.uk: 0.85
+bbc_education: 0.85
+belfast_telegraph: 0.75
+belfasttelegraph.co.uk: 0.75
+
+# Research orgs & think-tanks
+educationendowmentfoundation.org.uk: 0.95
+eef: 0.95
+nfer.ac.uk: 0.9
+nfer_national_foundation_for_educational_research: 0.9
+fft_datalab: 0.9
+ffteducationdatalab.org.uk: 0.9
+ifs.org.uk: 0.9
+epi: 0.9
+epi.org.uk: 0.9
+sutton_trust: 0.85
+suttontrust.com: 0.85
+nuffield: 0.85
+nuffieldfoundation.org: 0.85
+bera.ac.uk: 0.85
+bera: 0.85
+jrf.org.uk: 0.85
+joseph_rowntree_foundation: 0.85
+ada_lovelace_institute: 0.85
+adalovelaceinstitute.org: 0.85
+
+# Sector bodies
+ascl: 0.85
+ascl.org.uk: 0.85
+naht_national_association_of_head_teachers: 0.85
+neu_national_education_union: 0.85
+teacher_tapp: 0.75
+
+# Devolved nations — government primary
+gov_scot: 1.0
+gov.scot: 1.0
+gov.wales: 1.0
+hwb.gov.wales: 0.95
+medr.cymru: 0.9
+education-ni.gov.uk: 1.0
+
+# Devolved sector bodies
+gtcs: 0.85
+ades: 0.85
+sera: 0.85
+children_in_scotland: 0.85
+
+# Academic / university (mid-tier — research but secondary)
+ucl_ioe_news: 0.85
+ucl_ioe_blog: 0.75
+ucl.ac.uk: 0.8
+theconversation.com: 0.8
+
+# Broader / general policy (filter dependant — may produce noise)
+institute_for_government: 0.7
+instituteforgovernment.org.uk: 0.7
+ippo_international_public_policy_observatory: 0.7
+wales_centre_for_public_policy: 0.7
+lpips: 0.65
+post_parliament: 0.75
+greater_manchester_combined_authority: 0.65
+lga: 0.7
+local.gov.uk: 0.7
+
+# Children / poverty advocates
+children_s_commissioner: 0.85
+childrenscommissioner.gov.uk: 0.85
+child_poverty_action_group: 0.8
+cpag.org.uk: 0.8
+defend_digital_me: 0.7
+digital_poverty_alliance: 0.7
+
+# Substacks / individual blogs (lower default — original voice but unverified)
+profbeckyallen.substack.com: 0.7
+becky_allen_substack: 0.7
+joe_hallgarten_substack: 0.65
+matthew_evans_substack: 0.65
+stian_westlake_substack: 0.7
+
+# HE-only — out of scope but kept for reference
+wonkhe.com: 0.3
+wonkhe: 0.3
+hepi.ac.uk: 0.3
+hepi: 0.3

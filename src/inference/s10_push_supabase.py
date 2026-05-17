@@ -63,20 +63,32 @@ def main():
         df.to_csv(all_path, index=False)
         print(f"  Saved → {all_path}")
 
-    # Prepare rows for upsert — lean schema (A2): predictions only, no duplicated article fields.
-    # Article metadata (title, source, article_date, week_number, text_clean) lives in the articles table
-    # and is joined in via the v_dashboard view, not duplicated here.
+    # Prepare rows for upsert — lean schema (A2) plus scoring (migration 006).
+    # Article metadata (title, source, article_date, week_number, text_clean) lives
+    # in the articles table and is joined in via the v_dashboard view.
     now = datetime.now().isoformat()
     rows = []
     for _, row in df.iterrows():
+        def _num(col):
+            v = row.get(col)
+            return float(v) if pd.notna(v) else None
+
         record = {
             "url": row.get("url"),
             "top1": row["top1"],
             "top1_confidence": float(row["top1_confidence"]),
             "top2": row.get("top2"),
-            "top2_confidence": float(row["top2_confidence"]) if pd.notna(row.get("top2_confidence")) else None,
-            "confidence_gap": float(row["confidence_gap"]) if pd.notna(row.get("confidence_gap")) else None,
+            "top2_confidence": _num("top2_confidence"),
+            "confidence_gap": _num("confidence_gap"),
             "classified_at": now,
+            # Scoring columns (migration 006). Populated by `scoring` pipeline step.
+            "cluster_id":       int(row["cluster_id"]) if pd.notna(row.get("cluster_id")) else None,
+            "cluster_size":     int(row["cluster_size"]) if pd.notna(row.get("cluster_size")) else None,
+            "is_cluster_lead":  bool(row["is_cluster_lead"]) if pd.notna(row.get("is_cluster_lead")) else None,
+            "source_authority": _num("source_authority"),
+            "recency_score":    _num("recency_score"),
+            "substance_score":  _num("substance_score"),
+            "composite_score":  _num("composite_score"),
         }
         rows.append(record)
 
