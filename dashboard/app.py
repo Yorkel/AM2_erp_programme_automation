@@ -2,9 +2,15 @@
 ESRC ERP Newsletter Curator Dashboard
 """
 
+# Streamlit Cloud runs `streamlit run dashboard/app.py` which sets sys.path[0]
+# to dashboard/, not the repo root. Without the next 3 lines, every
+# `from dashboard.<…> import` raises ModuleNotFoundError.
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import streamlit as st
 import pandas as pd
-from pathlib import Path
 
 from dashboard.config import NAVY, TEAL
 from dashboard.styles import get_css
