@@ -9,7 +9,7 @@ from pathlib import Path
 from dashboard.config import NAVY, TEAL
 from dashboard.styles import get_css
 from dashboard.data import load_classified_articles, init_session_state
-from dashboard.pages import about, instructions, add_article, review, organise, draft, sources, feedback
+from dashboard.pages import overview, about, add_article, review, organise, draft, sources, feedback
 
 
 def main():
@@ -28,7 +28,7 @@ def main():
 
     page = st.sidebar.radio(
         "Navigate",
-        ["About", "Instructions", "Add Article", "Review Articles", "Organise", "Newsletter Draft", "Sources", "Feedback"],
+        ["Overview", "About", "Add Article", "Review Articles", "Organise", "Newsletter Draft", "Sources", "Feedback"],
     )
 
     df = load_classified_articles()
@@ -48,10 +48,10 @@ def main():
         unsafe_allow_html=True,
     )
 
-    if page == "About":
+    if page == "Overview":
+        overview.render(df)
+    elif page == "About":
         about.render()
-    elif page == "Instructions":
-        instructions.render()
     elif page == "Add Article":
         add_article.render()
     elif page == "Review Articles":
