@@ -37,21 +37,29 @@ def main():
 
     client = create_client(url, key)
 
-    # Pull articles
-    response = (
+    since = os.getenv("INFERENCE_SINCE")
+    until = os.getenv("INFERENCE_UNTIL")
+
+    # Pull articles (optionally bounded by article_date)
+    q = (
         client.table("articles_topics")
         .select("url, title, article_date, source, text_clean, week_number")
         .eq("country", COUNTRY)
         .eq("dataset_type", DATASET_TYPE)
-        .order("article_date")
-        .execute()
     )
+    if since:
+        q = q.gte("article_date", since)
+    if until:
+        q = q.lte("article_date", until)
+    response = q.order("article_date").execute()
 
     df = pd.DataFrame(response.data)
-    print(f"  Pulled {len(df)} articles from Supabase")
+    window = f" [{since or '...'} → {until or '...'}]" if (since or until) else ""
+    print(f"  Pulled {len(df)} articles from Supabase{window}")
     print(f"  Country: {COUNTRY}")
-    print(f"  Weeks: {df['week_number'].min()} to {df['week_number'].max()}")
-    print(f"  Date range: {df['article_date'].min()} to {df['article_date'].max()}")
+    if len(df):
+        print(f"  Weeks: {df['week_number'].min()} to {df['week_number'].max()}")
+        print(f"  Date range: {df['article_date'].min()} to {df['article_date'].max()}")
 
     # Drop missing text
     missing = df["text_clean"].isna() | (df["text_clean"].str.strip() == "")

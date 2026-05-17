@@ -13,6 +13,8 @@ Input:  data/modelling/classified_articles.csv (from s08_predict)
 Output: Monitoring report (printed + saved to data/modelling/monitoring_log.csv)
 """
 
+import os
+
 import numpy as np
 import pandas as pd
 import joblib
@@ -147,9 +149,12 @@ def main():
         else:
             print(f"    ✓ No drift detected")
 
-    # Log
+    # Log — week_start/week_end stamp the window the run was scoped to
+    # (set by pipeline.py via INFERENCE_SINCE/UNTIL env vars; blank for ad-hoc runs).
     log_entry = {
         "timestamp": datetime.now().isoformat(),
+        "week_start": os.getenv("INFERENCE_SINCE", ""),
+        "week_end": os.getenv("INFERENCE_UNTIL", ""),
         "n_articles": len(classified_df),
         "mean_confidence": conf["mean"],
         "pct_below_50": conf["pct_below_50"],

@@ -19,6 +19,7 @@ Run from the project root.
 
 import argparse
 import importlib
+import os
 import sys
 from pathlib import Path
 
@@ -79,12 +80,26 @@ def main():
         action="store_true",
         help="Classify existing local data + monitor (skip Supabase pull).",
     )
+    # Optional date window for --inference. Steps read these from env so we
+    # don't have to thread args through every module's main() signature.
+    parser.add_argument(
+        "--since",
+        help="Inference only: include articles with article_date >= YYYY-MM-DD",
+    )
+    parser.add_argument(
+        "--until",
+        help="Inference only: include articles with article_date <= YYYY-MM-DD",
+    )
     args = parser.parse_args()
 
     if args.training:
         steps = STEPS_TRAINING
     elif args.inference:
         steps = STEPS_INFERENCE
+        if args.since:
+            os.environ["INFERENCE_SINCE"] = args.since
+        if args.until:
+            os.environ["INFERENCE_UNTIL"] = args.until
     else:
         steps = STEPS_CLASSIFY_ONLY
 

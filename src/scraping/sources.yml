@@ -94,17 +94,23 @@ sources:
     params: {feed_url: "https://jacobsfoundation.org/feed"}
     # source: Jacobs Foundation  |  coverage: research
 
-  - name: child_poverty_action_group
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://cpag.org.uk/rss.xml"}
-    # source: Child Poverty Action Group  |  coverage: research
+  # DISABLED 2026-05-16 — CPAG's feed is welfare/benefits focused (Welfare Rights Bulletins,
+  # advising low-income families, LCWRA). Education is tangential. Re-enable with per-source
+  # keyword filter so we can capture only the school/child-poverty education overlap.
+  # - name: child_poverty_action_group
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://cpag.org.uk/rss.xml"}
+  #   # source: Child Poverty Action Group  |  coverage: research
 
-  - name: digital_poverty_alliance
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://digitalpovertyalliance.org/category/news-updates/feed/"}
-    # source: Digital Poverty Alliance  |  coverage: edtech
+  # DISABLED 2026-05-16 — DPA's feed covers digital inclusion broadly (landline switchover,
+  # Freeview TV, public devices recycling). Only ~1/8 entries explicitly touch education.
+  # Re-enable with per-source keyword filter to capture digital-in-education content only.
+  # - name: digital_poverty_alliance
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://digitalpovertyalliance.org/category/news-updates/feed/"}
+  #   # source: Digital Poverty Alliance  |  coverage: edtech
 
   - name: welsh_government
     type: google_alert
@@ -130,17 +136,15 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
     # source: Welsh Government - Education  |  coverage: four_nations_wales
 
-  - name: ippo_international_public_policy_observatory
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://theippo.co.uk/feed"}
-    # source: IPPO - International Public Policy Observatory  |  coverage: research
+  # DISABLED 2026-05-16 — IPPO publishes broad policy content (data-led policy, carbon
+  # footprint of doorstep deliveries, international policymaking). 0/4 sampled were education.
+  # Re-enable with per-source keyword filter.
+  # - name: ippo_international_public_policy_observatory
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://theippo.co.uk/feed"}
+  #   # source: IPPO - International Public Policy Observatory  |  coverage: research
 
-  - name: future_generation_commissioner_for_wales
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.futuregenerations.wales/feed"}
-    # source: Future Generation Commissioner for Wales  |  coverage: four_nations_wales
 
   - name: oecd
     type: google_alert
@@ -148,11 +152,14 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/3534224211687581619"}
     # source: OECD  |  coverage: research
 
-  - name: wales_centre_for_public_policy
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.wcpp.org.uk/feed"}
-    # source: Wales Centre for Public Policy  |  coverage: research
+  # DISABLED 2026-05-16 — WCPP covers broad Welsh policy (local govt operating model, net zero,
+  # social cohesion, probation, child poverty in Wales). 0/7 sampled were specifically education.
+  # Re-enable with per-source keyword filter.
+  # - name: wales_centre_for_public_policy
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.wcpp.org.uk/feed"}
+  #   # source: Wales Centre for Public Policy  |  coverage: research
 
   - name: neu_national_education_union
     type: google_alert
@@ -172,10 +179,14 @@ sources:
     params: {feed_url: "https://teachertapp.com/articles/feed/"}
     # source: Teacher Tapp  |  coverage: sector_body
 
+  # Replaced 2026-05-16 — original RSS at chartered.college/feed published WordPress top-level
+  # pages (partner directory: BeReady, Research Box, etc.), NOT journal articles. All alternative
+  # /category/* feeds returned empty. Switched to a Google Alert (site:chartered.college) so we
+  # ingest pages Google indexes as new content. New alerts take 12-48h to start populating.
   - name: chartered_college_of_teaching
-    type: rss
+    type: google_alert
     scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://chartered.college/feed"}
+    params: {feed_url: "https://www.google.com/alerts/feeds/11185974656280654352/15746116117229428419"}
     # source: Chartered College of Teaching  |  coverage: sector_body
 
   - name: technology_pedagogy_and_education_association_tpea
@@ -190,11 +201,15 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/14420744070532707722"}
     # source: Education Development Trust  |  coverage: sector_body
 
-  - name: bera
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.bera.ac.uk/feed"}
-    # source: BERA  |  coverage: research
+  # DISABLED 2026-05-16 — bera.ac.uk/feed returns 0 entries. BERA (British Educational
+  # Research Association) is a legitimate education research org worth ingesting — find an
+  # alternative ingestion method (Google Alert for site:bera.ac.uk, or scrape their blog/news
+  # listing via auto_listing) before re-enabling.
+  # - name: bera
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.bera.ac.uk/feed"}
+  #   # source: BERA  |  coverage: research
 
   - name: nfer_national_foundation_for_educational_research
     type: google_alert
@@ -202,11 +217,14 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/9766694915126625289"}
     # source: NFER - National Foundation for Educational Research  |  coverage: research
 
-  - name: esrc_ukri
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.ukri.org/feed"}
-    # source: ESRC/UKRI  |  coverage: research
+  # DISABLED 2026-05-16 — misconfigured: ukri.org/feed is the general UKRI feed (MRC funding,
+  # neutrino experiments, spin-out dashboards), NOT ESRC-specific. Need to find the actual ESRC
+  # subdomain feed (esrc.ukri.org or similar), or set up a Google Alert for site:esrc.ukri.org.
+  # - name: esrc_ukri
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.ukri.org/feed"}
+  #   # source: ESRC/UKRI  |  coverage: research
 
   - name: ofsted
     type: rss
@@ -214,11 +232,15 @@ sources:
     params: {feed_url: "https://www.gov.uk/government/organisations/ofsted.atom"}
     # source: Ofsted  |  coverage: gov_uk
 
-  - name: confederation_of_school_trusts
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://cstuk.org.uk/rss.xml"}
-    # source: Confederation of school trusts  |  coverage: sector_body
+  # DISABLED 2026-05-16 — cstuk.org.uk/rss.xml publishes internal/test pages ("TEST Callum for
+  # html emails", "[WIP] CST Partnership Enquiry Form") and conference booking pages, NOT real
+  # content. CST is a legitimate sector body — set up Google Alert (site:cstuk.org.uk) when
+  # re-enabling.
+  # - name: confederation_of_school_trusts
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://cstuk.org.uk/rss.xml"}
+  #   # source: Confederation of school trusts  |  coverage: sector_body
 
   - name: national_coordinating_centre_for_public_engagement
     type: rss
@@ -226,11 +248,14 @@ sources:
     params: {feed_url: "https://www.publicengagement.ac.uk/rss.xml"}
     # source: National coordinating centre for public engagement  |  coverage: research
 
-  - name: future_generations_commissioner_for_wales
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.futuregenerations.wales/feed"}
-    # source: Future Generations Commissioner for Wales  |  coverage: four_nations_wales
+  # DISABLED 2026-05-16 — futuregenerations.wales/feed publishes WordPress placeholder posts
+  # ("Hello world!", "post 1", "post 2", "Page"). The feed is not maintained — try a Google
+  # Alert (site:futuregenerations.wales) when re-enabling.
+  # - name: future_generations_commissioner_for_wales
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.futuregenerations.wales/feed"}
+  #   # source: Future Generations Commissioner for Wales  |  coverage: four_nations_wales
 
   - name: centre_for_education_and_youth
     type: rss
@@ -241,7 +266,7 @@ sources:
   - name: belfast_telegraph
     type: rss
     scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.belfasttelegraph.co.uk/rss"}
+    params: {feed_url: "https://www.belfasttelegraph.co.uk/news/education/rss"}
     # source: Belfast Telegraph  |  coverage: four_nations_ni
 
   - name: sutton_trust
@@ -268,11 +293,14 @@ sources:
     params: {feed_url: "https://www.theguardian.com/education/rss"}
     # source: The Guardian  |  coverage: media
 
-  - name: institute_for_government
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.instituteforgovernment.org.uk/rss"}
-    # source: Institute for Government  |  coverage: research
+  # DISABLED 2026-05-16 — IfG publishes general UK politics (Westminster, civil service,
+  # manifestos), not education-specific. Re-enable when per-source keyword filtering lands
+  # so we can ingest only entries that mention schools/teachers/pupils/universities/etc.
+  # - name: institute_for_government
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.instituteforgovernment.org.uk/rss"}
+  #   # source: Institute for Government  |  coverage: research
 
   - name: stian_westlake_substack
     type: rss
@@ -281,35 +309,52 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2957436647987380276"}
     # source: Stian Westlake Substack  |  coverage: media
 
-  - name: lpips
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://lpiphub.bham.ac.uk/feed"}
-    # source: LPIPS  |  coverage: media
+  # DISABLED 2026-05-16 — LPIPS (Local Policy Innovation Partnership, Birmingham) publishes
+  # broad place/skills/industrial-policy content (intergovernmental capability from Japan,
+  # policy fragmentation in fashion/textiles, AI in local govt, Green Industrial Policy, MG
+  # Rover lessons). 0/7 sampled were schools/education. Re-enable with per-source keyword filter.
+  # - name: lpips
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://lpiphub.bham.ac.uk/feed"}
+  #   # source: LPIPS  |  coverage: media
 
-  - name: joseph_rowntree_foundation
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.jrf.org.uk/rss.xml"}
-    # source: Joseph Rowntree Foundation  |  coverage: research
+  # DISABLED 2026-05-16 — JRF publishes poverty/housing/welfare content (rent control, homes,
+  # wealth inequality), not education-specific. Some entries touch child poverty + education
+  # but the bulk is off-topic. Re-enable when per-source keyword filtering lands.
+  # - name: joseph_rowntree_foundation
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.jrf.org.uk/rss.xml"}
+  #   # source: Joseph Rowntree Foundation  |  coverage: research
 
-  - name: wonkhe
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://wonkhe.com/feed"}
-    # source: WonkHE  |  coverage: media
+  # DISABLED 2026-05-16 — WonkHE covers the higher-education sector exclusively (university
+  # mergers, OfS, student loans, university governance). Newsletter scope is schools/pre-HE/FE,
+  # not HE sector publications. Do NOT re-enable via keyword filter — out of scope by design.
+  # - name: wonkhe
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://wonkhe.com/feed"}
+  #   # source: WonkHE  |  coverage: media
 
-  - name: hepi
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.hepi.ac.uk/feed"}
-    # source: HEPI  |  coverage: media
+  # DISABLED 2026-05-16 — HEPI is the Higher Education Policy Institute; output is HE-only
+  # (university admissions, OfS, governors, HE student experience). Newsletter scope excludes
+  # HE-sector publications. Do NOT re-enable via keyword filter — out of scope by design.
+  # - name: hepi
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.hepi.ac.uk/feed"}
+  #   # source: HEPI  |  coverage: media
 
-  - name: post_parliament
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://post.parliament.uk/feed/"}
-    # source: POST Parliament  |  coverage: gov_uk
+  # DISABLED 2026-05-16 — POST (Parliamentary Office of Science & Technology) publishes
+  # cross-policy briefings across ALL domains (airport health, conspiracy theories, flood
+  # resilience, defence R&D, pregnancy mental health). 0/8 sampled were education.
+  # Re-enable with per-source keyword filter.
+  # - name: post_parliament
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://post.parliament.uk/feed/"}
+  #   # source: POST Parliament  |  coverage: gov_uk
 
   - name: becky_allen_substack
     type: rss
@@ -440,17 +485,23 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10817736755940111392"}
     # source: Scotland - Publications  |  coverage: four_nations_scotland
 
-  - name: scotland_digital_blog
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://blogs.gov.scot/digital/feed"}
-    # source: Scotland - Digital blog  |  coverage: four_nations_scotland
+  # DISABLED 2026-05-16 — Scottish Gov's Digital Services blog (data access, supplier assurance,
+  # LiDAR, ScotAccount, comms & engagement). 0/7 sampled were schools/education — it's the gov
+  # IT/data blog, not the education blog. Re-enable with per-source keyword filter.
+  # - name: scotland_digital_blog
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://blogs.gov.scot/digital/feed"}
+  #   # source: Scotland - Digital blog  |  coverage: four_nations_scotland
 
-  - name: scotland_scottish_parliament_blog
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://spice-spotlight.scot/feed"}
-    # source: Scotland - Scottish parliament blog  |  coverage: four_nations_scotland
+  # DISABLED 2026-05-16 — SPICe Spotlight publishes broad parliamentary explainers (how
+  # committees are established, Parliamentary Bureau, how parties form government, King's
+  # Speech). 0/7 sampled were specifically education. Re-enable with per-source keyword filter.
+  # - name: scotland_scottish_parliament_blog
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://spice-spotlight.scot/feed"}
+  #   # source: Scotland - Scottish parliament blog  |  coverage: four_nations_scotland
 
   - name: scotland_scottish_parliament_news
     type: google_alert
@@ -464,11 +515,15 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/13926965246755916290"}
     # source: Scotland - Scottish parliament children & young people commi  |  coverage: four_nations_scotland
 
-  - name: ni_ni_executive_publications
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.northernireland.gov.uk/rss.xml"}
-    # source: Ni - NI Executive Publications  |  coverage: four_nations_ni
+  # DISABLED 2026-05-16 — NI Executive's blanket publications feed covers ALL departments
+  # (Programme for Govt, Christmas scams, Economic stats, FE Sector Activity, Domiciliary Care,
+  # A1 Junctions). ~2/7 sampled were education. Re-enable with per-source keyword filter — or
+  # find an NI-Department-of-Education-specific feed.
+  # - name: ni_ni_executive_publications
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.northernireland.gov.uk/rss.xml"}
+  #   # source: Ni - NI Executive Publications  |  coverage: four_nations_ni
 
   - name: ucl_cepeo_blog
     type: rss
@@ -482,17 +537,23 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/6789479393132144502"}
     # source: UCL/IOE: CEL  |  coverage: internal_ucl
 
-  - name: ucl_research_for_the_real_world_ioe_podcast
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://feeds.transistor.fm/ioe"}
-    # source: UCL/IOE: Research for the real world (IOE Podcast)  |  coverage: internal_ucl
+  # DISABLED 2026-05-16 — UCL IOE podcast feed (Transistor.fm) covers academic life, research
+  # ethics, PhD experiences, and some education research mixed together. Drop for now; revisit
+  # with per-source keyword filter or topic-specific filtering.
+  # - name: ucl_research_for_the_real_world_ioe_podcast
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://feeds.transistor.fm/ioe"}
+  #   # source: UCL/IOE: Research for the real world (IOE Podcast)  |  coverage: internal_ucl
 
-  - name: ucl_ecf_staffroom
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://feeds.transistor.fm/ioe"}
-    # source: UCL/IOE: ECF Staffroom  |  coverage: internal_ucl
+  # DISABLED 2026-05-16 — DUPLICATE feed_url with ucl_research_for_the_real_world_ioe_podcast
+  # above (both point at feeds.transistor.fm/ioe). The ECF Staffroom podcast must have its own
+  # Transistor.fm URL — find the correct feed URL before re-enabling.
+  # - name: ucl_ecf_staffroom
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://feeds.transistor.fm/ioe"}
+  #   # source: UCL/IOE: ECF Staffroom  |  coverage: internal_ucl
 
   - name: ucl_ioe_blog
     type: rss
@@ -530,11 +591,15 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
     # source: UCL/IOE: UCL Knowledge lab  |  coverage: internal_ucl
 
-  - name: ucl_closer_blog
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://closer.ac.uk/feed"}
-    # source: UCL/IOE: CLOSER blog  |  coverage: internal_ucl
+  # DISABLED 2026-05-16 — closer.ac.uk/feed is mostly job vacancies (Research Associate,
+  # Internship x4, Technical Manager, Data Manager) plus older-people health, not research.
+  # CLOSER (Cohort & Longitudinal Studies) is a legitimate UCL research centre — find their
+  # blog/research-output feed or Google Alert site:closer.ac.uk before re-enabling.
+  # - name: ucl_closer_blog
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://closer.ac.uk/feed"}
+  #   # source: UCL/IOE: CLOSER blog  |  coverage: internal_ucl
 
   - name: ucl_hhcp
     type: google_alert
