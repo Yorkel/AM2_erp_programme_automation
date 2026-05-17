@@ -39,18 +39,20 @@ STEPS_TRAINING = [
     ("s06_evaluate",   "src.classify.s06_evaluate"),
 ]
 
-# Weekly inference: pull from Supabase + classify + monitor + push back
+# Weekly inference: pull from Supabase + classify (via deployed API) + monitor + push back
+# `classify_via_api` replaced the legacy `s08_predict` (local model) on 2026-05-17 —
+# the pipeline now calls the deployed FastAPI service on Hugging Face Spaces.
 STEPS_INFERENCE = [
-    ("s07_pull",       "src.inference.s07_pull_supabase"),
-    ("s08_predict",    "src.inference.s08_predict"),
-    ("s09_monitor",    "src.inference.s09_monitor"),
-    ("s10_push",       "src.inference.s10_push_supabase"),
+    ("s07_pull",        "src.inference.s07_pull_supabase"),
+    ("classify_via_api","src.inference.classify_via_api"),
+    ("s09_monitor",     "src.inference.s09_monitor"),
+    ("s10_push",        "src.inference.s10_push_supabase"),
 ]
 
-# Classify only: run on existing local data
+# Classify only: run on existing local data (skip Supabase pull)
 STEPS_CLASSIFY_ONLY = [
-    ("s08_predict",    "src.inference.s08_predict"),
-    ("s09_monitor",    "src.inference.s09_monitor"),
+    ("classify_via_api","src.inference.classify_via_api"),
+    ("s09_monitor",     "src.inference.s09_monitor"),
 ]
 
 

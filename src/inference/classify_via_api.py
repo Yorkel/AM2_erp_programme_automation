@@ -79,9 +79,9 @@ def _auth_headers() -> dict[str, str]:
 
 
 def _wake_up_service(base_url: str) -> dict[str, Any]:
-    """Hit /health to warm the Render free-tier instance + verify it's healthy.
+    """Hit /health to warm the deployed instance + verify it's healthy.
     Returns the health response (used to log the active run_id)."""
-    print(f"  Probing {base_url}/health (Render free tier may cold-start)...")
+    print(f"  Probing {base_url}/health (free tier may cold-start)...")
     for attempt in range(MAX_RETRIES):
         try:
             r = requests.get(
@@ -204,10 +204,31 @@ def summarise(df: pd.DataFrame) -> None:
         print(f"  Model run_id (from API): {df['model_run_id'].iloc[0]}")
 
 
-def main() -> int:
-    load_dotenv()
+def _run(input_path: Path, output_path: Path, archive_dir: Path,
+         batch_size: int, batch_id: str | None) -> int:
+    if not input_path.exists():
+        print(f"  ERROR: {input_path} not found. Run pull_articles.py / s07 first.")
+        return 1
 
-    p = argparse.ArgumentParser(description="Classify articles via the deployed Render API.")
+    df = classify(input_path, batch_size=batch_size)
+    write_outputs(df, output_path, archive_dir, batch_id=batch_id)
+    summarise(df)
+    print("  Done.")
+    return 0
+
+
+def main() -> int:
+    """Module entry point — called by pipeline.py / classify.yml workflow.
+    Uses env vars + defaults; no argparse so calling code's sys.argv doesn't clash."""
+    load_dotenv()
+    batch_size = int(os.getenv("CLASSIFIER_BATCH_SIZE", str(DEFAULT_BATCH_SIZE)))
+    return _run(DEFAULT_INPUT, DEFAULT_OUTPUT, ARCHIVE_DIR, batch_size, batch_id=None)
+
+
+if __name__ == "__main__":
+    # CLI mode — argparse parses sys.argv. Never called by pipeline.py.
+    load_dotenv()
+    p = argparse.ArgumentParser(description="Classify articles via the deployed API.")
     p.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     p.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     p.add_argument("--archive-dir", type=Path, default=ARCHIVE_DIR)
@@ -215,17 +236,4 @@ def main() -> int:
     p.add_argument("--batch-id", default=None,
                    help="Identifier for the archive filename. Defaults to current timestamp.")
     args = p.parse_args()
-
-    if not args.input.exists():
-        print(f"  ERROR: {args.input} not found. Run pull_articles.py first.")
-        return 1
-
-    df = classify(args.input, batch_size=args.batch_size)
-    write_outputs(df, args.output, args.archive_dir, batch_id=args.batch_id)
-    summarise(df)
-    print("  Done.")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run(args.input, args.output, args.archive_dir, args.batch_size, args.batch_id))

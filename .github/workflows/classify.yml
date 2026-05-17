@@ -32,6 +32,10 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # Classifier deployed on Hugging Face Spaces. URL is public-ish, key
+          # is the HF access token (needed because the Space is Private).
+          CLASSIFIER_API_URL: ${{ secrets.CLASSIFIER_API_URL }}
+          CLASSIFIER_API_KEY: ${{ secrets.CLASSIFIER_API_KEY }}
         run: python src/pipeline.py --inference
 
       - name: Summary
