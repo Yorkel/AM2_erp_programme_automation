@@ -1,3 +1,13 @@
+---
+title: ERP Classifier
+emoji: 📰
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # ERP Newsletter Automation — AM2
 
 Semi-automation of the weekly ESRC Education Research Programme newsletter. The newsletter has been manually curated since July 2023 by two team members who spend approximately 7 hours per week scanning ~55 sources, assigning articles to sections, deduplicating, and writing editorial descriptions.
