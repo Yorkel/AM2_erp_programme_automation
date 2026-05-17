@@ -142,10 +142,11 @@ def render(df):
 
             if not decision:
                 st.markdown("<p style='text-align:center;color:#888;font-weight:600;'>Status: Pending</p>", unsafe_allow_html=True)
-            elif decision["action"] == "reject":
+            elif decision.get("action") == "reject":
                 st.markdown("<p style='text-align:center;color:#c0392b;font-weight:600;'>Status: Rejected</p>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<p style='text-align:center;color:#1e8449;font-weight:600;'>Status: Accepted for {CATEGORY_LABELS.get(decision['label'], decision['label'])}</p>", unsafe_allow_html=True)
+                lbl = decision.get("label", "")
+                st.markdown(f"<p style='text-align:center;color:#1e8449;font-weight:600;'>Status: Accepted for {CATEGORY_LABELS.get(lbl, lbl)}</p>", unsafe_allow_html=True)
 
     # Export decisions
     if decisions:
