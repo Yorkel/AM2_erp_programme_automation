@@ -1,5 +1,5 @@
 import streamlit as st
-from ..config import CATEGORY_LABELS
+from dashboard.config import CATEGORY_LABELS
 
 
 def render():
