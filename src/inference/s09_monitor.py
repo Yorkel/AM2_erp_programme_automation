@@ -171,7 +171,43 @@ def main():
         log_df = pd.concat([existing, log_df], ignore_index=True)
     log_df.to_csv(log_path, index=False)
     print(f"\n  Monitoring log → {log_path}")
+
+    _push_drift_log(conf, drift if texts else None, real_dist, label_names,
+                    classified_df, dist_alerts)
     print("  Done.")
+
+
+def _active_run_id() -> str:
+    p = Path("models/runs/active.txt")
+    return p.read_text().strip() if p.exists() else "unknown"
+
+
+def _push_drift_log(conf, drift, real_dist, label_names, classified_df, dist_alerts):
+    """Persist headline drift metrics to Supabase drift_log."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_KEY")
+    if not url or not key:
+        print("  SUPABASE_URL/SUPABASE_SERVICE_KEY not set — skipping drift_log push.")
+        return
+    from supabase import create_client
+    row = {
+        "run_id": _active_run_id(),
+        "batch_id": datetime.now().strftime("%Y-%m-%d_%H%M%S"),
+        "week_start": os.getenv("INFERENCE_SINCE", "") or None,
+        "week_end": os.getenv("INFERENCE_UNTIL", "") or None,
+        "n_articles": int(len(classified_df)),
+        "mean_confidence": float(conf["mean"]),
+        "median_confidence": float(conf["median"]),
+        "pct_below_50": float(conf["pct_below_50"]),
+        "pct_below_30": float(conf["pct_below_30"]),
+        "mean_similarity": float(drift["mean_similarity"]) if drift else None,
+        "min_similarity": float(drift["min_similarity"]) if drift else None,
+        "n_drift_flagged": int(drift["n_flagged"]) if drift else None,
+        "class_distribution": {cls: float(real_dist.get(cls, 0)) for cls in label_names},
+        "distribution_alerts": [a.strip() for a in dist_alerts] if dist_alerts else [],
+    }
+    create_client(url, key).table("drift_log").insert(row).execute()
+    print("  Pushed drift_log row to Supabase.")
 
 
 if __name__ == "__main__":
