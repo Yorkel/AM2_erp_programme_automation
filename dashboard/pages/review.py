@@ -5,7 +5,7 @@ import streamlit as st
 import pandas as pd
 
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, CATEGORY_COLORS, SOURCE_LABELS
-from dashboard.data import record_decision, load_decisions
+from dashboard.data import record_decision, load_decisions, is_authenticated
 
 
 def render(df):
@@ -155,24 +155,25 @@ def render(df):
             btn1_label = _label("Category 1", cat1_label, conf1)
             btn2_label = _label("Category 2", cat2_label, conf2)
 
+            auth = is_authenticated()
             col_a, col_b, col_c, col_d, col_e = st.columns(5)
             with col_a:
-                if st.button(btn1_label, key=f"acc1_{url}", use_container_width=True, type="primary"):
+                if st.button(btn1_label, key=f"acc1_{url}", use_container_width=True, type="primary", disabled=not auth):
                     record_decision(url, "accept_top1", cat1)
                     st.rerun()
             with col_b:
-                if st.button(btn2_label, key=f"acc2_{url}", use_container_width=True, type="tertiary"):
+                if st.button(btn2_label, key=f"acc2_{url}", use_container_width=True, type="tertiary", disabled=not auth):
                     record_decision(url, "accept_top2", cat2)
                     st.rerun()
             with col_c:
-                if st.button("\u270e Manual selection", key=f"man_{url}", use_container_width=True, type="primary"):
+                if st.button("\u270e Manual selection", key=f"man_{url}", use_container_width=True, type="primary", disabled=not auth):
                     st.session_state[f"show_manual_{url}"] = True
             with col_d:
-                if st.button("\u2606 Save for later", key=f"save_{url}", use_container_width=True, type="tertiary"):
+                if st.button("\u2606 Save for later", key=f"save_{url}", use_container_width=True, type="tertiary", disabled=not auth):
                     record_decision(url, "save_for_later", "")
                     st.rerun()
             with col_e:
-                if st.button("\u2715 Reject", key=f"rej_{url}", use_container_width=True, type="secondary"):
+                if st.button("\u2715 Reject", key=f"rej_{url}", use_container_width=True, type="secondary", disabled=not auth):
                     record_decision(url, "reject", "")
                     st.rerun()
 

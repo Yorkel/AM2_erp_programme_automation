@@ -1,10 +1,14 @@
 import streamlit as st
 from dashboard.config import CATEGORY_LABELS
+from dashboard.data import is_authenticated
 
 
 def render():
     st.title("Add Article")
     st.markdown("Articles from 5 automated sources (Schools Week, DfE, EPI, FFT Education Datalab, FED) are scraped, classified and loaded into the **Review Articles** page each week. Use this page to manually add any additional articles the pipeline may have missed, for example from sources not yet in the feed, or articles shared directly by colleagues. Added articles will appear on the Review page with a **MANUALLY ADDED** badge. See the **Sources** page for the full list.")
+
+    if not is_authenticated():
+        st.info("Read-only — enter the curator password in the sidebar to add articles.")
 
     with st.form("add_article_form", clear_on_submit=True):
         title = st.text_input("Article title *")
@@ -22,7 +26,7 @@ def render():
         with col2:
             cat2 = st.selectbox("Category 2", cat_options, format_func=cat_format, key="add_cat2", index=1)
 
-        submitted = st.form_submit_button("Add article", use_container_width=True)
+        submitted = st.form_submit_button("Add article", use_container_width=True, disabled=not is_authenticated())
 
         if submitted:
             if not title:

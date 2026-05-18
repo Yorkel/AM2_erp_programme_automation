@@ -54,6 +54,33 @@ def main():
         st.session_state.current_page = secondary_choice
         st.rerun()
 
+    # ── Curator login (write access) ─────────────────────────────────────────
+    # Read-only browsing is open; mutating buttons (Accept/Reject/etc.) are
+    # disabled unless the curator authenticates with the password stored in
+    # Streamlit secrets as CURATOR_PASSWORD.
+    st.sidebar.markdown("---")
+    if st.session_state.get("authenticated"):
+        st.sidebar.success("Curator mode ✓")
+        if st.sidebar.button("Log out", use_container_width=True, key="_logout_btn"):
+            st.session_state.authenticated = False
+            st.rerun()
+    else:
+        st.sidebar.caption("Read-only. Enter password to enable editing.")
+        pwd = st.sidebar.text_input(
+            "Curator password", type="password", key="_curator_pw",
+            label_visibility="collapsed", placeholder="Curator password",
+        )
+        if pwd:
+            try:
+                expected = st.secrets["CURATOR_PASSWORD"]
+            except (KeyError, FileNotFoundError):
+                expected = None
+            if expected and pwd == expected:
+                st.session_state.authenticated = True
+                st.rerun()
+            elif pwd:
+                st.sidebar.error("Wrong password")
+
     page = st.session_state.current_page
 
     df = load_classified_articles()

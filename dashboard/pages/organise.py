@@ -7,6 +7,7 @@ import pandas as pd
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
 from dashboard.data import (
     get_accepted_articles,
+    is_authenticated,
     load_decisions,
     record_decision,
     set_newsletter_pick,
@@ -41,7 +42,7 @@ def render(df):
         return
 
     n_picked = len(st.session_state.newsletter_picks)
-    st.info(f"**{len(accepted)} accepted articles** | **{n_picked} selected for newsletter**")
+    st.info(f"**{len(accepted)} shortlisted articles** | **{n_picked} selected for newsletter**")
 
     for cat_key in CATEGORY_ORDER:
         cat_label = CATEGORY_LABELS[cat_key]
@@ -66,15 +67,19 @@ def render(df):
                     st.markdown(f"**Article title:** {art.get('title', 'No title')}{badge}{pick_badge}", unsafe_allow_html=True)
                     source_name = SOURCE_LABELS.get(art.get('source', ''), art.get('source', ''))
                     st.markdown(f"**Article source:** {source_name}  |  **Date:** {art.get('article_date', '')}")
+                auth = is_authenticated()
                 with btn_col:
                     if is_picked:
-                        if st.button("Remove", key=f"unpick_{art_url}", use_container_width=True):
+                        if st.button("Remove", key=f"unpick_{art_url}", use_container_width=True, disabled=not auth):
                             st.session_state.newsletter_picks.discard(art_url)
                             set_newsletter_pick(art_url, False)
                             st.rerun()
                     else:
-                        if n_selected >= 3:
-                            st.button("Select (max 3)", key=f"pick_{art_url}", use_container_width=True, disabled=True)
+                        if n_selected >= 3 or not auth:
+                            st.button(
+                                "Select (max 3)" if n_selected >= 3 else "Select",
+                                key=f"pick_{art_url}", use_container_width=True, disabled=True,
+                            )
                         else:
                             if st.button("Select", key=f"pick_{art_url}", use_container_width=True):
                                 st.session_state.newsletter_picks.add(art_url)
@@ -88,6 +93,7 @@ def render(df):
                         format_func=lambda x: "Move to..." if x == "" else CATEGORY_LABELS.get(x, x),
                         key=f"move_{art_url}",
                         label_visibility="collapsed",
+                        disabled=not auth,
                     )
                     if move_to:
                         st.session_state.category_overrides[art_url] = move_to

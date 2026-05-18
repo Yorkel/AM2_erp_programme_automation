@@ -88,6 +88,14 @@ def record_decision(url: str, action: str, label: str) -> None:
     load_decisions.clear()
 
 
+def is_authenticated() -> bool:
+    """True if the curator has entered the correct password this session.
+    Read-only browsing is allowed without auth; mutating buttons are gated
+    on this flag (see app.py's curator login widget in the sidebar)."""
+    import streamlit as st
+    return bool(st.session_state.get("authenticated", False))
+
+
 def set_newsletter_pick(url: str, selected: bool) -> None:
     """Persist a 'shortlist for newsletter' click on an already-accepted article.
 
