@@ -42,21 +42,23 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     train_csv = DATA_DIR / "train.csv"
+    val_csv = DATA_DIR / "val.csv"
     train_emb_path = MODEL_DIR / "sbert_train_embeddings.npy"
     val_emb_path = MODEL_DIR / "sbert_val_embeddings.npy"
     clf_path = out_dir / "classifier.joblib"
 
-    for p in [train_csv, train_emb_path, val_emb_path, clf_path]:
+    for p in [train_csv, val_csv, train_emb_path, val_emb_path, clf_path]:
         if not p.exists():
             raise RuntimeError(f"missing input: {p}")
 
     print(f"Loading inputs for run {run_id}...")
     train_df = pd.read_csv(train_csv)
+    val_df = pd.read_csv(val_csv)
     train_emb = np.load(train_emb_path)
     val_emb = np.load(val_emb_path)
     clf = joblib.load(clf_path)
     label_names = list(clf.classes_)
-    print(f"  {len(train_df)} train rows, {len(val_emb)} val rows, "
+    print(f"  {len(train_df)} train rows, {len(val_df)} val rows, "
           f"{len(label_names)} classes")
 
     print("Computing class centroids from train embeddings...")
