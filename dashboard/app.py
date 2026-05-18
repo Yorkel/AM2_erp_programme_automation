@@ -34,7 +34,7 @@ def main():
 
     NAV = [
         "Overview", "Review Articles", "Organise", "Newsletter Draft", "Add Article",
-        "Sources", "Feedback", "About",
+        "Feedback", "Sources", "About",
     ]
 
     if "current_page" not in st.session_state:

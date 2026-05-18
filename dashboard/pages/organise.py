@@ -6,7 +6,6 @@ import pandas as pd
 
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
 from dashboard.data import (
-    delete_decision,
     get_accepted_articles,
     is_authenticated,
     load_decisions,
@@ -63,7 +62,7 @@ def render(df):
             pick_badge = " <span style='background:#27ae60;color:white;padding:2px 6px;border-radius:3px;font-size:10px;'>SELECTED</span>" if is_picked else ""
 
             with st.container(border=True):
-                left, btn_col, move_col, back_col = st.columns([3, 1, 1, 1])
+                left, btn_col, move_col = st.columns([3, 1, 1])
                 with left:
                     st.markdown(f"**Article title:** {art.get('title', 'No title')}{badge}{pick_badge}", unsafe_allow_html=True)
                     source_name = SOURCE_LABELS.get(art.get('source', ''), art.get('source', ''))
@@ -100,14 +99,6 @@ def render(df):
                         st.session_state.category_overrides[art_url] = move_to
                         # Persist the override so it survives reloads
                         record_decision(art_url, "manual", move_to)
-                        st.rerun()
-                with back_col:
-                    if st.button("↩ Send back", key=f"back_{art_url}", use_container_width=True,
-                                 type="secondary", disabled=not auth,
-                                 help="Reconsider the accept decision — article goes back to Pending in Review."):
-                        delete_decision(art_url)
-                        set_newsletter_pick(art_url, False)
-                        st.session_state.newsletter_picks.discard(art_url)
                         st.rerun()
 
     # Export
