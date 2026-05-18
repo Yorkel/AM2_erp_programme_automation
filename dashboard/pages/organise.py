@@ -5,15 +5,32 @@ import streamlit as st
 import pandas as pd
 
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
-from dashboard.data import get_accepted_articles, record_decision
+from dashboard.data import (
+    get_accepted_articles,
+    load_decisions,
+    record_decision,
+    set_newsletter_pick,
+)
 
 
 def render(df):
     st.title("Organise Newsletter")
     st.markdown("Shortlisted articles grouped by selected newsletter category for further review. Select up to **3 per category** for the newsletter. Use **Move to** to reassign an article to a different category.")
 
+    # Hydrate session state from Supabase so picks survive page reloads.
+    decisions = load_decisions()
+    persisted_picks = {
+        url for url, dec in decisions.items()
+        if dec.get("selected_for_newsletter")
+    }
     if "newsletter_picks" not in st.session_state:
-        st.session_state.newsletter_picks = set()
+        st.session_state.newsletter_picks = persisted_picks
+    else:
+        # Merge — a click made this session takes precedence over stale DB state
+        # only if the click hasn't been reverted; safest is union of both.
+        st.session_state.newsletter_picks = (
+            st.session_state.newsletter_picks | persisted_picks
+        )
     if "category_overrides" not in st.session_state:
         st.session_state.category_overrides = {}
 

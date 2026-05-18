@@ -88,6 +88,26 @@ def record_decision(url: str, action: str, label: str) -> None:
     load_decisions.clear()
 
 
+def set_newsletter_pick(url: str, selected: bool) -> None:
+    """Persist a 'shortlist for newsletter' click on an already-accepted article."""
+    client = get_client()
+    client.table("curator_decisions").upsert(
+        {"url": url, "selected_for_newsletter": selected},
+        on_conflict="url",
+    ).execute()
+    load_decisions.clear()
+
+
+def set_category_override(url: str, override: str | None) -> None:
+    """Persist a 'move to <category>' override on an already-accepted article."""
+    client = get_client()
+    client.table("curator_decisions").upsert(
+        {"url": url, "newsletter_category_override": override},
+        on_conflict="url",
+    ).execute()
+    load_decisions.clear()
+
+
 def record_summary(url: str, summary: str) -> None:
     """Persist a generated LLM summary onto the existing curator_decisions row.
 
