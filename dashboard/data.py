@@ -114,19 +114,17 @@ def set_category_override(url: str, override: str | None) -> None:
 def record_summary(url: str, summary: str) -> None:
     """Persist a generated LLM summary onto the existing curator_decisions row.
 
-    Same row as the decision (on_conflict=url). If the row doesn't exist yet
-    (i.e. summary generated before accept — unusual), the upsert creates it
-    with action/label NULL — but typically `record_decision` runs first.
+    Uses UPDATE (not upsert) — Generate Summary only runs from the Newsletter
+    Draft page, which only shows already-accepted articles. So the row exists.
+    Upsert would fail the NOT NULL on `action` if it ever hit the insert path.
     """
     client = get_client()
-    client.table("curator_decisions").upsert(
+    client.table("curator_decisions").update(
         {
-            "url": url,
             "summary": summary,
             "summary_generated_at": "now()",
-        },
-        on_conflict="url",
-    ).execute()
+        }
+    ).eq("url", url).execute()
     load_decisions.clear()
 
 
