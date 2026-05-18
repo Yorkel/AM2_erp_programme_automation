@@ -33,7 +33,7 @@ def main():
     st.sidebar.title("Newsletter Curator")
 
     PRIMARY = ["Overview", "Review Articles", "Organise", "Newsletter Draft", "Add Article"]
-    SECONDARY = ["Sources & Feedback", "About"]
+    SECONDARY = ["Sources", "Feedback", "About"]
 
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Overview"
@@ -79,8 +79,10 @@ def main():
         organise.render(df)
     elif page == "Newsletter Draft":
         draft.render(df)
-    elif page == "Sources & Feedback":
+    elif page == "Sources":
         sources.render()
+    elif page == "Feedback":
+        feedback.render()
 
 
 main()
