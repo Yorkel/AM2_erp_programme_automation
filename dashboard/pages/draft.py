@@ -12,7 +12,15 @@ def render(df):
     st.markdown("Preview and download the newsletter as plain text. Edit descriptions inline before downloading.")
 
     accepted = get_accepted_articles(df)
-    picks = st.session_state.get("newsletter_picks", set())
+    # Read picks from Supabase (persisted via Organise page) and fall back to
+    # session state for any clicks made this session.
+    decisions_for_picks = load_decisions()
+    persisted_picks = {
+        url for url, dec in decisions_for_picks.items()
+        if dec.get("selected_for_newsletter")
+    }
+    session_picks = st.session_state.get("newsletter_picks", set())
+    picks = persisted_picks | session_picks
     newsletter_articles = [a for a in accepted if a.get("url") in picks]
 
     if not newsletter_articles:

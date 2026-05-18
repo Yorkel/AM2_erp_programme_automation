@@ -89,22 +89,25 @@ def record_decision(url: str, action: str, label: str) -> None:
 
 
 def set_newsletter_pick(url: str, selected: bool) -> None:
-    """Persist a 'shortlist for newsletter' click on an already-accepted article."""
+    """Persist a 'shortlist for newsletter' click on an already-accepted article.
+
+    Uses UPDATE (not upsert) because Organise only shows articles with an
+    existing decision row — and upsert would fail the NOT NULL on `action`
+    if it ever hit the insert path.
+    """
     client = get_client()
-    client.table("curator_decisions").upsert(
-        {"url": url, "selected_for_newsletter": selected},
-        on_conflict="url",
-    ).execute()
+    client.table("curator_decisions").update(
+        {"selected_for_newsletter": selected}
+    ).eq("url", url).execute()
     load_decisions.clear()
 
 
 def set_category_override(url: str, override: str | None) -> None:
     """Persist a 'move to <category>' override on an already-accepted article."""
     client = get_client()
-    client.table("curator_decisions").upsert(
-        {"url": url, "newsletter_category_override": override},
-        on_conflict="url",
-    ).execute()
+    client.table("curator_decisions").update(
+        {"newsletter_category_override": override}
+    ).eq("url", url).execute()
     load_decisions.clear()
 
 
