@@ -53,17 +53,22 @@ def main():
     # Streamlit secrets as CURATOR_PASSWORD.
     st.sidebar.markdown("---")
     if st.session_state.get("authenticated"):
-        st.sidebar.success("Curator mode ✓")
+        st.sidebar.success("🔓 Curator mode")
         if st.sidebar.button("Log out", use_container_width=True, key="_logout_btn"):
             st.session_state.authenticated = False
             st.rerun()
     else:
-        st.sidebar.caption("Read-only. Enter password to enable editing.")
-        pwd = st.sidebar.text_input(
-            "Curator password", type="password", key="_curator_pw",
-            label_visibility="collapsed", placeholder="Curator password",
-        )
-        if pwd:
+        st.sidebar.markdown("### 🔒 Curator login")
+        st.sidebar.caption("Read-only — log in to edit.")
+        with st.sidebar.form("_login_form", clear_on_submit=False):
+            pwd = st.text_input(
+                "Password", type="password", key="_curator_pw",
+                label_visibility="collapsed", placeholder="Password",
+            )
+            submit = st.form_submit_button(
+                "Log in", use_container_width=True, type="primary",
+            )
+        if submit:
             try:
                 expected = st.secrets["CURATOR_PASSWORD"]
             except (KeyError, FileNotFoundError):
@@ -71,8 +76,8 @@ def main():
             if expected and pwd == expected:
                 st.session_state.authenticated = True
                 st.rerun()
-            elif pwd:
-                st.sidebar.error("Wrong password")
+            else:
+                st.sidebar.error("Wrong password" if pwd else "Enter a password")
 
     page = st.session_state.current_page
 
