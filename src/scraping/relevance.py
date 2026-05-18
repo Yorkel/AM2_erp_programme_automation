@@ -27,6 +27,130 @@ import re
 from datetime import date, datetime
 from pathlib import Path
 from threading import Lock
+from urllib.parse import urlparse
+
+
+# Hard-block list: URLs from these domains are dropped before the keyword
+# filter runs, regardless of `apply_relevance_filter`. Social media + known
+# low-quality clickbait that has been observed slipping through.
+BLOCKED_DOMAINS: tuple[str, ...] = (
+    # Social media — never the original source
+    "instagram.com",
+    "facebook.com",
+    "twitter.com",
+    "x.com",
+    "tiktok.com",
+    "youtube.com",
+    "youtu.be",
+    "linkedin.com",
+    # Aggregators / non-primary sources
+    "msn.com",
+    # Observed low-signal sources
+    "uknip.co.uk",
+    "tvguide.co.uk",
+    "abplive.com",
+    "news-line.co.uk",          # Workers Revolutionary Party paper
+)
+
+# Reject URLs whose path contains any of these substrings, regardless of domain.
+# Targets non-UK / non-education sections within otherwise-legitimate sites
+# (e.g. Guardian's /us-news/, BBC's /sport/ sub-paths).
+BLOCKED_URL_PATTERNS: tuple[str, ...] = (
+    "/us-news/",
+    "/us-education/",
+    "/world/india/",
+    "/world/us/",
+    "/world/asia/",
+    "/sport/",
+    "/cricket/",
+    "/ipl/",
+    "/entertainment/",
+    "/celebrity/",
+    "/film/",
+    "/films/",
+    "/movies/",
+    "/fashion/",
+    "/lifestyle/",
+    "/travel/",
+)
+
+
+def is_blocked_domain(url: str) -> bool:
+    """True if `url` is on the hard-block domain list (sub-domains included)."""
+    if not isinstance(url, str) or not url:
+        return False
+    netloc = urlparse(url).netloc.lower().lstrip(".")
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    return any(netloc == d or netloc.endswith("." + d) for d in BLOCKED_DOMAINS)
+
+
+def is_blocked_url_pattern(url: str) -> bool:
+    """True if the URL path matches a blocked section pattern (case-insensitive)."""
+    if not isinstance(url, str) or not url:
+        return False
+    path = urlparse(url).path.lower()
+    return any(p in path for p in BLOCKED_URL_PATTERNS)
+
+
+# Country-context terms that disqualify an article as non-UK. Matched on
+# title + body together. Conservative — common demonyms like "American"/"Indian"
+# are excluded because they appear in legitimately-UK-relevant content
+# (e.g. "Indian students in UK universities"). Locations + heads-of-state
+# are the surer signal.
+NEGATIVE_COUNTRY_KEYWORDS: tuple[str, ...] = (
+    # United States
+    "virginia", "texas", "california", "florida", "ohio",
+    "new york state", "washington dc", "los angeles", "chicago", "boston",
+    "white house", "donald trump", "biden",
+    "u.s. department", "us department of education",
+    # India
+    "mumbai", "delhi", "chennai", "kolkata", "bengaluru",
+    "narendra modi", "ipl 2026", "ipl 2025", "tamil nadu", "kerala",
+    "abp live",
+    # Pakistan / South Asia (also covers India spillover)
+    "islamabad", "karachi", "lahore",
+    # Australia / NZ
+    "sydney", "melbourne", "brisbane", "canberra", "auckland",
+    # Continental Europe (general — not London EU coverage)
+    "berlin", "munich", "frankfurt",
+    "paris suburb", "marseille",
+    "madrid", "barcelona",
+    "rome italy", "milan",
+    # Middle East
+    "tehran", "beirut", "damascus",
+    "gaza", "west bank", "nakba",
+    # East Asia
+    "tokyo", "beijing", "shanghai", "seoul", "pyongyang",
+    # Pacific / Commonwealth overseas
+    "solomon islands", "honiara", "fiji", "suva", "papua new guinea",
+    "vanuatu", "samoa", "tonga", "kiribati",
+    # British overseas territories / Crown dependencies covered overseas
+    "bermuda", "cayman islands", "british virgin islands", "falkland islands",
+    "saint helena", "gibraltar", "anguilla", "turks and caicos",
+    # Caribbean
+    "jamaica", "trinidad and tobago", "bahamas", "barbados",
+    # Africa (UK FCDO sometimes publishes overseas-mission stories)
+    "kenya", "uganda", "nigeria", "ghana", "south africa", "zimbabwe",
+    "tanzania", "ethiopia", "rwanda", "sierra leone",
+    # Other
+    "kremlin", "moscow",
+)
+
+_NEGATIVE_COUNTRY_PATTERNS = compile_keyword_patterns(NEGATIVE_COUNTRY_KEYWORDS)
+
+
+def is_non_uk_content(title: str | None, body: str | None) -> str | None:
+    """Return the matching negative-country keyword if `title+body` reads as
+    non-UK content, else None. Used to filter articles that are about
+    education-elsewhere rather than UK education."""
+    haystack = ((title or "") + " " + (body or "")).lower()
+    if not haystack.strip():
+        return None
+    for kw, p in zip(NEGATIVE_COUNTRY_KEYWORDS, _NEGATIVE_COUNTRY_PATTERNS):
+        if p.search(haystack):
+            return kw
+    return None
 
 
 DEFAULT_EDUCATION_KEYWORDS: tuple[str, ...] = (

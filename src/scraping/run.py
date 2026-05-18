@@ -32,6 +32,9 @@ from src.scraping.config import load_sources
 from src.scraping.relevance import (
     DEFAULT_EDUCATION_KEYWORDS,
     compile_keyword_patterns,
+    is_blocked_domain,
+    is_blocked_url_pattern,
+    is_non_uk_content,
     log_rejection,
 )
 from src.scraping.supabase_client import (
@@ -100,6 +103,34 @@ def _filter_items(items: list, source: str,
     same behaviour with one flip of `apply_relevance_filter: true` in sources.yml.
     Rejected items are logged to data/archive/rejected/<date>_<source>.csv.
     """
+    # Hard-block social/clickbait domains and known-noisy URL paths
+    # regardless of `apply_filter`. These are never wanted.
+    pre_blocked: list = []
+    pre_kept: list = []
+    for item in items:
+        if isinstance(item, Article):
+            reason = None
+            if is_blocked_domain(item.url):
+                reason = "__blocked_domain__"
+            elif is_blocked_url_pattern(item.url):
+                reason = "__blocked_url_pattern__"
+            if reason:
+                log_rejection(
+                    source=source,
+                    url=item.url,
+                    title=item.title or "",
+                    source_type=item.source_type,
+                    article_date=item.article_date,
+                    matched_keywords_attempted=[reason],
+                )
+                pre_blocked.append(item)
+                continue
+        pre_kept.append(item)
+    if pre_blocked:
+        print(f"  {source}: {len(pre_blocked)} hard-blocked URL(s) dropped "
+              f"(domain or URL-path; see data/archive/rejected/)")
+    items = pre_kept
+
     if not apply_filter and require_keywords is None:
         return items
 
@@ -107,14 +138,31 @@ def _filter_items(items: list, source: str,
     patterns = compile_keyword_patterns(kws)
 
     kept: list = []
-    n_rejected = 0
+    n_rejected_kw = 0
+    n_rejected_country = 0
     for item in items:
-        # Only filter Article objects. Pass other shapes through unchanged.
         if not isinstance(item, Article):
             kept.append(item)
             continue
-        haystack = ((item.title or "") + " " + (item.text or item.text_clean or "")).lower()
-        matched = [kw for kw, p in zip(kws, patterns) if p.search(haystack)]
+        # Country veto first — uses title + body since locations are usually
+        # named in body text, not headlines.
+        non_uk = is_non_uk_content(item.title, item.text or item.text_clean)
+        if non_uk:
+            log_rejection(
+                source=source,
+                url=item.url,
+                title=item.title or "",
+                source_type=item.source_type,
+                article_date=item.article_date,
+                matched_keywords_attempted=[f"__non_uk:{non_uk}__"],
+            )
+            n_rejected_country += 1
+            continue
+        # Education keyword match — TITLE ONLY. Body matches were letting
+        # general-politics pieces through whenever they mentioned "schools"
+        # or "education" in passing.
+        title = (item.title or "").lower()
+        matched = [kw for kw, p in zip(kws, patterns) if p.search(title)]
         if matched:
             kept.append(item)
         else:
@@ -126,11 +174,12 @@ def _filter_items(items: list, source: str,
                 article_date=item.article_date,
                 matched_keywords_attempted=[],
             )
-            n_rejected += 1
+            n_rejected_kw += 1
 
-    if n_rejected:
-        print(f"  {source}: {n_rejected} of {len(items)} rejected by relevance filter "
-              f"(see data/archive/rejected/)")
+    if n_rejected_country:
+        print(f"  {source}: {n_rejected_country} dropped as non-UK content")
+    if n_rejected_kw:
+        print(f"  {source}: {n_rejected_kw} dropped — no edu keyword in title")
     return kept
 
 
