@@ -39,14 +39,13 @@ STEPS_TRAINING = [
     ("s06_evaluate",   "src.classify.s06_evaluate"),
 ]
 
-# Weekly inference: pull from Supabase + classify (via deployed API) + monitor + score + push back
-# `classify_via_api` replaced the legacy `s08_predict` (local model) on 2026-05-17 —
-# the pipeline now calls the deployed FastAPI service on Hugging Face Spaces.
-# `scoring` added 2026-05-17 — cluster near-duplicates + composite priority score.
+# Weekly inference: pull from Supabase + classify (via deployed API) + score + push back.
+# Drift (s09_monitor) and fairness (fairness_audit) are NOT in this list — they run as
+# separate GitHub Actions workflows (drift.yml / fairness.yml) triggered after classify.yml
+# completes, so the inference pipeline stays focused on producing predictions.
 STEPS_INFERENCE = [
     ("s07_pull",        "src.inference.s07_pull_supabase"),
     ("classify_via_api","src.inference.classify_via_api"),
-    ("s09_monitor",     "src.inference.s09_monitor"),
     ("scoring",         "src.inference.scoring"),
     ("s10_push",        "src.inference.s10_push_supabase"),
 ]
@@ -54,7 +53,6 @@ STEPS_INFERENCE = [
 # Classify only: run on existing local data (skip Supabase pull)
 STEPS_CLASSIFY_ONLY = [
     ("classify_via_api","src.inference.classify_via_api"),
-    ("s09_monitor",     "src.inference.s09_monitor"),
     ("scoring",         "src.inference.scoring"),
 ]
 
