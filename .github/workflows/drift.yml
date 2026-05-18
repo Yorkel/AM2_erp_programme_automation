@@ -1,0 +1,66 @@
+name: Drift monitor → monitoring_log
+
+on:
+  workflow_run:
+    workflows: ["Classify pending articles → classify_newsletter"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Cache SBERT weights
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/torch/sentence_transformers
+          key: sbert-all-MiniLM-L6-v2
+
+      # The versioned classifier lives at models/runs/<active>/classifier.joblib —
+      # stage it at the path s09_monitor expects so we don't have to edit s09.
+      - name: Stage classifier from active model run
+        run: |
+          ACTIVE_RUN=$(cat models/runs/active.txt)
+          cp "models/runs/${ACTIVE_RUN}/classifier.joblib" models/sbert_classifier_no_meta.joblib
+
+      # Baseline embeddings are not checked in (1.7MB of derived data).
+      # Regenerate from train.csv + val.csv (both in repo).
+      - name: Generate baseline embeddings
+        run: python -m src.classify.s04_embed
+
+      - name: Pull predictions from Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m src.inference.pull_predictions
+
+      - name: Run drift monitor
+        run: python -m src.inference.s09_monitor | tee drift_output.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Drift run — $(date -u +'%Y-%m-%d %H:%M UTC')"
+            echo ''
+            echo '```'
+            if [ -f drift_output.txt ]; then tail -40 drift_output.txt; fi
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY

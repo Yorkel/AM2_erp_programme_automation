@@ -1,0 +1,53 @@
+name: Fairness audit → fairness_log
+
+on:
+  workflow_run:
+    workflows: ["Classify pending articles → classify_newsletter"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  fairness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pull predictions from Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m src.inference.pull_predictions
+
+      - name: Run fairness audit
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m src.inference.fairness_audit | tee fairness_output.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Fairness run — $(date -u +'%Y-%m-%d %H:%M UTC')"
+            echo ''
+            echo '```'
+            if [ -f fairness_output.txt ]; then tail -40 fairness_output.txt; fi
+            echo '```'
+            echo ''
+            echo 'Full row persisted to Supabase `fairness_log` table.'
+          } >> $GITHUB_STEP_SUMMARY

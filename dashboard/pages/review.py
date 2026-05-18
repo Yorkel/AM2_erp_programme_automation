@@ -77,14 +77,20 @@ def render(df):
     # Article cards
     for card_idx, (idx, row) in enumerate(filtered.iterrows()):
         url = row.get("url", str(idx))
-        conf1 = row["top1_confidence"]
-        conf2 = row.get("top2_confidence", 0)
-        cat1 = row["top1"]
-        cat2 = row.get("top2", "")
-        cat1_label = CATEGORY_LABELS.get(cat1, cat1)
-        cat2_label = CATEGORY_LABELS.get(cat2, cat2)
-        conf1_color = "#27ae60" if conf1 >= 0.6 else "#f39c12" if conf1 >= 0.4 else "#e74c3c"
-        conf2_color = "#27ae60" if conf2 >= 0.6 else "#f39c12" if conf2 >= 0.4 else "#e74c3c"
+        conf1 = row.get("top1_confidence")
+        conf2 = row.get("top2_confidence")
+        conf1 = float(conf1) if pd.notna(conf1) else None
+        conf2 = float(conf2) if pd.notna(conf2) else None
+        cat1 = row.get("top1") if pd.notna(row.get("top1")) else None
+        cat2 = row.get("top2") if pd.notna(row.get("top2")) else None
+        cat1_label = CATEGORY_LABELS.get(cat1, cat1) if cat1 else "(unclassified)"
+        cat2_label = CATEGORY_LABELS.get(cat2, cat2) if cat2 else ""
+
+        def _conf_color(c):
+            if c is None: return "#999999"
+            return "#27ae60" if c >= 0.6 else "#f39c12" if c >= 0.4 else "#e74c3c"
+        conf1_color = _conf_color(conf1)
+        conf2_color = _conf_color(conf2)
 
         decision = decisions.get(url)
         total_articles = len(filtered)
@@ -104,8 +110,12 @@ def render(df):
                 with st.expander("Click to preview text"):
                     st.write(str(row["text_clean"])[:500])
 
-            btn1_label = f"Category 1: {cat1_label} ({conf1:.0%})" if not is_curator else f"Category 1: {cat1_label}"
-            btn2_label = f"Category 2: {cat2_label} ({conf2:.0%})" if not is_curator else f"Category 2: {cat2_label}"
+            def _label(prefix, lbl, c):
+                if is_curator or c is None:
+                    return f"{prefix}: {lbl}"
+                return f"{prefix}: {lbl} ({c:.0%})"
+            btn1_label = _label("Category 1", cat1_label, conf1)
+            btn2_label = _label("Category 2", cat2_label, conf2)
 
             col_a, col_b, col_c, col_d = st.columns(4)
             with col_a:
