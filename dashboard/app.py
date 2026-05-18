@@ -53,7 +53,15 @@ def main():
     # Streamlit secrets as CURATOR_PASSWORD.
     st.sidebar.markdown("---")
     if st.session_state.get("authenticated"):
-        st.sidebar.success("🔓 Curator mode")
+        # !important on color so the sidebar's global `color: white !important`
+        # rule (styles.py) doesn't render this as white-on-pale-green.
+        st.sidebar.markdown(
+            "<div style='background:#d4edda;border:1px solid #28a745;border-radius:5px;"
+            "padding:10px 14px;color:#155724 !important;font-weight:700;text-align:center;"
+            "margin-bottom:8px;'>"
+            "<span style='color:#155724 !important;'>🔓 Curator mode</span></div>",
+            unsafe_allow_html=True,
+        )
         if st.sidebar.button("Log out", use_container_width=True, key="_logout_btn"):
             st.session_state.authenticated = False
             st.rerun()

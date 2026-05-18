@@ -21,6 +21,15 @@ def get_css():
     [data-testid="stSidebar"] * {{
         color: white !important;
     }}
+    /* Sidebar buttons need their own text colour so they're not white-on-pale */
+    [data-testid="stSidebar"] [data-testid="stButton"] button[kind="secondary"],
+    [data-testid="stSidebar"] [data-testid="stButton"] button[kind="secondary"] * {{
+        color: #c0392b !important;
+    }}
+    [data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"],
+    [data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"] * {{
+        color: white !important;
+    }}
     [data-testid="stSidebar"] .stRadio label {{
         color: #c8d8ec !important;
     }}
