@@ -39,7 +39,7 @@ def _latest_week(df: pd.DataFrame) -> int | None:
 
 def render(df: pd.DataFrame):
     st.title("Overview")
-    st.markdown("At-a-glance summary of this week's scrape. Use the sidebar to dig in.")
+    st.markdown("This week's articles, sources and model predictions.")
 
     if df.empty:
         st.warning("No classified articles in Supabase yet. Run the inference pipeline to populate.")
