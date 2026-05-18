@@ -8,14 +8,21 @@ from dashboard.data import get_client
 
 def render():
     st.title("Feedback")
-    st.markdown("Help us improve the newsletter classification tool. Your feedback is used to refine the model and improve the curator experience.")
+    st.markdown(
+        "Every field is optional — fill in only what you want to flag this week. "
+        "Leave the rest blank."
+    )
 
     with st.form("feedback_form", clear_on_submit=True):
+        name = st.text_input("Your name (optional)", placeholder="Leave blank to stay anonymous")
+
         st.markdown("**How accurate were this week's classifications?**")
-        accuracy_rating = st.select_slider(
+        accuracy_rating = st.radio(
             "Overall accuracy",
-            options=["Very poor", "Poor", "OK", "Good", "Excellent"],
-            value="OK",
+            options=["—", "Very poor", "Poor", "OK", "Good", "Excellent"],
+            index=0,
+            horizontal=True,
+            label_visibility="collapsed",
         )
 
         st.markdown("**Were any categories consistently wrong?**")
@@ -42,17 +49,16 @@ def render():
         submitted = st.form_submit_button("Submit feedback", use_container_width=True)
 
         if submitted:
-            # Persist to Supabase `curator_feedback` table (migration 008 pending).
-            # If the table doesn't exist yet, falls back to printing the message.
             try:
                 client = get_client()
                 client.table("curator_feedback").insert({
                     "submitted_at": datetime.now().isoformat(),
-                    "accuracy_rating": accuracy_rating,
+                    "submitted_by": (name or "").strip() or None,
+                    "accuracy_rating": None if accuracy_rating == "—" else accuracy_rating,
                     "problem_categories": problem_cats or [],
-                    "missing_sources": missing_sources,
-                    "suggestions": suggestions,
+                    "missing_sources": (missing_sources or "").strip() or None,
+                    "suggestions": (suggestions or "").strip() or None,
                 }).execute()
                 st.success("Thank you! Your feedback has been saved.")
             except Exception as e:
-                st.warning(f"Feedback table not yet wired in Supabase ({e}). The text was: {suggestions[:200]}")
+                st.warning(f"Feedback table not yet wired in Supabase ({e}). The text was: {(suggestions or '')[:200]}")
