@@ -82,12 +82,27 @@ def render(df):
         st.markdown(f"**Progress:** {n_reviewed} / {len(filtered)} reviewed")
         st.progress(n_reviewed / len(filtered) if len(filtered) > 0 else 0)
 
+    # Primary sort: review status (pending first, reviewed pushed down).
+    # Useful when multiple curators are working the same queue — reviewed items
+    # stay visible but drift to the bottom so the next pending is always near the top.
+    _STATUS_ORDER = {"Pending": 0, "Saved for later": 1, "Accepted": 2, "Rejected": 3}
+    filtered = filtered.assign(_status_rank=filtered["url"].apply(
+        lambda u: _STATUS_ORDER.get(_status_for(u), 0)
+    ))
+
     if sort_by == "Date (newest first)":
-        filtered = filtered.sort_values("article_date", ascending=False, na_position="first")
+        filtered = filtered.sort_values(
+            ["_status_rank", "article_date"], ascending=[True, False], na_position="last"
+        )
     elif sort_by == "Date (oldest first)":
-        filtered = filtered.sort_values("article_date", ascending=True, na_position="last")
+        filtered = filtered.sort_values(
+            ["_status_rank", "article_date"], ascending=[True, True], na_position="last"
+        )
     else:
-        filtered = filtered.sort_values("source", na_position="last")
+        filtered = filtered.sort_values(
+            ["_status_rank", "source"], ascending=[True, True], na_position="last"
+        )
+    filtered = filtered.drop(columns=["_status_rank"])
 
     # Article cards
     for card_idx, (idx, row) in enumerate(filtered.iterrows()):

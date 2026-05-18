@@ -61,55 +61,29 @@ def render(df: pd.DataFrame):
     decisions = load_decisions()
     n_reviewed = sum(1 for url in this_week.get("url", []) if url in decisions)
 
-    def _safe_mean(series):
-        m = series.mean()
-        return float(m) if pd.notna(m) else None
-
-    mean_top1 = (
-        _safe_mean(this_week["top1_confidence"])
-        if "top1_confidence" in this_week.columns and not this_week.empty
-        else None
-    )
-    mean_top2_combined = (
-        _safe_mean(this_week["top1_confidence"] + this_week["top2_confidence"])
-        if {"top1_confidence", "top2_confidence"}.issubset(this_week.columns)
-           and not this_week.empty
-        else None
-    )
-
     delta_articles = n_articles - len(prev_week) if not prev_week.empty else None
     delta_sources = n_sources - prev_week["source"].nunique() if not prev_week.empty and "source" in prev_week.columns else None
 
-    # Build metrics dynamically — drop confidence cards if predictions aren't in yet.
     metric_specs = [
         ("Articles scraped", n_articles, delta_articles),
         ("Sources contributing", n_sources, delta_sources),
         ("Reviewed so far", f"{n_reviewed} / {n_articles}", None),
     ]
-    if mean_top1 is not None:
-        metric_specs.append(("Mean top-1 confidence", f"{mean_top1:.0%}", None))
-    if mean_top2_combined is not None:
-        metric_specs.append(("Mean top-2 confidence", f"{mean_top2_combined:.0%}", None))
 
     cols = st.columns(len(metric_specs))
     for col, (label, value, delta) in zip(cols, metric_specs):
         col.metric(label, value, delta=delta)
 
-    # Reference line — static training-time accuracy on the held-out val set.
-    # Helps contextualise the dynamic mean-confidence metrics above: confidence
-    # is the model's *self-reported* probability today; accuracy is its
-    # measured performance against curator-labelled ground truth at training.
+    # Static reference — val accuracy of the active model. Useful AM2/portfolio
+    # context; doesn't depend on this week's data.
     baselines = _load_model_baselines()
     top1_acc = baselines.get("val_top1_accuracy")
     top2_acc = baselines.get("val_top2_accuracy")
     run_id = baselines.get("run_id", "unknown")
     if top1_acc is not None and top2_acc is not None:
         st.caption(
-            f"Model reference ({run_id}): on the held-out validation set, "
-            f"top-1 accuracy = **{top1_acc:.0%}**, top-2 accuracy = **{top2_acc:.0%}**. "
-            f"This is measured against curator-labelled ground truth at training. "
-            f"The mean-confidence metrics above are the model's self-reported probabilities on *current* articles — "
-            f"they drift as the world moves further from the training distribution."
+            f"Model ({run_id}) — held-out validation accuracy: "
+            f"top-1 **{top1_acc:.0%}**, top-2 **{top2_acc:.0%}**."
         )
 
     st.markdown("")
