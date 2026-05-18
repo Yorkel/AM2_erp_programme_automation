@@ -12,6 +12,12 @@ from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER
 
 def render():
     st.title("About this dashboard")
+
+    st.warning(
+        "⚠ **Content currently out of date — requires update as of 18 May 2026.** "
+        "Some descriptions below may not reflect recent changes to the pipeline or filters."
+    )
+
     st.markdown(
         "This dashboard supports the curation of the ESRC Education Research "
         "Programme's weekly newsletter. A classification model reads each scraped "
