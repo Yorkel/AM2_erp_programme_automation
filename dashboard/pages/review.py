@@ -74,6 +74,14 @@ def render(df):
         if a == "save_for_later": return "Saved for later"
         return "Accepted"
 
+    # Stable per-week position: assigned ONCE in article_date ascending order so
+    # the displayed "Article N/M" is the same for a given URL regardless of
+    # current sort or status filter. Two curators referring to "Article 47/84"
+    # see the same article.
+    _stable_sorted = filtered.sort_values("article_date", ascending=True, na_position="last")
+    stable_position = {u: i + 1 for i, u in enumerate(_stable_sorted["url"].tolist())}
+    total_in_week = len(filtered)
+
     if status_filter != "All":
         filtered = filtered[filtered["url"].apply(lambda u: _status_for(u) == status_filter)].copy()
 
@@ -123,10 +131,10 @@ def render(df):
         conf2_color = _conf_color(conf2)
 
         decision = decisions.get(url)
-        total_articles = len(filtered)
+        position = stable_position.get(url, "?")
 
         st.markdown(f"<div style='border-top:3px solid #1d3461;margin:20px 0;'></div>", unsafe_allow_html=True)
-        st.markdown(f"### Article {card_idx + 1}/{total_articles}: {row.get('title', 'No title')}")
+        st.markdown(f"### Article {position}/{total_in_week}: {row.get('title', 'No title')}")
 
         with st.container(border=True):
             is_curator = row.get("curator_added", False)
