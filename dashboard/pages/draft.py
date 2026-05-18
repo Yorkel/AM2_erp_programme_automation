@@ -90,6 +90,10 @@ def render(df):
                             )
                         record_summary(art_url, new_summary)
                         st.session_state.draft_descriptions[desc_key] = new_summary
+                        # Also update the text_area's own widget state — Streamlit
+                        # uses session_state[key] on rerun, ignoring `value=` after
+                        # the first render, so without this the area shows the old text.
+                        st.session_state[desc_key] = new_summary
                         st.rerun()
 
                 with col_desc:
