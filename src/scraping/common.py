@@ -54,6 +54,16 @@ class Article:
         return {k: v for k, v in rec.items() if v is not None}
 
 
+def scrape_week(d: date) -> int:
+    """Return the Tue–Mon scrape-week number for date `d`.
+
+    The newsletter pipeline scrapes Tuesday morning through Monday, so an
+    article published on a Monday belongs to the scrape-week that started
+    the previous Tuesday — not the ISO week (Mon–Sun) that starts that day.
+    """
+    return (d - timedelta(days=1)).isocalendar().week
+
+
 def build_text_clean(title: str | None, body: str | None, max_words: int = MAX_SNIPPET_WORDS) -> str:
     """Build the title + first N words snippet that the classifier expects."""
     title = (title or "").strip()
