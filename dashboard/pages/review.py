@@ -58,11 +58,26 @@ def render(df):
     # Pull current decisions (cached 60s)
     decisions = load_decisions()
 
-    # Sort + Progress
-    n_reviewed = sum(1 for url in filtered["url"] if url in decisions)
-    col_sort, col_progress = st.columns(2)
+    # Status filter + Sort + Progress
+    STATUS_OPTIONS = ["All", "Pending", "Saved for later", "Accepted", "Rejected"]
+    col_status, col_sort, col_progress = st.columns(3)
+    with col_status:
+        status_filter = st.selectbox("Show", STATUS_OPTIONS, index=0)
     with col_sort:
         sort_by = st.selectbox("Order by", ["Date (newest first)", "Date (oldest first)", "Source"])
+
+    def _status_for(url: str) -> str:
+        dec = decisions.get(url)
+        if not dec: return "Pending"
+        a = dec.get("action")
+        if a == "reject": return "Rejected"
+        if a == "save_for_later": return "Saved for later"
+        return "Accepted"
+
+    if status_filter != "All":
+        filtered = filtered[filtered["url"].apply(lambda u: _status_for(u) == status_filter)].copy()
+
+    n_reviewed = sum(1 for url in filtered["url"] if url in decisions)
     with col_progress:
         st.markdown(f"**Progress:** {n_reviewed} / {len(filtered)} reviewed")
         st.progress(n_reviewed / len(filtered) if len(filtered) > 0 else 0)

@@ -137,13 +137,16 @@ NEGATIVE_COUNTRY_KEYWORDS: tuple[str, ...] = (
     "kremlin", "moscow",
 )
 
-_NEGATIVE_COUNTRY_PATTERNS = compile_keyword_patterns(NEGATIVE_COUNTRY_KEYWORDS)
+_NEGATIVE_COUNTRY_PATTERNS: list | None = None  # lazy — compile_keyword_patterns defined below
 
 
 def is_non_uk_content(title: str | None, body: str | None) -> str | None:
     """Return the matching negative-country keyword if `title+body` reads as
     non-UK content, else None. Used to filter articles that are about
     education-elsewhere rather than UK education."""
+    global _NEGATIVE_COUNTRY_PATTERNS
+    if _NEGATIVE_COUNTRY_PATTERNS is None:
+        _NEGATIVE_COUNTRY_PATTERNS = compile_keyword_patterns(NEGATIVE_COUNTRY_KEYWORDS)
     haystack = ((title or "") + " " + (body or "")).lower()
     if not haystack.strip():
         return None
