@@ -117,7 +117,7 @@ def render(df):
             btn1_label = _label("Category 1", cat1_label, conf1)
             btn2_label = _label("Category 2", cat2_label, conf2)
 
-            col_a, col_b, col_c, col_d = st.columns(4)
+            col_a, col_b, col_c, col_d, col_e = st.columns(5)
             with col_a:
                 if st.button(btn1_label, key=f"acc1_{url}", use_container_width=True, type="primary"):
                     record_decision(url, "accept_top1", cat1)
@@ -130,6 +130,10 @@ def render(df):
                 if st.button("\u270e Manual selection", key=f"man_{url}", use_container_width=True, type="primary"):
                     st.session_state[f"show_manual_{url}"] = True
             with col_d:
+                if st.button("\u2606 Save for later", key=f"save_{url}", use_container_width=True, type="secondary"):
+                    record_decision(url, "save_for_later", "")
+                    st.rerun()
+            with col_e:
                 if st.button("\u2715 Reject", key=f"rej_{url}", use_container_width=True, type="secondary"):
                     record_decision(url, "reject", "")
                     st.rerun()
@@ -154,6 +158,8 @@ def render(df):
                 st.markdown("<p style='text-align:center;color:#888;font-weight:600;'>Status: Pending</p>", unsafe_allow_html=True)
             elif decision.get("action") == "reject":
                 st.markdown("<p style='text-align:center;color:#c0392b;font-weight:600;'>Status: Rejected</p>", unsafe_allow_html=True)
+            elif decision.get("action") == "save_for_later":
+                st.markdown("<p style='text-align:center;color:#8e44ad;font-weight:600;'>Status: Saved for later</p>", unsafe_allow_html=True)
             else:
                 lbl = decision.get("label", "")
                 st.markdown(f"<p style='text-align:center;color:#1e8449;font-weight:600;'>Status: Accepted for {CATEGORY_LABELS.get(lbl, lbl)}</p>", unsafe_allow_html=True)

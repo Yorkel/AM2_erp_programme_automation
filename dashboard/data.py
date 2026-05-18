@@ -72,7 +72,7 @@ def load_decisions() -> dict[str, dict]:
 def record_decision(url: str, action: str, label: str) -> None:
     """Upsert a curator decision on the given URL.
 
-    `action` ∈ {accept_top1, accept_top2, manual, reject}.
+    `action` ∈ {accept_top1, accept_top2, manual, save_for_later, reject}.
     Invalidates the decisions cache so the next render picks it up.
     """
     client = get_client()

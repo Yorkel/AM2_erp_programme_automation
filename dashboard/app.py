@@ -67,12 +67,6 @@ def main():
 
     init_session_state()
 
-    st.markdown(
-        "<div style='background:#d4edda;border:1px solid #28a745;border-radius:5px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#155724;text-align:center;'>"
-        "Curator decisions and summaries are saved to Supabase and persist across sessions.</div>",
-        unsafe_allow_html=True,
-    )
-
     if page == "Overview":
         overview.render(df)
     elif page == "About":
