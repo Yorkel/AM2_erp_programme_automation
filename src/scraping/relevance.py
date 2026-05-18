@@ -45,11 +45,17 @@ BLOCKED_DOMAINS: tuple[str, ...] = (
     "linkedin.com",
     # Aggregators / non-primary sources
     "msn.com",
+    "pressreader.com",
+    "uk.news.yahoo.com",
     # Observed low-signal sources
     "uknip.co.uk",
     "tvguide.co.uk",
     "abplive.com",
-    "news-line.co.uk",          # Workers Revolutionary Party paper
+    "news-line.co.uk",          # Workers Revolutionary Party paper (earlier guess)
+    "wrp.org.uk",                # Workers Revolutionary Party (actual domain)
+    "mirror.co.uk",              # UK tabloid
+    "smh.com.au",                # Sydney Morning Herald
+    "e.vnexpress.net",           # Vietnamese news
 )
 
 # Reject URLs whose path contains any of these substrings, regardless of domain.
