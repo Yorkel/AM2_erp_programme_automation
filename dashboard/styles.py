@@ -8,6 +8,12 @@ from .config import NAVY, TEAL, MID_BLUE
 def get_css():
     return f"""
 <style>
+    /* Hide Streamlit's auto-generated multipage nav (we use a custom radio
+       in app.py — the dashboard/pages/ folder is just a Python module). */
+    [data-testid="stSidebarNav"] {{
+        display: none;
+    }}
+
     /* Sidebar */
     [data-testid="stSidebar"] {{
         background-color: {NAVY};
