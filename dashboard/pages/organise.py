@@ -70,6 +70,7 @@ def render(df):
                     if is_picked:
                         if st.button("Remove", key=f"unpick_{art_url}", use_container_width=True):
                             st.session_state.newsletter_picks.discard(art_url)
+                            set_newsletter_pick(art_url, False)
                             st.rerun()
                     else:
                         if n_selected >= 3:
@@ -77,6 +78,7 @@ def render(df):
                         else:
                             if st.button("Select", key=f"pick_{art_url}", use_container_width=True):
                                 st.session_state.newsletter_picks.add(art_url)
+                                set_newsletter_pick(art_url, True)
                                 st.rerun()
                 with move_col:
                     other_cats = [k for k in CATEGORY_LABELS if k != cat_key]
