@@ -34,7 +34,7 @@ def main():
 
     page = st.sidebar.radio(
         "Navigate",
-        ["Overview", "About", "Add Article", "Review Articles", "Organise", "Newsletter Draft", "Sources", "Feedback"],
+        ["Overview", "Review Articles", "Organise", "Newsletter Draft", "Add Article", "Sources", "Feedback", "About"],
     )
 
     df = load_classified_articles()
@@ -70,3 +70,6 @@ def main():
         sources.render()
     elif page == "Feedback":
         feedback.render()
+
+
+main()
