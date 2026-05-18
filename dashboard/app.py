@@ -32,26 +32,19 @@ def main():
         st.sidebar.image(str(_logo_path), use_container_width=True)
     st.sidebar.title("Newsletter Curator")
 
-    PRIMARY = ["Overview", "Review Articles", "Organise", "Newsletter Draft", "Add Article"]
-    SECONDARY = ["Sources", "Feedback", "About"]
+    NAV = [
+        "Overview", "Review Articles", "Organise", "Newsletter Draft", "Add Article",
+        "Sources", "Feedback", "About",
+    ]
 
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Overview"
     cur = st.session_state.current_page
 
-    primary_idx = PRIMARY.index(cur) if cur in PRIMARY else None
-    primary_choice = st.sidebar.radio("Navigate", PRIMARY, index=primary_idx)
-    if primary_choice and primary_choice != cur:
-        st.session_state.current_page = primary_choice
-        st.rerun()
-
-    st.sidebar.markdown("---")
-    secondary_idx = SECONDARY.index(cur) if cur in SECONDARY else None
-    secondary_choice = st.sidebar.radio(
-        "More", SECONDARY, index=secondary_idx, label_visibility="collapsed",
-    )
-    if secondary_choice and secondary_choice != cur:
-        st.session_state.current_page = secondary_choice
+    nav_idx = NAV.index(cur) if cur in NAV else 0
+    choice = st.sidebar.radio("Navigate", NAV, index=nav_idx, label_visibility="collapsed")
+    if choice and choice != cur:
+        st.session_state.current_page = choice
         st.rerun()
 
     # ── Curator login (write access) ─────────────────────────────────────────

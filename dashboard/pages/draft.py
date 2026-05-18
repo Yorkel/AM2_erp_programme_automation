@@ -3,7 +3,10 @@ from datetime import datetime
 import streamlit as st
 
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
-from dashboard.data import get_accepted_articles, is_authenticated, load_decisions, record_summary
+from dashboard.data import (
+    get_accepted_articles, is_authenticated, load_decisions,
+    record_summary, set_newsletter_pick,
+)
 from src.inference.summarise import summarise_article
 
 
@@ -81,6 +84,11 @@ def render(df):
 
                 col_desc, col_btn = st.columns([4, 1])
                 with col_btn:
+                    if st.button("× Remove", key=f"draftrm_{art_url}", use_container_width=True,
+                                 type="secondary", disabled=not is_authenticated()):
+                        set_newsletter_pick(art_url, False)
+                        st.session_state.newsletter_picks.discard(art_url)
+                        st.rerun()
                     if st.button("Generate summary", key=f"gen_{art_url}", use_container_width=True, disabled=not is_authenticated()):
                         with st.spinner("Summarising via Claude..."):
                             new_summary = summarise_article(

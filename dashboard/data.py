@@ -96,6 +96,16 @@ def is_authenticated() -> bool:
     return bool(st.session_state.get("authenticated", False))
 
 
+def delete_decision(url: str) -> None:
+    """Remove the curator_decisions row for `url` entirely. The article
+    returns to Pending status in Review and disappears from Organise/Draft.
+    Used by Organise's 'Send back to Review' button when the curator wants
+    to reconsider an accept decision from scratch."""
+    client = get_client()
+    client.table("curator_decisions").delete().eq("url", url).execute()
+    load_decisions.clear()
+
+
 def set_newsletter_pick(url: str, selected: bool) -> None:
     """Persist a 'shortlist for newsletter' click on an already-accepted article.
 
