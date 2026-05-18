@@ -189,16 +189,16 @@ def add_scores_to_df(df: pd.DataFrame, *, authority_table: dict[str, float],
     df["substance_score"] = df["text_clean"].apply(substance_score)
 
     # Within each cluster, the LEAD is the highest-authority article. Tie-break
-    # by top1_confidence, then by recency (recent wins).
-    def _pick_lead(group: pd.DataFrame) -> pd.DataFrame:
-        idx = group.sort_values(
+    # by top1_confidence, then by recency (recent wins). Written as an explicit
+    # loop because `groupby().apply()` in newer pandas drops the grouping
+    # column from the result, which broke downstream reads of cluster_id.
+    df["is_cluster_lead"] = False
+    for _, group in df.groupby("cluster_id"):
+        lead_idx = group.sort_values(
             by=["source_authority", "top1_confidence", "recency_score"],
-            ascending=[False, False, False]
+            ascending=[False, False, False],
         ).index[0]
-        group["is_cluster_lead"] = group.index == idx
-        return group
-
-    df = df.groupby("cluster_id", group_keys=False).apply(_pick_lead)
+        df.loc[lead_idx, "is_cluster_lead"] = True
 
     # Composite
     df["composite_score"] = (
