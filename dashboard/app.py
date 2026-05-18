@@ -32,7 +32,7 @@ def main():
         st.sidebar.image(str(_logo_path), use_container_width=True)
     st.sidebar.title("Newsletter Curator")
 
-    PRIMARY = ["Overview", "Review Articles", "Organise", "Newsletter Draft"]
+    PRIMARY = ["Overview", "Review Articles", "Organise", "Newsletter Draft", "Add Article"]
     SECONDARY = ["Sources & Feedback", "About"]
 
     if "current_page" not in st.session_state:

@@ -37,9 +37,9 @@ def render(df):
     available = [c for c in review_cols if c in filtered.columns]
     review_export = filtered[available].copy()
     if "top1_confidence" in review_export.columns:
-        review_export["top1_confidence"] = (review_export["top1_confidence"] * 100).round(0).astype(int)
+        review_export["top1_confidence"] = (review_export["top1_confidence"] * 100).round(0).astype("Int64")
     if "top2_confidence" in review_export.columns:
-        review_export["top2_confidence"] = (review_export["top2_confidence"] * 100).round(0).astype(int)
+        review_export["top2_confidence"] = (review_export["top2_confidence"] * 100).round(0).astype("Int64")
 
     buffer = BytesIO()
     review_export.to_excel(buffer, index=False, engine="openpyxl")
