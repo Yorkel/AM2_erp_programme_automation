@@ -33,17 +33,9 @@ jobs:
           path: ~/.cache/torch/sentence_transformers
           key: sbert-all-MiniLM-L6-v2
 
-      # The versioned classifier lives at models/runs/<active>/classifier.joblib —
-      # stage it at the path s09_monitor expects so we don't have to edit s09.
-      - name: Stage classifier from active model run
-        run: |
-          ACTIVE_RUN=$(cat models/runs/active.txt)
-          cp "models/runs/${ACTIVE_RUN}/classifier.joblib" models/sbert_classifier_no_meta.joblib
-
-      # Baseline embeddings are not checked in (1.7MB of derived data).
-      # Regenerate from train.csv + val.csv (both in repo).
-      - name: Generate baseline embeddings
-        run: python -m src.classify.s04_embed
+      # Baselines (class centroids + val distribution) are pre-computed locally
+      # by src/classify/precompute_baselines.py and committed under
+      # models/runs/<active>/. No CSVs needed at runtime — s09 just loads them.
 
       - name: Pull predictions from Supabase
         env:

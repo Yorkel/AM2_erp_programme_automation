@@ -2,30 +2,28 @@
 s09_monitor.py
 Production monitoring for the classification pipeline.
 
-Compares new predictions against val baseline:
+Compares new predictions against pre-computed val baselines:
 - Prediction distribution shift
 - Confidence score drift
-- Embedding drift (cosine similarity to training centroids)
+- Embedding drift (cosine similarity to pre-computed training centroids)
 
-Input:  data/modelling/classified_articles.csv (from s08_predict)
-        models/sbert_train_embeddings.npy (training centroids)
-        data/modelling/val.csv (baseline)
-Output: Monitoring report (printed + saved to data/modelling/monitoring_log.csv)
+Inputs (all in repo — no train.csv / val.csv at runtime):
+  data/modelling/classified_articles.csv             (from classify_via_api)
+  models/runs/<active>/centroids.npy                 (precomputed; see precompute_baselines.py)
+  models/runs/<active>/baselines.json                (precomputed)
+Output: data/modelling/monitoring_log.csv + drift_log row in Supabase
 """
 
+import json
 import os
 
 import numpy as np
 import pandas as pd
-import joblib
 from pathlib import Path
 from datetime import datetime
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# -----------------------------
-# CONFIG
-# -----------------------------
 MODEL_NAME = "all-MiniLM-L6-v2"
 MODEL_DIR = Path("models")
 DATA_DIR = Path("data/modelling")
@@ -33,21 +31,14 @@ DRIFT_THRESHOLD = 0.3
 DISTRIBUTION_ALERT_THRESHOLD = 0.10
 
 
-def compute_centroids(train_df, train_emb, label_names, label_col="target"):
-    """Compute per-class centroids from training embeddings."""
-    centroids = {}
-    for cls in label_names:
-        mask = train_df[label_col] == cls
-        centroids[cls] = train_emb[mask].mean(axis=0)
-    return np.array([centroids[cls] for cls in label_names])
+def _active_run_dir() -> Path:
+    active = (MODEL_DIR / "runs" / "active.txt").read_text().strip()
+    return MODEL_DIR / "runs" / active
 
 
-def check_distribution(classified_df, val_df, label_names, clf):
-    """Compare prediction distribution against val baseline."""
-    val_pred = clf.predict(
-        np.load(MODEL_DIR / "sbert_val_embeddings.npy")
-    )
-    val_dist = pd.Series(val_pred).value_counts(normalize=True)
+def check_distribution(classified_df, val_dist, label_names):
+    """Compare prediction distribution against the pre-computed val baseline.
+    `val_dist` is a Series indexed by label name with proportion values."""
     real_dist = classified_df["top1"].value_counts(normalize=True)
 
     alerts = []
@@ -102,12 +93,14 @@ def main():
         return
 
     classified_df = pd.read_csv(classified_path)
-    val_df = pd.read_csv(DATA_DIR / "val.csv")
-    train_df = pd.read_csv(DATA_DIR / "train.csv")
-    train_emb = np.load(MODEL_DIR / "sbert_train_embeddings.npy")
-    clf = joblib.load(MODEL_DIR / "sbert_classifier_no_meta.joblib")
+
+    # Load pre-computed baselines (committed under models/runs/<active>/)
+    run_dir = _active_run_dir()
+    baselines = json.loads((run_dir / "baselines.json").read_text())
+    label_names = baselines["label_names"]
+    val_dist = pd.Series(baselines["val_distribution"])
+    centroid_matrix = np.load(run_dir / "centroids.npy")
     model = SentenceTransformer(MODEL_NAME)
-    label_names = list(clf.classes_)
 
     print(f"\n{'='*60}")
     print(f"  Monitoring Report — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
@@ -115,7 +108,7 @@ def main():
     print(f"{'='*60}")
 
     # 1. Distribution
-    val_dist, real_dist, dist_alerts = check_distribution(classified_df, val_df, label_names, clf)
+    val_dist, real_dist, dist_alerts = check_distribution(classified_df, val_dist, label_names)
     print(f"\n  Prediction distribution:")
     print(f"  {'Category':<45} {'Val':>6} {'Real':>6} {'Delta':>7}")
     print(f"  {'-'*66}")
@@ -136,10 +129,9 @@ def main():
     print(f"    Mean: {conf['mean']:.3f}, Median: {conf['median']:.3f}")
     print(f"    Below 50%: {conf['pct_below_50']:.1%}, Below 30%: {conf['pct_below_30']:.1%}")
 
-    # 3. Drift
+    # 3. Drift — uses pre-computed centroids loaded above
     texts = classified_df["text_clean"].tolist() if "text_clean" in classified_df.columns else []
     if texts:
-        centroid_matrix = compute_centroids(train_df, train_emb, label_names)
         drift = check_drift(texts, centroid_matrix, label_names, model)
         print(f"\n  Embedding drift:")
         print(f"    Mean similarity: {drift['mean_similarity']:.3f}")

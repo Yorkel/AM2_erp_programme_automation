@@ -40,7 +40,50 @@ from dotenv import load_dotenv
 DEFAULT_MODEL = "claude-haiku-4-5"
 DEFAULT_MAX_TOKENS = 200
 DEFAULT_TEMPERATURE = 0.4   # slight variation but mostly deterministic
-TRAIN_CSV = Path("data/modelling/train.csv")
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# Few-shot anchor source: the cleaned newsletter archive, where `description`
+# is the curator's editorial prose summary as published. NOT train.csv —
+# that has article body text, which is the wrong style to anchor on.
+# CSV is gitignored — only used when running locally. Streamlit Cloud falls
+# back to BUNDLED_FEW_SHOT below.
+FEW_SHOT_CSV = _PROJECT_ROOT / "data" / "interim" / "newsletters_cleaned.csv"
+
+# Fixed bundle of curator-published summaries — drawn from newsletters_cleaned.csv
+# (one or two per theme). Used as fallback when the CSV isn't available on
+# Streamlit Cloud / GH Actions. Regenerate periodically as the curator's style
+# evolves; ~10 examples is enough to anchor without bloating the prompt.
+BUNDLED_FEW_SHOT: tuple[dict, ...] = (
+    {"title": "Welsh government - Further support for teachers to boost roll out the new curriculum",
+     "summary": "The Welsh government will introduce simplified, easy-to-access support to help schools plan their curriculum, deliver for learners and provide consistency across Wales. This will include updated processes, frameworks, toolkits and templates, and sharing of exemplars.",
+     "category": "4 Nations"},
+    {"title": "Belfast Telegraph - Third of children in NI have too few places to play, survey reveals",
+     "summary": "Survey carried out by PlayBoard NI, the lead organisation for the development and promotion of play.",
+     "category": "4 Nations & key organisations"},
+    {"title": "Scottish Government - New approaches to help eradicate child poverty",
+     "summary": "The Child Poverty Practice Accelerator Fund (CPAF) will provide grants towards local projects that test and evaluate new approaches which target at least one of the three drivers of child poverty reduction.",
+     "category": "4 Nations & key organisations"},
+    {"title": "Call for evidence on AI in schools",
+     "summary": "Education secretary Gillian Keegan has launched a call for evidence on using artificial intelligence (AI) like ChatGPT in schools \"to get the best\" out of the new technology.",
+     "category": "Calls for evidence"},
+    {"title": "Ofqual and DfE studying 'feasibility' of 'fully digital' exams",
+     "summary": "Some exam boards are already piloting on-screen assessment, but research by AQA last year found teachers' biggest barrier to digital exams was a lack of infrastructure.",
+     "category": "DfE"},
+    {"title": "Reject fewer teacher applicants, DfE tells trainers",
+     "summary": "Susan Acland-Hood, the DfE's permanent secretary, told providers a 7 per cent jump in applicants this year had not led to an equivalent rise in offers for courses.",
+     "category": "DfE"},
+    {"title": "EEF blog: Bringing together policy, practice, and evidence",
+     "summary": "Harry Madgwick, Research and Policy Manager at the EEF, explains how the Department for Education's recent 'Call for Evidence' is a promising example of bringing together the different 'worlds' of education.",
+     "category": "EEF"},
+    {"title": "Tech4Teachers White paper",
+     "summary": "The digital poverty alliance have published suggestions on improving access and digital skills for teachers: challenges and opportunities.",
+     "category": "EdTech"},
+    {"title": "The Guardian - New UK bill could force social media firms to make content less addictive for under 16s",
+     "summary": "The safer phones bill could ban companies from applying algorithms for young 'doomscrolling' teens.",
+     "category": "EdTech"},
+    {"title": "Education priorities in the next general election",
+     "summary": "The Education Policy Institute, funded by the Nuffield Foundation, is providing a summary of the best evidence on current education challenges and effective policy interventions in order to assist political parties in drawing up their manifesto pledges on education.",
+     "category": "Education, Policy & Practice"},
+)
 N_FEW_SHOT_EXAMPLES = 5
 TEXT_TRUNCATE_WORDS = 500   # cap article content to avoid wasting tokens
 
@@ -77,30 +120,31 @@ to summarise a new article. Match their style: descriptive, close to source, no 
 
 
 def _load_few_shot_examples(n: int = N_FEW_SHOT_EXAMPLES, seed: int | None = None) -> list[dict]:
-    """Pull N random examples from train.csv to use as few-shot anchors.
+    """Return N few-shot examples of curator-style summaries.
 
-    Re-sampled per run by default so summaries don't drift to favouring one
-    style. Pass a `seed` for reproducible prompts.
+    Prefers the full CSV (gives stylistic variety per call) when available;
+    falls back to BUNDLED_FEW_SHOT when the CSV is gitignored away — that's
+    the Streamlit Cloud / GH Actions path.
     """
-    if not TRAIN_CSV.exists():
-        raise RuntimeError(f"{TRAIN_CSV} not found — required for few-shot anchoring")
+    if FEW_SHOT_CSV.exists():
+        df = pd.read_csv(FEW_SHOT_CSV)
+        df = df.dropna(subset=["title", "description"])
+        df = df[df["description"].str.split().str.len() >= 10]
+        if len(df) >= n:
+            rng = random.Random(seed) if seed is not None else random
+            sampled = df.sample(n=n, random_state=rng.randint(0, 2**31))
+            return [
+                {
+                    "title": str(row["title"]).strip(),
+                    "summary": str(row["description"]).strip(),
+                    "category": str(row.get("theme", "")),
+                }
+                for _, row in sampled.iterrows()
+            ]
 
-    df = pd.read_csv(TRAIN_CSV)
-    df = df.dropna(subset=["text"])
-    # Pick reasonably-long examples (avoid one-liners)
-    df = df[df["text"].str.split().str.len() >= 20]
-    if len(df) < n:
-        raise RuntimeError(f"need at least {n} eligible rows in train.csv, got {len(df)}")
-
-    rng = random.Random(seed) if seed is not None else random
-    sampled = df.sample(n=n, random_state=rng.randint(0, 2**31))
-    return [
-        {
-            "text": str(row["text"]).strip(),
-            "category": str(row.get("target", "")),
-        }
-        for _, row in sampled.iterrows()
-    ]
+    # Fallback — fixed bundle. Sampled deterministically so output is stable.
+    rng = random.Random(seed) if seed is not None else random.Random(0)
+    return rng.sample(list(BUNDLED_FEW_SHOT), min(n, len(BUNDLED_FEW_SHOT)))
 
 
 def _build_user_prompt(title: str, body: str, category: str | None) -> str:
@@ -128,7 +172,9 @@ def _build_messages(article_title: str, article_body: str, article_category: str
     # Marked cache_control so the second-onwards call within the 5-min window
     # gets the 90% input discount on this block.
     examples_text = "\n\n".join(
-        f"Example {i+1} (category: {ex['category']}):\n{ex['text']}"
+        f"Example {i+1} (category: {ex.get('category', '')}):\n"
+        f"Article title: {ex['title']}\n"
+        f"Curator summary: {ex['summary']}"
         for i, ex in enumerate(few_shot)
     )
     system = [

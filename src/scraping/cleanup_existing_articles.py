@@ -26,6 +26,7 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
+from src.scraping.config import load_sources
 from src.scraping.relevance import (
     DEFAULT_EDUCATION_KEYWORDS,
     compile_keyword_patterns,
@@ -38,16 +39,38 @@ ARCHIVE_DIR = Path("data/archive/cleanup")
 DELETE_BATCH = 200
 
 
-def classify_row(row, edu_patterns) -> str | None:
+def _filtered_source_names() -> set[str]:
+    """Set of source names where `apply_relevance_filter: true` is set.
+    Mirrors the live pipeline — narrow trusted sources (schoolsweek, nfer,
+    eef, etc.) skip the keyword/non-UK checks entirely."""
+    names: set[str] = set()
+    for s in load_sources():
+        params = s.get("params") or {}
+        if params.get("apply_relevance_filter"):
+            names.add(s["name"])
+    return names
+
+
+def classify_row(row, edu_patterns, filtered_sources: set[str]) -> str | None:
     """Return rejection reason if the row would be filtered, else None."""
     url = row.get("url") or ""
     title = (row.get("title") or "")
     title_l = title.lower()
     body = row.get("text_clean") or ""
+    source = row.get("source") or ""
+
+    # Hard-block — applies to all sources regardless of relevance filter.
     if is_blocked_domain(url):
         return "blocked_domain"
     if is_blocked_url_pattern(url):
         return "blocked_url_pattern"
+
+    # Keyword + non-UK checks only run for sources marked apply_relevance_filter.
+    # Narrow trusted sources (schoolsweek, nfer, eef, gtcs, ascl, ucl_ioe_news…)
+    # publish education content by design and shouldn't be filtered by keyword.
+    if source not in filtered_sources:
+        return None
+
     non_uk = is_non_uk_content(title, body)
     if non_uk:
         return f"non_uk:{non_uk}"
@@ -89,9 +112,12 @@ def main() -> int:
               f"→ {len(df)} candidates")
 
     edu_patterns = compile_keyword_patterns(DEFAULT_EDUCATION_KEYWORDS)
+    filtered_sources = _filtered_source_names()
+    print(f"  Sources with apply_relevance_filter=true: {len(filtered_sources)} "
+          f"(narrow sources skip keyword/non-UK checks)")
 
     df["reject_reason"] = df.apply(
-        lambda r: classify_row(r, edu_patterns), axis=1
+        lambda r: classify_row(r, edu_patterns, filtered_sources), axis=1
     )
     to_delete = df[df["reject_reason"].notna()].copy()
 

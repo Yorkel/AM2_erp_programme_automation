@@ -1,0 +1,23 @@
+{
+  "run_id": "v1_2026-05-16",
+  "computed_at": "2026-05-18T14:36:18",
+  "label_names": [
+    "edtech",
+    "four_nations",
+    "policy_practice_research",
+    "political_environment_key_organisations",
+    "teacher_rrd",
+    "what_matters_ed"
+  ],
+  "val_distribution": {
+    "teacher_rrd": 0.2155688622754491,
+    "what_matters_ed": 0.19161676646706588,
+    "political_environment_key_organisations": 0.17365269461077845,
+    "edtech": 0.15568862275449102,
+    "policy_practice_research": 0.1437125748502994,
+    "four_nations": 0.11976047904191617
+  },
+  "n_train": 942,
+  "n_val": 167,
+  "embed_dim": 384
+}
