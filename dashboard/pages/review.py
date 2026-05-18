@@ -145,7 +145,7 @@ def render(df):
                 if st.button("\u270e Manual selection", key=f"man_{url}", use_container_width=True, type="primary"):
                     st.session_state[f"show_manual_{url}"] = True
             with col_d:
-                if st.button("\u2606 Save for later", key=f"save_{url}", use_container_width=True, type="secondary"):
+                if st.button("\u2606 Save for later", key=f"save_{url}", use_container_width=True, type="tertiary"):
                     record_decision(url, "save_for_later", "")
                     st.rerun()
             with col_e:
