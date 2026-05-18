@@ -48,13 +48,17 @@ def render(df: pd.DataFrame):
     decisions = load_decisions()
     n_reviewed = sum(1 for url in this_week.get("url", []) if url in decisions)
 
+    def _safe_mean(series):
+        m = series.mean()
+        return float(m) if pd.notna(m) else None
+
     mean_top1 = (
-        this_week["top1_confidence"].mean()
+        _safe_mean(this_week["top1_confidence"])
         if "top1_confidence" in this_week.columns and not this_week.empty
         else None
     )
     mean_top2_combined = (
-        (this_week["top1_confidence"] + this_week["top2_confidence"]).mean()
+        _safe_mean(this_week["top1_confidence"] + this_week["top2_confidence"])
         if {"top1_confidence", "top2_confidence"}.issubset(this_week.columns)
            and not this_week.empty
         else None
@@ -63,16 +67,20 @@ def render(df: pd.DataFrame):
     delta_articles = n_articles - len(prev_week) if not prev_week.empty else None
     delta_sources = n_sources - prev_week["source"].nunique() if not prev_week.empty and "source" in prev_week.columns else None
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Articles scraped", n_articles, delta=delta_articles if delta_articles is not None else None)
-    col2.metric("Sources contributing", n_sources, delta=delta_sources if delta_sources is not None else None)
-    col3.metric("Reviewed so far", f"{n_reviewed} / {n_articles}")
+    # Build metrics dynamically — drop confidence cards if predictions aren't in yet.
+    metric_specs = [
+        ("Articles scraped", n_articles, delta_articles),
+        ("Sources contributing", n_sources, delta_sources),
+        ("Reviewed so far", f"{n_reviewed} / {n_articles}", None),
+    ]
     if mean_top1 is not None:
-        col4.metric("Mean top-1 confidence", f"{mean_top1:.0%}",
-                    help="Average model confidence in its best-guess category.")
+        metric_specs.append(("Mean top-1 confidence", f"{mean_top1:.0%}", None))
     if mean_top2_combined is not None:
-        col5.metric("Mean top-2 confidence", f"{mean_top2_combined:.0%}",
-                    help="Average combined probability that the correct category is one of the top two predictions.")
+        metric_specs.append(("Mean top-2 confidence", f"{mean_top2_combined:.0%}", None))
+
+    cols = st.columns(len(metric_specs))
+    for col, (label, value, delta) in zip(cols, metric_specs):
+        col.metric(label, value, delta=delta)
 
     st.markdown("")
 
