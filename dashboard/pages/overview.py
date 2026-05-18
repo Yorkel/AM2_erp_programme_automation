@@ -5,14 +5,27 @@ Shows: article count, source count, top topics, and rough yield (% with
 predictions above a confidence threshold). All from the v_dashboard view.
 """
 
+import json
 from datetime import datetime
 from collections import Counter
+from pathlib import Path
 
 import streamlit as st
 import pandas as pd
 
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER
 from dashboard.data import load_decisions
+
+
+def _load_model_baselines() -> dict:
+    """Read the active model's val baselines.json so we can show reference accuracy.
+    Returns {} on any failure — dashboard degrades gracefully without it."""
+    try:
+        repo_root = Path(__file__).resolve().parents[2]
+        active = (repo_root / "models" / "runs" / "active.txt").read_text().strip()
+        return json.loads((repo_root / "models" / "runs" / active / "baselines.json").read_text())
+    except Exception:
+        return {}
 
 
 def _latest_week(df: pd.DataFrame) -> int | None:
@@ -81,6 +94,23 @@ def render(df: pd.DataFrame):
     cols = st.columns(len(metric_specs))
     for col, (label, value, delta) in zip(cols, metric_specs):
         col.metric(label, value, delta=delta)
+
+    # Reference line — static training-time accuracy on the held-out val set.
+    # Helps contextualise the dynamic mean-confidence metrics above: confidence
+    # is the model's *self-reported* probability today; accuracy is its
+    # measured performance against curator-labelled ground truth at training.
+    baselines = _load_model_baselines()
+    top1_acc = baselines.get("val_top1_accuracy")
+    top2_acc = baselines.get("val_top2_accuracy")
+    run_id = baselines.get("run_id", "unknown")
+    if top1_acc is not None and top2_acc is not None:
+        st.caption(
+            f"Model reference ({run_id}): on the held-out validation set, "
+            f"top-1 accuracy = **{top1_acc:.0%}**, top-2 accuracy = **{top2_acc:.0%}**. "
+            f"This is measured against curator-labelled ground truth at training. "
+            f"The mean-confidence metrics above are the model's self-reported probabilities on *current* articles — "
+            f"they drift as the world moves further from the training distribution."
+        )
 
     st.markdown("")
 

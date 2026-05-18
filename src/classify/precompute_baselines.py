@@ -77,11 +77,25 @@ def main() -> int:
     val_dist = pd.Series(val_pred).value_counts(normalize=True).to_dict()
     val_dist = {str(k): float(v) for k, v in val_dist.items()}
 
+    print("Computing val top-1 / top-2 accuracy...")
+    proba = clf.predict_proba(val_emb)
+    top2_idx = np.argsort(-proba, axis=1)[:, :2]
+    top2_labels = np.array(label_names)[top2_idx]
+    val_truth = val_df["target"].to_numpy()
+    val_top1_correct = top2_labels[:, 0] == val_truth
+    val_top2_correct = np.array([t in row for t, row in zip(val_truth, top2_labels)])
+    val_top1_acc = float(val_top1_correct.mean())
+    val_top2_acc = float(val_top2_correct.mean())
+    print(f"  top-1 accuracy: {val_top1_acc:.1%}")
+    print(f"  top-2 accuracy: {val_top2_acc:.1%}")
+
     baselines = {
         "run_id": run_id,
         "computed_at": datetime.now().isoformat(timespec="seconds"),
         "label_names": label_names,
         "val_distribution": val_dist,
+        "val_top1_accuracy": val_top1_acc,
+        "val_top2_accuracy": val_top2_acc,
         "n_train": int(len(train_df)),
         "n_val": int(len(val_emb)),
         "embed_dim": int(train_emb.shape[1]),

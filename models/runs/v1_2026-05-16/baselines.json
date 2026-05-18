@@ -1,6 +1,6 @@
 {
   "run_id": "v1_2026-05-16",
-  "computed_at": "2026-05-18T14:36:18",
+  "computed_at": "2026-05-18T15:03:17",
   "label_names": [
     "edtech",
     "four_nations",
@@ -17,6 +17,8 @@
     "policy_practice_research": 0.1437125748502994,
     "four_nations": 0.11976047904191617
   },
+  "val_top1_accuracy": 0.7425149700598802,
+  "val_top2_accuracy": 0.9041916167664671,
   "n_train": 942,
   "n_val": 167,
   "embed_dim": 384
