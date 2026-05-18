@@ -17,6 +17,18 @@ from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER
 from dashboard.data import load_decisions
 
 
+def _count_monitored_sources() -> int | None:
+    """Read sources.yml and return the count of enabled sources monitored
+    by the scraping pipeline. Returns None on any failure."""
+    try:
+        import yaml
+        repo_root = Path(__file__).resolve().parents[2]
+        data = yaml.safe_load((repo_root / "src" / "scraping" / "sources.yml").read_text())
+        return sum(1 for s in (data.get("sources") or []) if not s.get("disabled"))
+    except Exception:
+        return None
+
+
 def _load_model_baselines() -> dict:
     """Read the active model's val baselines.json so we can show reference accuracy.
     Returns {} on any failure — dashboard degrades gracefully without it."""
@@ -64,11 +76,14 @@ def render(df: pd.DataFrame):
     delta_articles = n_articles - len(prev_week) if not prev_week.empty else None
     delta_sources = n_sources - prev_week["source"].nunique() if not prev_week.empty and "source" in prev_week.columns else None
 
+    monitored = _count_monitored_sources()
     metric_specs = [
         ("Articles scraped", n_articles, delta_articles),
-        ("Sources contributing", n_sources, delta_sources),
+        ("Sources contributing this week", n_sources, delta_sources),
         ("Reviewed so far", f"{n_reviewed} / {n_articles}", None),
     ]
+    if monitored is not None:
+        metric_specs.append(("Sources monitored", monitored, None))
 
     cols = st.columns(len(metric_specs))
     for col, (label, value, delta) in zip(cols, metric_specs):
