@@ -32,10 +32,29 @@ def main():
         st.sidebar.image(str(_logo_path), use_container_width=True)
     st.sidebar.title("Newsletter Curator")
 
-    page = st.sidebar.radio(
-        "Navigate",
-        ["Overview", "Review Articles", "Organise", "Newsletter Draft", "Add Article", "Sources", "Feedback", "About"],
+    PRIMARY = ["Overview", "Review Articles", "Organise", "Newsletter Draft"]
+    SECONDARY = ["Sources & Feedback", "About"]
+
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = "Overview"
+    cur = st.session_state.current_page
+
+    primary_idx = PRIMARY.index(cur) if cur in PRIMARY else None
+    primary_choice = st.sidebar.radio("Navigate", PRIMARY, index=primary_idx)
+    if primary_choice and primary_choice != cur:
+        st.session_state.current_page = primary_choice
+        st.rerun()
+
+    st.sidebar.markdown("---")
+    secondary_idx = SECONDARY.index(cur) if cur in SECONDARY else None
+    secondary_choice = st.sidebar.radio(
+        "More", SECONDARY, index=secondary_idx, label_visibility="collapsed",
     )
+    if secondary_choice and secondary_choice != cur:
+        st.session_state.current_page = secondary_choice
+        st.rerun()
+
+    page = st.session_state.current_page
 
     df = load_classified_articles()
 
@@ -66,10 +85,8 @@ def main():
         organise.render(df)
     elif page == "Newsletter Draft":
         draft.render(df)
-    elif page == "Sources":
+    elif page == "Sources & Feedback":
         sources.render()
-    elif page == "Feedback":
-        feedback.render()
 
 
 main()
