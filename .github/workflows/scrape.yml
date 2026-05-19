@@ -4,8 +4,8 @@ on:
   schedule:
     # GitHub Actions cron uses UTC. UK times below are during BST (Mar–Oct);
     # during GMT (Nov–Feb) they fire 1 hour earlier in UK local time.
-    - cron: '0 8 * * 2'    # Tue 08:00 UTC  = 09:00 UK (BST)
-    - cron: '0 11 * * 4'   # Thu 11:00 UTC  = 12:00 UK (BST)
+    - cron: '14 10 * * 2'  # Tue 10:14 UTC  = 11:14 UK (BST)
+    - cron: '27 10 * * 4'  # Thu 10:27 UTC  = 11:27 UK (BST)
   workflow_dispatch:        # also allow manual triggering from the Actions tab
 
 jobs:
