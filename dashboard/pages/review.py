@@ -107,19 +107,16 @@ def render(df):
         filtered = filtered[filtered["url"].apply(lambda u: _status_for(u) == status_filter)].copy()
 
     # "Reviewed this week" — fixed anchor to current Mon→Sun, NOT the filter range.
-    # Counter measures how the curator is doing against the weekly newsletter
-    # cycle, so it must not move when the date filter changes.
-    # `save_for_later` is intentionally excluded — it means "I'll come back to it",
-    # which is not a decision yet.
+    # Counter measures the curator's actual decisions this week, independent
+    # of what's on screen. `save_for_later` is excluded — it means "I'll come
+    # back to it", not a decision.
     this_week = df[(df["_article_date"] >= week_start) & (df["_article_date"] <= week_end)]
-    n_total_week = len(this_week)
     n_reviewed_week = sum(
         1 for url in this_week["url"]
         if url in decisions and decisions[url].get("action") not in (None, "save_for_later")
     )
     with col_progress:
-        st.markdown(f"**This week:** {n_reviewed_week} / {n_total_week} reviewed")
-        st.progress(n_reviewed_week / n_total_week if n_total_week > 0 else 0)
+        st.markdown(f"**Reviewed this week:** {n_reviewed_week}")
 
     # Primary sort: review status (pending first, reviewed pushed down).
     # Secondary: chosen by the curator (date or source).
