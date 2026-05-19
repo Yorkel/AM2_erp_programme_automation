@@ -1,0 +1,49 @@
+# Sources for [YOUR TOPIC HERE].
+#
+# Each entry tells the scraper how to fetch articles. Three types are supported:
+#   - rss          → standard RSS/Atom feed
+#   - google_alert → Google Alerts feed (same parser as rss, but tagged so
+#                    filters know it's a broad alert vs a curated feed)
+#   - custom       → custom Python scraper (see src/scraping/web/)
+#
+# Common params:
+#   feed_url                — RSS endpoint
+#   apply_relevance_filter  — set to true for noisy feeds; keyword-filters items
+#                             against a relevance check (see relevance.py)
+#
+# Delete the example entries below and add your own. Keep `name` lowercase
+# with underscores (used as the source key in the articles table).
+
+sources:
+
+  # ── Example RSS feeds ────────────────────────────────────────────────────
+  - name: example_org
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://www.example.org/rss"
+    # source: Example Org  |  coverage: research, policy
+
+  - name: noisy_feed_example
+    type: rss
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://www.example.com/all-posts/rss"
+      apply_relevance_filter: true  # filter out off-topic items by keyword
+    # source: Example Mixed-content Feed  |  coverage: mixed
+
+  # ── Example Google Alert ─────────────────────────────────────────────────
+  - name: ai_governance_alert
+    type: google_alert
+    scraper: src.scraping.rss_adapter
+    params:
+      feed_url: "https://www.google.co.uk/alerts/feeds/YOUR_ALERT_ID_HERE"
+      apply_relevance_filter: true
+    # source: Google Alert: "AI governance"  |  coverage: news
+
+  # ── Example custom scraper ───────────────────────────────────────────────
+  # - name: bespoke_site
+  #   type: custom
+  #   scraper: src.scraping.web.example_site
+  #   params: {}
+  #   # source: Bespoke Site  |  coverage: policy

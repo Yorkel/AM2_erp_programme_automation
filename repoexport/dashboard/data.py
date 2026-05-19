@@ -131,15 +131,16 @@ def set_category_override(url: str, override: str | None) -> None:
 
 def add_curator_article(
     *, url: str, title: str, article_date_iso: str, source: str,
-    text_clean: str, top1: str, top2: str,
+    text_clean: str, top1: str = "", top2: str = "",
 ) -> None:
     """Persist a curator-added article so its URL exists in `articles`.
 
     Without this, accepting / rejecting / saving a manually-added article
-    would fail the curator_decisions → articles FK. We also write a row to
-    classify_newsletter using the curator's two suggested categories with
-    fake 1.0 / 0.0 confidences, so v_dashboard renders the article with the
-    same shape as a scraped+classified one.
+    would fail the curator_decisions → articles FK.
+
+    Template variant: no `classify_newsletter` table to write to. If the new
+    repo wires up a classifier, copy the second .upsert() call from the
+    original ERP repo's data.py to populate top1/top2/confidence here too.
 
     Idempotent on URL: re-submitting the same URL is a no-op rather than
     an error (uses upsert with on_conflict=url).
@@ -157,15 +158,6 @@ def add_curator_article(
         "country": "eng",
         "dataset_type": "inference",
         "classification_status": "classified",
-    }, on_conflict="url").execute()
-
-    client.table("classify_newsletter").upsert({
-        "url": url,
-        "top1": top1,
-        "top1_confidence": 1.0,
-        "top2": top2,
-        "top2_confidence": 0.0,
-        "confidence_gap": 1.0,
     }, on_conflict="url").execute()
 
     load_classified_articles.clear()

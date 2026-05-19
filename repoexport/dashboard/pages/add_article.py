@@ -35,8 +35,6 @@ def render():
                 st.error("URL is required so the article can be referenced by curator decisions.")
             else:
                 try:
-                    # Persist to Supabase first so the FK from curator_decisions
-                    # \u2192 articles holds when the curator later clicks Accept/Reject.
                     add_curator_article(
                         url=url,
                         title=title,
@@ -49,9 +47,6 @@ def render():
                 except Exception as e:
                     st.error(f"Couldn't save to database: {e}")
                 else:
-                    # Mirror in session_state so Review/Organise/Draft (which
-                    # still merge session_state) show it immediately. Display
-                    # date stays DD-MM-YYYY for consistency with old code.
                     article = {
                         "title": title,
                         "source": source,

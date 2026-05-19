@@ -1,0 +1,12 @@
+# Streamlit Cloud auto-discovers this file because it sits next to app.py.
+# Slim list: dashboard only — no torch/transformers (classification runs on HF Space)
+# and no scraping/serving deps. The root requirements.txt remains the source of
+# truth for the pipeline, notebooks, and HF Space build.
+streamlit>=1.30
+pandas
+supabase>=2.0.0
+anthropic
+python-dotenv
+openpyxl>=3.1
+PyYAML>=6.0
+
