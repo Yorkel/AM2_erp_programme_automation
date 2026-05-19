@@ -6,7 +6,7 @@ predictions above a confidence threshold). All from the v_dashboard view.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from collections import Counter
 from pathlib import Path
 
@@ -40,15 +40,6 @@ def _load_model_baselines() -> dict:
         return {}
 
 
-def _latest_week(df: pd.DataFrame) -> int | None:
-    if df.empty or "week_number" not in df.columns:
-        return None
-    weeks = df["week_number"].dropna()
-    if weeks.empty:
-        return None
-    return int(weeks.max())
-
-
 def render(df: pd.DataFrame):
     st.title("Overview")
     st.markdown("This week's articles, sources and model predictions.")
@@ -57,16 +48,24 @@ def render(df: pd.DataFrame):
         st.warning("No classified articles in Supabase yet. Run the inference pipeline to populate.")
         return
 
-    latest = _latest_week(df)
-    if latest is None:
-        st.warning("Articles in the database have no `week_number` set — overview can't compute.")
-        return
+    # Anchor on the current calendar week (Mon → Sun), with the prior Mon → Sun
+    # used for delta comparisons. Matches the Review page's "this week" definition.
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+    prev_start = week_start - timedelta(days=7)
+    prev_end = week_start - timedelta(days=1)
 
-    this_week = df[df["week_number"] == latest].copy()
-    prev_week = df[df["week_number"] == (latest - 1)].copy() if (df["week_number"] == (latest - 1)).any() else pd.DataFrame()
+    df = df.copy()
+    df["_article_date"] = pd.to_datetime(
+        df["article_date"], errors="coerce", dayfirst=True
+    ).dt.date
+
+    this_week = df[(df["_article_date"] >= week_start) & (df["_article_date"] <= week_end)].copy()
+    prev_week = df[(df["_article_date"] >= prev_start) & (df["_article_date"] <= prev_end)].copy()
 
     # ── Headline metrics ─────────────────────────────────────────────────────
-    st.subheader(f"Week {latest}")
+    st.subheader(f"{week_start:%d %b} – {week_end:%d %b %Y}")
 
     n_articles = len(this_week)
     n_sources = this_week["source"].nunique() if "source" in this_week.columns else 0
