@@ -1,20 +1,19 @@
 """
-Overview / landing page — at-a-glance summary of the most recent scrape week.
+Overview / landing page — pipeline-wide summary across all time.
 
-Shows: article count, source count, top topics, and rough yield (% with
-predictions above a confidence threshold). All from the v_dashboard view.
+Shows: total articles, sources contributing, sources monitored, plus 12-week
+trends for article volume and category mix, and an all-time top-sources list.
+All from the v_dashboard view.
 """
 
 import json
 from datetime import datetime, date, timedelta
-from collections import Counter
 from pathlib import Path
 
 import streamlit as st
 import pandas as pd
 
-from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER
-from dashboard.data import load_decisions
+from dashboard.config import CATEGORY_LABELS, SOURCE_LABELS
 
 
 def _count_monitored_sources() -> int | None:
@@ -42,54 +41,29 @@ def _load_model_baselines() -> dict:
 
 def render(df: pd.DataFrame):
     st.title("Overview")
-    st.markdown("This week's articles, sources and model predictions.")
+    st.markdown("Pipeline-wide summary of articles, sources and category trends.")
 
     if df.empty:
         st.warning("No classified articles in Supabase yet. Run the inference pipeline to populate.")
         return
-
-    # Anchor on the current calendar week (Mon → Sun), with the prior Mon → Sun
-    # used for delta comparisons. Matches the Review page's "this week" definition.
-    today = date.today()
-    week_start = today - timedelta(days=today.weekday())
-    week_end = week_start + timedelta(days=6)
-    prev_start = week_start - timedelta(days=7)
-    prev_end = week_start - timedelta(days=1)
 
     df = df.copy()
     df["_article_date"] = pd.to_datetime(
         df["article_date"], errors="coerce", dayfirst=True
     ).dt.date
 
-    this_week = df[(df["_article_date"] >= week_start) & (df["_article_date"] <= week_end)].copy()
-    prev_week = df[(df["_article_date"] >= prev_start) & (df["_article_date"] <= prev_end)].copy()
+    # ── Headline metrics (all time) ─────────────────────────────────────────
+    n_articles = len(df)
+    n_sources_contributing = df["source"].nunique() if "source" in df.columns else 0
+    n_sources_monitored = _count_monitored_sources()
 
-    # ── Headline metrics ─────────────────────────────────────────────────────
-    st.subheader(f"{week_start:%d %b} – {week_end:%d %b %Y}")
-
-    n_articles = len(this_week)
-    n_sources = this_week["source"].nunique() if "source" in this_week.columns else 0
-    decisions = load_decisions()
-    n_reviewed = sum(1 for url in this_week.get("url", []) if url in decisions)
-
-    delta_articles = n_articles - len(prev_week) if not prev_week.empty else None
-    delta_sources = n_sources - prev_week["source"].nunique() if not prev_week.empty and "source" in prev_week.columns else None
-
-    monitored = _count_monitored_sources()
-    metric_specs = [
-        ("Articles scraped", n_articles, delta_articles),
-        ("Sources contributing this week", n_sources, delta_sources),
-        ("Reviewed so far", f"{n_reviewed} / {n_articles}", None),
-    ]
-    if monitored is not None:
-        metric_specs.append(("Sources monitored", monitored, None))
-
-    cols = st.columns(len(metric_specs))
-    for col, (label, value, delta) in zip(cols, metric_specs):
-        col.metric(label, value, delta=delta)
+    cols = st.columns(3)
+    cols[0].metric("Articles scraped (all time)", f"{n_articles:,}")
+    cols[1].metric("Sources contributing (all time)", n_sources_contributing)
+    cols[2].metric("Sources monitored", n_sources_monitored if n_sources_monitored is not None else "—")
 
     # Static reference — val accuracy of the active model. Useful AM2/portfolio
-    # context; doesn't depend on this week's data.
+    # context; doesn't depend on the article data.
     baselines = _load_model_baselines()
     top1_acc = baselines.get("val_top1_accuracy")
     top2_acc = baselines.get("val_top2_accuracy")
@@ -102,39 +76,55 @@ def render(df: pd.DataFrame):
 
     st.markdown("")
 
-    # ── Top topics (categories) this week ────────────────────────────────────
-    if "top1" in this_week.columns and not this_week.empty:
-        st.subheader("Predicted categories this week")
-        cat_counts = this_week["top1"].value_counts()
-        if not prev_week.empty and "top1" in prev_week.columns:
-            prev_cat_counts = prev_week["top1"].value_counts()
-        else:
-            prev_cat_counts = pd.Series(dtype=int)
+    # ── 12-week trend window (Mon-Sun calendar weeks) ───────────────────────
+    today = date.today()
+    this_monday = today - timedelta(days=today.weekday())
+    earliest_monday = this_monday - timedelta(weeks=11)
+    all_weeks = [earliest_monday + timedelta(weeks=i) for i in range(12)]
 
-        cols = st.columns(3)
-        for i, key in enumerate(CATEGORY_ORDER):
-            with cols[i % 3]:
-                count = int(cat_counts.get(key, 0))
-                prev = int(prev_cat_counts.get(key, 0))
-                delta = count - prev if not prev_cat_counts.empty else None
-                with st.container(border=True):
-                    st.markdown(f"**{CATEGORY_LABELS.get(key, key)}**")
-                    st.metric(label="", value=count, delta=delta, label_visibility="collapsed")
+    recent = df[df["_article_date"] >= earliest_monday].copy()
+    recent = recent[recent["_article_date"].notna()]
+    recent["_week_start"] = recent["_article_date"].apply(
+        lambda d: d - timedelta(days=d.weekday())
+    )
+
+    # ── Articles per week ───────────────────────────────────────────────────
+    st.subheader("Articles per week (last 12 weeks)")
+    weekly_counts = recent.groupby("_week_start").size().reset_index(name="Articles")
+    week_index = pd.DataFrame({"_week_start": all_weeks})
+    weekly_counts = week_index.merge(weekly_counts, on="_week_start", how="left").fillna(0)
+    weekly_counts["_week_start"] = pd.to_datetime(weekly_counts["_week_start"])
+    st.line_chart(weekly_counts.set_index("_week_start")["Articles"])
 
     st.markdown("")
 
-    # ── Top contributing sources this week ────────────────────────────────────
-    if "source" in this_week.columns and not this_week.empty:
-        st.subheader("Top contributing sources")
-        src_counts = this_week["source"].value_counts().head(10)
-        for source_name, count in src_counts.items():
-            st.markdown(f"- **{source_name}** &middot; {count} article{'s' if count != 1 else ''}",
-                        unsafe_allow_html=True)
+    # ── Categories over time (stacked) ──────────────────────────────────────
+    if "top1" in recent.columns and not recent.empty:
+        st.subheader("Predicted categories per week (last 12 weeks)")
+        cat_weekly = recent.groupby(["_week_start", "top1"]).size().reset_index(name="count")
+        cat_pivot = cat_weekly.pivot(index="_week_start", columns="top1", values="count").fillna(0)
+        # Fill in any missing weeks so the chart shows a continuous 12-week span
+        cat_pivot = cat_pivot.reindex(all_weeks, fill_value=0)
+        cat_pivot.columns = [CATEGORY_LABELS.get(c, c) for c in cat_pivot.columns]
+        cat_pivot.index = pd.to_datetime(cat_pivot.index)
+        st.area_chart(cat_pivot)
 
-    # ── Quick links ─────────────────────────────────────────────────────────
+    st.markdown("")
+
+    # ── Top contributing sources (all time) ─────────────────────────────────
+    if "source" in df.columns:
+        st.subheader("Top contributing sources (all time)")
+        src_counts = df["source"].value_counts().head(10)
+        for source_name, count in src_counts.items():
+            label = SOURCE_LABELS.get(source_name, source_name)
+            st.markdown(
+                f"- **{label}** &middot; {count} article{'s' if count != 1 else ''}",
+                unsafe_allow_html=True,
+            )
+
+    # ── Footer ──────────────────────────────────────────────────────────────
     st.markdown("---")
     st.caption(
         f"Last refresh: {datetime.now().strftime('%Y-%m-%d %H:%M')} &middot; "
-        f"Predictions from model v1_2026-05-16. Go to **Review Articles** to start "
-        f"the weekly review.",
+        f"Go to **Review Articles** to start the weekly review."
     )
