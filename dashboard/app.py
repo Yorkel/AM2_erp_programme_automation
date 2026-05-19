@@ -15,7 +15,7 @@ import pandas as pd
 from dashboard.config import NAVY, TEAL
 from dashboard.styles import get_css
 from dashboard.data import load_classified_articles, init_session_state
-from dashboard.pages import overview, about, add_article, review, organise, draft, sources, feedback
+from dashboard.pages import overview, about, add_article, review, organise, draft, feedback
 
 
 def main():
@@ -34,7 +34,7 @@ def main():
 
     NAV = [
         "Overview", "Review Articles", "Organise", "Newsletter Draft", "Add Article",
-        "Feedback", "Sources", "About",
+        "Feedback", "About",
     ]
 
     if "current_page" not in st.session_state:
@@ -90,7 +90,7 @@ def main():
 
     df = load_classified_articles()
 
-    if df.empty and page not in ["About", "Sources"]:
+    if df.empty and page != "About":
         st.error("No classified articles found in Supabase. Run the inference pipeline (s07 → classify_via_api → s10) to populate `classify_newsletter`.")
         st.stop()
 
@@ -111,8 +111,6 @@ def main():
         organise.render(df)
     elif page == "Newsletter Draft":
         draft.render(df)
-    elif page == "Sources":
-        sources.render()
     elif page == "Feedback":
         feedback.render()
 
