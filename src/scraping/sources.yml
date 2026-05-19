@@ -152,7 +152,9 @@ sources:
   - name: oecd
     type: google_alert
     scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/3534224211687581619"}
+    params:
+      feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/3534224211687581619"
+      apply_relevance_filter: true
     # source: OECD  |  coverage: research
 
   # RE-ENABLED 2026-05-17 with apply_relevance_filter — WCPP covers broad Welsh policy;
