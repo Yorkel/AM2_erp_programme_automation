@@ -2,10 +2,10 @@ name: Scrape sources → articles
 
 on:
   schedule:
-    # GitHub Actions cron uses UTC. UK times below are during BST (Mar–Oct);
-    # during GMT (Nov–Feb) they fire 1 hour earlier in UK local time.
-    - cron: '14 10 * * 2'  # Tue 10:14 UTC  = 11:14 UK (BST)
-    - cron: '27 10 * * 4'  # Thu 10:27 UTC  = 11:27 UK (BST)
+    # GitHub Actions cron uses UTC. Off-peak overnight slot to maximise the
+    # chance scheduled runs actually fire on the free tier (peak skips runs).
+    # During BST (Mar–Oct) this is 03:23 UK; during GMT (Nov–Feb) it's 02:23 UK.
+    - cron: '23 2 * * 1-5'  # Mon–Fri 02:23 UTC = 03:23 UK (BST)
   workflow_dispatch:        # also allow manual triggering from the Actions tab
 
 jobs:
