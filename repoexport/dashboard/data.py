@@ -199,19 +199,21 @@ def init_session_state() -> None:
 
 
 def get_accepted_articles(df: pd.DataFrame) -> list[dict]:
-    """Join `v_dashboard` rows with current curator_decisions; return non-rejected.
+    """Join `v_dashboard` rows with current curator_decisions; return only
+    articles the curator has actually accepted (top1, top2, or manual).
 
-    Used by the Organise and Draft pages. Curator-added rows (session-only for
-    now) are appended on top.
+    Used by the Organise and Draft pages. Excludes:
+      - rejected articles
+      - save-for-later articles (curator hasn't decided yet)
+      - rows that exist only because of a summary (no action set)
+    Curator-added rows (session-only for now) are appended on top.
     """
     decisions = load_decisions()
     accepted: list[dict] = []
 
+    ACCEPT_ACTIONS = {"accept_top1", "accept_top2", "manual"}
     for url, dec in decisions.items():
-        if dec.get("action") == "reject":
-            continue
-        if not dec.get("action"):
-            # row exists with only a summary — no decision yet; skip
+        if dec.get("action") not in ACCEPT_ACTIONS:
             continue
         match = df[df["url"] == url] if not df.empty else pd.DataFrame()
         row = match.iloc[0].to_dict() if len(match) else {"url": url, "title": "Unknown"}
