@@ -1,5 +1,5 @@
 from io import BytesIO
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 import streamlit as st
 import pandas as pd
@@ -12,13 +12,40 @@ def render(df):
     st.title("Review Articles")
     st.markdown("Review each article's classification. The model suggests two possible categories. **Accept** the correct one or **reject** if neither fits. Rejected articles won't appear in the newsletter draft.")
 
-    weeks = sorted(df["week_number"].dropna().unique().astype(int).tolist(), reverse=True)
-    with st.container(border=True):
-        col_week, col_count = st.columns([1, 2])
-        with col_week:
-            selected_week = st.selectbox("Select week", weeks, index=0)
+    # Current calendar week (Mon → Sun) — used as the default filter range
+    # AND as the fixed anchor for the "reviewed this week" progress counter.
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())  # Monday
+    week_end = week_start + timedelta(days=6)             # Sunday
 
-        filtered = df[df["week_number"] == selected_week].copy()
+    # Normalise article_date to date objects for filtering.
+    # Scraped rows use ISO (YYYY-MM-DD); curator-added rows use DD-MM-YYYY,
+    # so dayfirst=True keeps both safe.
+    df = df.copy()
+    df["_article_date"] = pd.to_datetime(
+        df["article_date"], errors="coerce", dayfirst=True
+    ).dt.date
+
+    with st.container(border=True):
+        col_dates, col_count = st.columns([1, 2])
+        with col_dates:
+            date_range = st.date_input(
+                "Date range",
+                value=(week_start, week_end),
+                key="review_date_range",
+            )
+
+        # st.date_input returns a tuple of len 2 once both ends are picked,
+        # but len 1 (or a bare date) mid-selection — handle both.
+        if isinstance(date_range, tuple):
+            since = date_range[0]
+            until = date_range[1] if len(date_range) > 1 else date_range[0]
+        else:
+            since = until = date_range
+
+        filtered = df[
+            (df["_article_date"] >= since) & (df["_article_date"] <= until)
+        ].copy()
 
         if st.session_state.curator_articles:
             curator_df = pd.DataFrame(st.session_state.curator_articles)
@@ -28,11 +55,12 @@ def render(df):
             filtered = pd.concat([filtered, curator_df], ignore_index=True)
 
         n_curator = filtered["curator_added"].sum() if "curator_added" in filtered.columns else 0
+        range_label = f"{since:%d %b} – {until:%d %b}" if since != until else f"{since:%d %b}"
         with col_count:
             st.markdown("<br>", unsafe_allow_html=True)
-            st.info(f"**Week {selected_week}:** {len(filtered)} articles to review" + (f" ({n_curator} added by curator)" if n_curator else ""))
+            st.info(f"**{range_label}:** {len(filtered)} articles to review" + (f" ({n_curator} added by curator)" if n_curator else ""))
 
-    # Download for manual review
+    # Download for manual review (scoped to the selected range)
     review_cols = ["title", "source", "article_date", "url", "top1", "top1_confidence", "top2", "top2_confidence"]
     available = [c for c in review_cols if c in filtered.columns]
     review_export = filtered[available].copy()
@@ -45,10 +73,11 @@ def render(df):
     review_export.to_excel(buffer, index=False, engine="openpyxl")
     buffer.seek(0)
 
+    download_slug = f"{since:%Y%m%d}_{until:%Y%m%d}" if since != until else f"{since:%Y%m%d}"
     st.download_button(
-        f"Download week {selected_week} for manual review",
+        f"Download {range_label} articles for manual review",
         buffer,
-        file_name=f"week_{selected_week}_review.xlsx",
+        file_name=f"review_{download_slug}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
@@ -77,10 +106,20 @@ def render(df):
     if status_filter != "All":
         filtered = filtered[filtered["url"].apply(lambda u: _status_for(u) == status_filter)].copy()
 
-    n_reviewed = sum(1 for url in filtered["url"] if url in decisions)
+    # "Reviewed this week" — fixed anchor to current Mon→Sun, NOT the filter range.
+    # Counter measures how the curator is doing against the weekly newsletter
+    # cycle, so it must not move when the date filter changes.
+    # `save_for_later` is intentionally excluded — it means "I'll come back to it",
+    # which is not a decision yet.
+    this_week = df[(df["_article_date"] >= week_start) & (df["_article_date"] <= week_end)]
+    n_total_week = len(this_week)
+    n_reviewed_week = sum(
+        1 for url in this_week["url"]
+        if url in decisions and decisions[url].get("action") not in (None, "save_for_later")
+    )
     with col_progress:
-        st.markdown(f"**Progress:** {n_reviewed} / {len(filtered)} reviewed")
-        st.progress(n_reviewed / len(filtered) if len(filtered) > 0 else 0)
+        st.markdown(f"**This week:** {n_reviewed_week} / {n_total_week} reviewed")
+        st.progress(n_reviewed_week / n_total_week if n_total_week > 0 else 0)
 
     # Primary sort: review status (pending first, reviewed pushed down).
     # Secondary: chosen by the curator (date or source).
