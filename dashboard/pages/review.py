@@ -87,11 +87,19 @@ def render(df):
     # Pull current decisions (cached 60s)
     decisions = load_decisions()
 
-    # Status filter + Sort + Progress
+    # Status filter + Category filter + Sort + Progress
     STATUS_OPTIONS = ["All", "Pending", "Saved for later", "Accepted", "Rejected"]
-    col_status, col_sort, col_progress = st.columns(3)
+    CATEGORY_OPTIONS = ["All"] + CATEGORY_ORDER
+    col_status, col_category, col_sort, col_progress = st.columns(4)
     with col_status:
         status_filter = st.selectbox("Show", STATUS_OPTIONS, index=0)
+    with col_category:
+        category_filter = st.selectbox(
+            "Category",
+            CATEGORY_OPTIONS,
+            index=0,
+            format_func=lambda c: "All" if c == "All" else CATEGORY_LABELS.get(c, c),
+        )
     with col_sort:
         sort_by = st.selectbox("Order by", ["Date (newest first)", "Date (oldest first)", "Source"])
 
@@ -105,6 +113,11 @@ def render(df):
 
     if status_filter != "All":
         filtered = filtered[filtered["url"].apply(lambda u: _status_for(u) == status_filter)].copy()
+
+    if category_filter != "All":
+        filtered = filtered[
+            (filtered["top1"] == category_filter) | (filtered["top2"] == category_filter)
+        ].copy()
 
     # "Reviewed this week" — fixed anchor to current Mon→Sun, NOT the filter range.
     # Counter measures the curator's actual decisions this week, independent
