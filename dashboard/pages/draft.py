@@ -116,12 +116,12 @@ def render(df):
                     st.session_state.draft_descriptions[desc_key] = edited_desc
 
                 if art_url:
-                    st.markdown(f"[Here]({art_url})")
+                    st.markdown(f"[Link to article]({art_url})")
 
             plain_text += f"{source_name} - {title}\n"
             plain_text += f"{st.session_state.draft_descriptions[desc_key]}\n"
             if art_url:
-                plain_text += f"Here: {art_url}\n"
+                plain_text += f"Link to article: {art_url}\n"
             plain_text += "\n"
 
     plain_text += "\n---\n"
