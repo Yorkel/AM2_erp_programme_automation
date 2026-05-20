@@ -63,12 +63,16 @@ sources:
   - name: ades
     type: web
     scraper: src.scraping.web.custom_scraper_adapter
-    params: {module: src.scraping.web.scotland.ades}
+    params:
+      module: src.scraping.web.scotland.ades
+      apply_relevance_filter: true
 
   - name: children_in_scotland
     type: web
     scraper: src.scraping.web.custom_scraper_adapter
-    params: {module: src.scraping.web.scotland.children_in_scotland}
+    params:
+      module: src.scraping.web.scotland.children_in_scotland
+      apply_relevance_filter: true
 
 
   # ─────────────────────────────────────────────────────────────────────
@@ -458,7 +462,9 @@ sources:
   - name: bridget_phillipson
     type: google_alert
     scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/15613294058363356382"}
+    params:
+      feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/15613294058363356382"
+      apply_relevance_filter: true
     # source: Bridget Phillipson  |  coverage: alert
 
   - name: wales_children_families
@@ -798,6 +804,7 @@ sources:
     scraper: src.scraping.web.auto_listing
     params:
       start_url: https://www.local.gov.uk/about/news
+      apply_relevance_filter: true
     # source: Local Government Association
 
   - name: ascl

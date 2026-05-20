@@ -123,6 +123,7 @@ NEGATIVE_COUNTRY_KEYWORDS: tuple[str, ...] = (
     "paris suburb", "marseille",
     "madrid", "barcelona",
     "rome italy", "milan",
+    "switzerland", "swiss", "zurich", "geneva",
     # Middle East
     "tehran", "beirut", "damascus",
     "gaza", "west bank", "nakba",
