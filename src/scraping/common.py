@@ -34,6 +34,8 @@ class Article:
     text: str | None = None            # full body
     text_clean: str | None = None      # title + first ~80 words; built if not provided
     week_number: int | None = None
+    summary: str | None = None         # pre-generated Claude summary (filled in run.py)
+    summary_generated_at: datetime | None = None
     extra: dict = field(default_factory=dict)
 
     def to_record(self) -> dict:
@@ -50,6 +52,10 @@ class Article:
             "text": self.text,
             "text_clean": self.text_clean,
             "week_number": self.week_number,
+            "summary": self.summary,
+            "summary_generated_at": (
+                self.summary_generated_at.isoformat() if self.summary_generated_at else None
+            ),
         }
         return {k: v for k, v in rec.items() if v is not None}
 

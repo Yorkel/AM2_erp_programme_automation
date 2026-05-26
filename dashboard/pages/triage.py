@@ -161,7 +161,13 @@ def render(df):
         source_name = SOURCE_LABELS.get(row.get("source", ""), row.get("source", ""))
         article_date = row.get("article_date", "")
         status = _status_for(url, decisions)
-        current_summary = (decisions.get(url) or {}).get("summary") or ""
+        # Display fallback: curator edit > pre-generated (articles.summary) > empty.
+        # articles.summary comes through v_dashboard after migration 012.
+        current_summary = (
+            (decisions.get(url) or {}).get("summary")
+            or row.get("summary")
+            or ""
+        )
 
         st.markdown(
             "<div style='border-top:3px solid #1d3461;margin:20px 0;'></div>",

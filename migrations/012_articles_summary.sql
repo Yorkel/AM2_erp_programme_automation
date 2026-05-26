@@ -17,7 +17,12 @@ alter table public.articles
   add column if not exists summary text,
   add column if not exists summary_generated_at timestamp with time zone;
 
--- 2. Refresh v_dashboard to expose the new column to the dashboard reader.
+-- 2. Refresh v_dashboard to expose the new columns to the dashboard reader.
+--    NOTE: CREATE OR REPLACE VIEW can only APPEND columns. Existing columns
+--    must keep their positions AND all be present. Migration 006 added 7
+--    scoring columns from classify_newsletter — those have to stay listed
+--    in the same positions, with `summary` + `summary_generated_at` appended
+--    at the very end.
 create or replace view public.v_dashboard as
 select
   a.id              as article_id,
@@ -30,13 +35,23 @@ select
   a.week_number,
   a.country,
   a.scraped_at,
-  a.summary,                         -- NEW
-  a.summary_generated_at,            -- NEW
+  -- prediction (from migration 004)
   c.top1,
   c.top1_confidence,
   c.top2,
   c.top2_confidence,
   c.confidence_gap,
-  c.classified_at
+  c.classified_at,
+  -- scoring (from migration 006)
+  c.cluster_id,
+  c.cluster_size,
+  c.is_cluster_lead,
+  c.source_authority,
+  c.recency_score,
+  c.substance_score,
+  c.composite_score,
+  -- summary (NEW — migration 012, appended)
+  a.summary,
+  a.summary_generated_at
 from public.articles a
 left join public.classify_newsletter c on a.url = c.url;

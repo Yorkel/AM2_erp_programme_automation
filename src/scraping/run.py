@@ -271,6 +271,48 @@ def _filter_items(items: list, source: str,
     return kept
 
 
+def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> None:
+    """Populate Article.summary for each kept item via Claude. Mutates in place.
+
+    Cheap (~$0.0003–$0.0008 per item with prompt caching — see header of
+    src/inference/summarise.py). Failures are logged and skipped so a single
+    bad article never blocks the whole scrape.
+
+    REQUIRES migration 012 applied (articles.summary + summary_generated_at
+    columns must exist before the upsert touches them).
+    """
+    if dry_run:
+        print(f"  [dry-run] {source}: would generate summaries for {len(items)} article(s)")
+        return
+    if not items:
+        return
+
+    from datetime import datetime
+    from src.inference.summarise import summarise_article
+
+    n_ok = 0
+    n_fail = 0
+    for item in items:
+        if not isinstance(item, Article):
+            continue
+        if item.summary:
+            continue
+        try:
+            item.summary = summarise_article(
+                title=item.title or "",
+                text=item.text or item.text_clean or "",
+                category=None,    # classifier hasn't run yet at scrape time
+            )
+            item.summary_generated_at = datetime.utcnow()
+            n_ok += 1
+        except Exception as e:
+            n_fail += 1
+            print(f"    WARNING: summary failed for {item.url}: {type(e).__name__}: {e}")
+    if n_ok or n_fail:
+        print(f"  {source}: generated {n_ok} summaries"
+              + (f" ({n_fail} failed)" if n_fail else ""))
+
+
 def _weekly_windows(start: date, end: date) -> list[tuple[date, date]]:
     """Yield (since, until) tuples, each a Tuesday-anchored 7-day week, walking forward."""
     # Snap to the Tuesday on/before `start`
@@ -306,6 +348,9 @@ def main():
                         help="Set --since to the started_at of the most recent successful "
                              "scrape_runs row, or 7 days ago if no previous run exists. "
                              "Used by the cron workflow for incremental fetches.")
+    parser.add_argument("--no-summaries", action="store_true",
+                        help="Skip pre-generating Claude summaries for kept articles. "
+                             "Default is ON (generate). Requires migration 012 applied.")
     args = parser.parse_args()
 
     # Resolve --since-last-run BEFORE other logic so it sets args.since.
@@ -387,6 +432,8 @@ def _execute_run(args):
                 src, since=args.since, until=args.until
             )
             items = _filter_items(items, name, apply_filter, require_keywords)
+            if not args.no_summaries:
+                _generate_summaries(items, name, dry_run=args.dry_run)
             records = _to_records(items)
             rows_scraped = len(records)
             rows_upserted = upsert_articles(

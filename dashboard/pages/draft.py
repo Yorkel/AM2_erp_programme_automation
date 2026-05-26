@@ -121,10 +121,14 @@ def render(df):
             article_date = art.get("article_date") or ""
             session_key = f"desc_{art_url}"
 
-            # Seed text_area initial value from DB on first render of this URL
+            # Seed text_area initial value from DB on first render of this URL.
+            # Fallback order: curator edit > pre-generated articles.summary > empty.
+            # articles.summary is exposed via v_dashboard after migration 012.
             if session_key not in st.session_state:
                 st.session_state[session_key] = (
-                    (decisions.get(art_url) or {}).get("summary") or ""
+                    (decisions.get(art_url) or {}).get("summary")
+                    or art.get("summary")
+                    or ""
                 )
 
             with st.container(border=True):
