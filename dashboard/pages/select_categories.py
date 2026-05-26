@@ -153,33 +153,36 @@ def _render_article(art: dict, idx_in_cluster: int):
                 record_decision(url, "accept_top2", top2)
                 st.rerun()
         with col_man:
-            # Manual = popover. One button to open; the dropdown lives inside.
-            # Cleaner than always-visible selectbox + Set button.
-            with st.popover(
+            # Manual = single selectbox. Picking commits immediately via the
+            # on_change callback — no separate Apply button.
+            # First option is "Manual ▾" placeholder; picking a real category
+            # records action=manual with that label.
+            MANUAL_PLACEHOLDER = "Manual ▾"
+            options = [MANUAL_PLACEHOLDER] + list(CATEGORY_ORDER)
+
+            def _on_pick_manual(_url=url):
+                choice = st.session_state.get(f"cat_man_choice_{_url}")
+                if choice and choice != MANUAL_PLACEHOLDER:
+                    record_decision(_url, "manual", choice)
+                    # Reset placeholder so next picks fire
+                    st.session_state[f"cat_man_choice_{_url}"] = MANUAL_PLACEHOLDER
+
+            # If curator has already chosen a manual category, show that
+            # as the displayed value; else show the placeholder.
+            current_idx = 0
+            if action == "manual" and curator_label in CATEGORY_ORDER:
+                current_idx = options.index(curator_label)
+
+            st.selectbox(
                 "Manual",
-                use_container_width=True,
+                options=options,
+                index=current_idx,
+                format_func=lambda x: x if x == MANUAL_PLACEHOLDER else CATEGORY_SHORT_LABELS.get(x, x),
+                key=f"cat_man_choice_{url}",
+                label_visibility="collapsed",
                 disabled=not auth,
-            ):
-                manual_default = (
-                    curator_label if action == "manual" and curator_label in CATEGORY_ORDER
-                    else CATEGORY_ORDER[0]
-                )
-                manual_choice = st.selectbox(
-                    "Pick category",
-                    options=CATEGORY_ORDER,
-                    index=CATEGORY_ORDER.index(manual_default),
-                    format_func=lambda x: CATEGORY_SHORT_LABELS.get(x, x),
-                    key=f"cat_man_choice_{url}",
-                    label_visibility="collapsed",
-                )
-                if st.button(
-                    "Apply",
-                    key=f"cat_man_apply_{url}",
-                    type="primary",
-                    use_container_width=True,
-                ):
-                    record_decision(url, "manual", manual_choice)
-                    st.rerun()
+                on_change=_on_pick_manual,
+            )
         with col_rem:
             if st.button(
                 "Remove",
@@ -200,20 +203,22 @@ def render(df):
         "categorise several if they offer different angles."
     )
 
-    # Page-wide button + popover shrink (Top 1 / Top 2 / Manual / Remove
-    # buttons were too tall and the labels too big at default Streamlit size).
+    # Aggressive page-wide shrink — buttons + selectbox inputs were too big.
     st.markdown("""
     <style>
-    /* Shrink all buttons + popover triggers on this page only */
     [data-testid="stButton"] button,
     [data-testid="stPopover"] button {
-        font-size: 12px !important;
-        padding: 4px 8px !important;
-        min-height: 32px !important;
+        font-size: 11px !important;
+        padding: 3px 6px !important;
+        min-height: 28px !important;
+        line-height: 1.2 !important;
     }
-    /* Tighten the selectbox inside popovers too */
-    [data-testid="stPopover"] [data-testid="stSelectbox"] {
-        font-size: 12px !important;
+    [data-testid="stSelectbox"] div[data-baseweb="select"] {
+        font-size: 11px !important;
+        min-height: 28px !important;
+    }
+    [data-testid="stSelectbox"] label {
+        font-size: 11px !important;
     }
     </style>
     """, unsafe_allow_html=True)
