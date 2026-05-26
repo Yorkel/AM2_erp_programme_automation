@@ -72,7 +72,10 @@ def load_decisions() -> dict[str, dict]:
 def record_decision(url: str, action: str, label: str) -> None:
     """Upsert a curator decision on the given URL.
 
-    `action` ∈ {accept_top1, accept_top2, manual, save_for_later, reject}.
+    `action` ∈ {keep, reject, accept_top1, accept_top2, manual,
+    save_for_later, summary_only}. Page 1 (Review) uses keep/reject;
+    Page 2 (Organise) upgrades keep → accept_top1/top2/manual once a
+    category is assigned.
     Invalidates the decisions cache so the next render picks it up.
     """
     client = get_client()
@@ -172,13 +175,21 @@ def add_curator_article(
 
 
 def record_summary(url: str, summary: str) -> None:
-    """Persist a generated LLM summary onto the existing curator_decisions row.
+    """Persist a generated LLM summary onto a curator_decisions row.
 
-    Uses UPDATE (not upsert) — Generate Summary only runs from the Newsletter
-    Draft page, which only shows already-accepted articles. So the row exists.
-    Upsert would fail the NOT NULL on `action` if it ever hit the insert path.
+    Safe to call before any keep/reject — Page 1 (Review) lets the curator
+    Generate Summary on a pending article. If no row exists yet, we insert
+    a placeholder with action='summary_only' so the NOT NULL constraint on
+    `action` is satisfied. Any subsequent keep/reject via record_decision()
+    overwrites the placeholder.
     """
     client = get_client()
+    existing = client.table("curator_decisions").select("action").eq("url", url).limit(1).execute()
+    if not existing.data:
+        client.table("curator_decisions").insert({
+            "url": url,
+            "action": "summary_only",
+        }).execute()
     client.table("curator_decisions").update(
         {
             "summary": summary,

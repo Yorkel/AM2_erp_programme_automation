@@ -1,272 +1,199 @@
-from io import BytesIO
-from datetime import datetime, date, timedelta
+"""
+Page 1 — Review (triage).
+
+Curator quickly keeps or rejects each article from the selected week, and
+optionally generates a summary. NO category assignment here — kept articles
+flow to Page 2 (Organise) where the category is set.
+
+Action values written to curator_decisions:
+  - "keep"          curator wants this in the newsletter (no category yet)
+  - "reject"        curator does not want this
+  - "summary_only"  placeholder if Generate Summary clicked before keep/reject
+"""
+
+from datetime import date, timedelta
 
 import streamlit as st
 import pandas as pd
 
-from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, CATEGORY_COLORS, SOURCE_LABELS
-from dashboard.data import record_decision, load_decisions, is_authenticated
+from dashboard.config import MS_FORM_URL, SOURCE_LABELS
+from dashboard.data import (
+    is_authenticated, load_decisions, record_decision, record_summary,
+)
+from src.inference.summarise import summarise_article
+
+
+N_WEEKS = 8  # how many recent weeks to surface in the selector
+
+
+def _tuesday_on_or_before(d: date) -> date:
+    """Most recent Tuesday on or before `d` — anchors a scrape-week (Tue→Mon)."""
+    return d - timedelta(days=(d.weekday() - 1) % 7)
+
+
+def _week_options(df: pd.DataFrame, n: int = N_WEEKS) -> list[tuple[str, date, date]]:
+    """Build N most recent Tue→Mon weeks as (label, start, end). Newest first."""
+    dates = df["_article_date"].dropna() if "_article_date" in df.columns else pd.Series([], dtype=object)
+    anchor = _tuesday_on_or_before(dates.max() if not dates.empty else date.today())
+    out: list[tuple[str, date, date]] = []
+    for i in range(n):
+        wk_start = anchor - timedelta(days=7 * i)
+        wk_end = wk_start + timedelta(days=6)
+        out.append((f"Week of {wk_start:%d %b %Y}", wk_start, wk_end))
+    return out
+
+
+def _status_for(url: str, decisions: dict) -> str:
+    dec = decisions.get(url)
+    if not dec:
+        return "Pending"
+    action = dec.get("action")
+    if action == "reject":
+        return "Rejected"
+    if action == "keep":
+        return "Kept"
+    if action in ("accept_top1", "accept_top2", "manual"):
+        return "Categorised"
+    # summary_only or unknown — show as pending in this view
+    return "Pending"
+
+
+_STATUS_COLOUR = {
+    "Pending": "#888",
+    "Kept": "#1e8449",
+    "Rejected": "#c0392b",
+    "Categorised": "#2980b9",
+}
 
 
 def render(df):
-    st.title("Review Articles")
-    st.markdown("Review each article's classification. The model suggests two possible categories. **Accept** the correct one or **reject** if neither fits. Rejected articles won't appear in the newsletter draft.")
+    st.title("Review")
+    st.markdown(
+        "Quickly **keep** or **reject** each article from this week's pull. "
+        "Kept articles move to **Organise** for category assignment, then to "
+        "**Newsletter Draft**."
+    )
 
-    # Current calendar week (Mon → Sun) — used as the default filter range
-    # AND as the fixed anchor for the "reviewed this week" progress counter.
-    today = date.today()
-    week_start = today - timedelta(days=today.weekday())  # Monday
-    week_end = week_start + timedelta(days=6)             # Sunday
+    # ── Add Article: external link to MS Form ──────────────────────────────
+    st.link_button(
+        "➕  Add article via form  ↗",
+        MS_FORM_URL,
+        help="Opens the ERP newsletter-suggestions Microsoft Form in a new tab.",
+    )
 
-    # Normalise article_date to date objects for filtering.
-    # Scraped rows use ISO (YYYY-MM-DD); curator-added rows use DD-MM-YYYY,
-    # so dayfirst=True keeps both safe.
+    st.markdown("---")
+
+    # Normalise article_date. Scraped rows = ISO; curator-added = DD-MM-YYYY;
+    # dayfirst=True handles both.
     df = df.copy()
     df["_article_date"] = pd.to_datetime(
         df["article_date"], errors="coerce", dayfirst=True
     ).dt.date
 
-    with st.container(border=True):
-        col_dates, col_count = st.columns([1, 2])
-        with col_dates:
-            date_range = st.date_input(
-                "Date range",
-                value=(week_start, week_end),
-                key="review_date_range",
-            )
-
-        # st.date_input returns a tuple of len 2 once both ends are picked,
-        # but len 1 (or a bare date) mid-selection — handle both.
-        if isinstance(date_range, tuple):
-            since = date_range[0]
-            until = date_range[1] if len(date_range) > 1 else date_range[0]
-        else:
-            since = until = date_range
-
-        filtered = df[
-            (df["_article_date"] >= since) & (df["_article_date"] <= until)
-        ].copy()
-
-        if st.session_state.curator_articles:
-            curator_df = pd.DataFrame(st.session_state.curator_articles)
-            curator_df["curator_added"] = True
-            if "curator_added" not in filtered.columns:
-                filtered["curator_added"] = False
-            filtered = pd.concat([filtered, curator_df], ignore_index=True)
-
-        n_curator = filtered["curator_added"].sum() if "curator_added" in filtered.columns else 0
-        range_label = f"{since:%d %b} – {until:%d %b}" if since != until else f"{since:%d %b}"
-        with col_count:
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.info(f"**{range_label}:** {len(filtered)} articles to review" + (f" ({n_curator} added by curator)" if n_curator else ""))
-
-    # Download for manual review (scoped to the selected range)
-    review_cols = ["title", "source", "article_date", "url", "top1", "top1_confidence", "top2", "top2_confidence"]
-    available = [c for c in review_cols if c in filtered.columns]
-    review_export = filtered[available].copy()
-    if "top1_confidence" in review_export.columns:
-        review_export["top1_confidence"] = (review_export["top1_confidence"] * 100).round(0).astype("Int64")
-    if "top2_confidence" in review_export.columns:
-        review_export["top2_confidence"] = (review_export["top2_confidence"] * 100).round(0).astype("Int64")
-
-    buffer = BytesIO()
-    review_export.to_excel(buffer, index=False, engine="openpyxl")
-    buffer.seek(0)
-
-    download_slug = f"{since:%Y%m%d}_{until:%Y%m%d}" if since != until else f"{since:%Y%m%d}"
-    st.download_button(
-        f"Download {range_label} articles for manual review",
-        buffer,
-        file_name=f"review_{download_slug}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
+    # ── Week selector ───────────────────────────────────────────────────────
+    weeks = _week_options(df)
+    selected_label = st.selectbox(
+        "Week", [w[0] for w in weeks], index=0,
+        help="Articles are scraped once a week (Tuesday morning). Each week runs Tue–Mon.",
+    )
+    week_start, week_end = next(
+        (s, e) for (lbl, s, e) in weeks if lbl == selected_label
     )
 
-    st.markdown("")
+    filtered = df[
+        (df["_article_date"] >= week_start) & (df["_article_date"] <= week_end)
+    ].copy()
 
-    # Pull current decisions (cached 60s)
+    # ── Filters ─────────────────────────────────────────────────────────────
     decisions = load_decisions()
-
-    # Status filter + Category filter + Sort + Progress
-    STATUS_OPTIONS = ["All", "Pending", "Saved for later", "Accepted", "Rejected"]
-    CATEGORY_OPTIONS = ["All"] + CATEGORY_ORDER
-    col_status, col_category, col_sort, col_progress = st.columns(4)
+    STATUS_OPTIONS = ["Pending", "All", "Kept", "Rejected", "Categorised"]
+    col_status, col_sort = st.columns(2)
     with col_status:
         status_filter = st.selectbox("Show", STATUS_OPTIONS, index=0)
-    with col_category:
-        category_filter = st.selectbox(
-            "Category",
-            CATEGORY_OPTIONS,
-            index=0,
-            format_func=lambda c: "All" if c == "All" else CATEGORY_LABELS.get(c, c),
-        )
     with col_sort:
-        sort_by = st.selectbox("Order by", ["Date (newest first)", "Date (oldest first)", "Source"])
-
-    def _status_for(url: str) -> str:
-        dec = decisions.get(url)
-        if not dec: return "Pending"
-        a = dec.get("action")
-        if a == "reject": return "Rejected"
-        if a == "save_for_later": return "Saved for later"
-        return "Accepted"
+        sort_by = st.selectbox(
+            "Order by", ["Date (newest first)", "Date (oldest first)", "Source"]
+        )
 
     if status_filter != "All":
-        filtered = filtered[filtered["url"].apply(lambda u: _status_for(u) == status_filter)].copy()
-
-    if category_filter != "All":
-        filtered = filtered[
-            (filtered["top1"] == category_filter) | (filtered["top2"] == category_filter)
-        ].copy()
-
-    # "Reviewed this week" — fixed anchor to current Mon→Sun, NOT the filter range.
-    # Counter measures the curator's actual decisions this week, independent
-    # of what's on screen. `save_for_later` is excluded — it means "I'll come
-    # back to it", not a decision.
-    this_week = df[(df["_article_date"] >= week_start) & (df["_article_date"] <= week_end)]
-    n_reviewed_week = sum(
-        1 for url in this_week["url"]
-        if url in decisions and decisions[url].get("action") not in (None, "save_for_later")
-    )
-    with col_progress:
-        st.markdown(f"**Reviewed this week:** {n_reviewed_week}")
-
-    # Primary sort: review status (pending first, reviewed pushed down).
-    # Secondary: chosen by the curator (date or source).
-    _STATUS_ORDER = {"Pending": 0, "Saved for later": 1, "Accepted": 2, "Rejected": 3}
-    filtered = filtered.assign(_status_rank=filtered["url"].apply(
-        lambda u: _STATUS_ORDER.get(_status_for(u), 0)
-    ))
+        filtered = filtered[filtered["url"].apply(
+            lambda u: _status_for(u, decisions) == status_filter
+        )].copy()
 
     if sort_by == "Date (newest first)":
-        filtered = filtered.sort_values(
-            ["_status_rank", "article_date"], ascending=[True, False], na_position="last"
-        )
+        filtered = filtered.sort_values("_article_date", ascending=False, na_position="last")
     elif sort_by == "Date (oldest first)":
-        filtered = filtered.sort_values(
-            ["_status_rank", "article_date"], ascending=[True, True], na_position="last"
-        )
+        filtered = filtered.sort_values("_article_date", ascending=True, na_position="last")
     else:
-        filtered = filtered.sort_values(
-            ["_status_rank", "source"], ascending=[True, True], na_position="last"
+        filtered = filtered.sort_values("source", ascending=True, na_position="last")
+
+    st.info(f"**{selected_label}** — {len(filtered)} article(s) shown ({status_filter})")
+
+    # ── Article cards ───────────────────────────────────────────────────────
+    auth = is_authenticated()
+    for idx, row in filtered.iterrows():
+        url = row.get("url") or str(idx)
+        title = row.get("title", "No title")
+        source_name = SOURCE_LABELS.get(row.get("source", ""), row.get("source", ""))
+        article_date = row.get("article_date", "")
+        status = _status_for(url, decisions)
+        current_summary = (decisions.get(url) or {}).get("summary") or ""
+
+        st.markdown(
+            "<div style='border-top:3px solid #1d3461;margin:20px 0;'></div>",
+            unsafe_allow_html=True,
         )
-    filtered = filtered.drop(columns=["_status_rank"])
-
-    # Article cards
-    for card_idx, (idx, row) in enumerate(filtered.iterrows()):
-        url = row.get("url", str(idx))
-        conf1 = row.get("top1_confidence")
-        conf2 = row.get("top2_confidence")
-        conf1 = float(conf1) if pd.notna(conf1) else None
-        conf2 = float(conf2) if pd.notna(conf2) else None
-        cat1 = row.get("top1") if pd.notna(row.get("top1")) else None
-        cat2 = row.get("top2") if pd.notna(row.get("top2")) else None
-        cat1_label = CATEGORY_LABELS.get(cat1, cat1) if cat1 else "(unclassified)"
-        cat2_label = CATEGORY_LABELS.get(cat2, cat2) if cat2 else ""
-
-        def _conf_color(c):
-            if c is None: return "#999999"
-            return "#27ae60" if c >= 0.6 else "#f39c12" if c >= 0.4 else "#e74c3c"
-        conf1_color = _conf_color(conf1)
-        conf2_color = _conf_color(conf2)
-
-        decision = decisions.get(url)
-
-        st.markdown(f"<div style='border-top:3px solid #1d3461;margin:20px 0;'></div>", unsafe_allow_html=True)
-        st.markdown(f"### {row.get('title', 'No title')}")
+        st.markdown(f"### {title}")
 
         with st.container(border=True):
-            is_curator = row.get("curator_added", False)
-            badge = " <span style='background:#f39c12;color:white;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;'>MANUALLY ADDED</span>" if is_curator else ""
-
-            source_name = SOURCE_LABELS.get(row.get('source', ''), row.get('source', ''))
-            link_html = f" &nbsp;<a href='{row['url']}' target='_blank' style='font-size:14px;'>Open article \u2197</a>" if row.get("url") else ""
-            st.markdown(f"<p style='color:#666;font-size:16px;text-align:center;'><b>Source:</b> {source_name}  &middot;  <b>Date:</b> {row.get('article_date', '')}{link_html}{badge}</p>", unsafe_allow_html=True)
+            link_html = (
+                f" &nbsp;<a href='{url}' target='_blank' style='font-size:14px;'>Open article ↗</a>"
+                if url else ""
+            )
+            st.markdown(
+                f"<p style='color:#666;font-size:16px;'>"
+                f"<b>Source:</b> {source_name}  &middot;  <b>Date:</b> {article_date}{link_html}</p>",
+                unsafe_allow_html=True,
+            )
 
             if row.get("text_clean"):
-                with st.expander("Click to preview text"):
+                with st.expander("Preview text"):
                     st.write(str(row["text_clean"])[:500])
 
-            def _label(prefix, lbl, c):
-                if is_curator or c is None:
-                    return f"{prefix}: {lbl}"
-                return f"{prefix}: {lbl} ({c:.0%})"
-            btn1_label = _label("Category 1", cat1_label, conf1)
-            btn2_label = _label("Category 2", cat2_label, conf2)
+            if current_summary:
+                st.markdown(f"**Summary:** {current_summary}")
 
-            auth = is_authenticated()
-            col_a, col_b, col_c, col_d, col_e = st.columns(5)
-            with col_a:
-                if st.button(btn1_label, key=f"acc1_{url}", use_container_width=True, type="primary", disabled=not auth):
-                    record_decision(url, "accept_top1", cat1)
+            col_keep, col_reject, col_summary = st.columns(3)
+            with col_keep:
+                if st.button(
+                    "✓ Keep", key=f"keep_{url}",
+                    type="primary", use_container_width=True, disabled=not auth,
+                ):
+                    record_decision(url, "keep", "")
                     st.rerun()
-            with col_b:
-                if st.button(btn2_label, key=f"acc2_{url}", use_container_width=True, type="tertiary", disabled=not auth):
-                    record_decision(url, "accept_top2", cat2)
-                    st.rerun()
-            with col_c:
-                if st.button("\u270e Manual selection", key=f"man_{url}", use_container_width=True, type="primary", disabled=not auth):
-                    st.session_state[f"show_manual_{url}"] = True
-            with col_d:
-                if st.button("\u2606 Save for later", key=f"save_{url}", use_container_width=True, type="tertiary", disabled=not auth):
-                    record_decision(url, "save_for_later", "")
-                    st.rerun()
-            with col_e:
-                if st.button("\u2715 Reject", key=f"rej_{url}", use_container_width=True, type="secondary", disabled=not auth):
+            with col_reject:
+                if st.button(
+                    "✕ Reject", key=f"reject_{url}",
+                    type="secondary", use_container_width=True, disabled=not auth,
+                ):
                     record_decision(url, "reject", "")
                     st.rerun()
+            with col_summary:
+                if st.button(
+                    "✎ Generate summary", key=f"gen_{url}",
+                    use_container_width=True, disabled=not auth,
+                ):
+                    with st.spinner("Summarising via Claude…"):
+                        new_summary = summarise_article(
+                            title=title,
+                            text=row.get("text_clean", "") or "",
+                            category=row.get("top1"),
+                        )
+                    record_summary(url, new_summary)
+                    st.rerun()
 
-            if st.session_state.get(f"show_manual_{url}", False):
-                manual_col1, manual_col2 = st.columns([3, 1])
-                with manual_col1:
-                    manual_cat = st.selectbox(
-                        "Select category",
-                        options=CATEGORY_ORDER,
-                        format_func=lambda x: CATEGORY_LABELS.get(x, x),
-                        key=f"manual_{url}",
-                    )
-                with manual_col2:
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if st.button("Confirm", key=f"confirm_man_{url}", use_container_width=True, type="primary"):
-                        record_decision(url, "manual", manual_cat)
-                        st.session_state[f"show_manual_{url}"] = False
-                        st.rerun()
-
-            if not decision:
-                st.markdown("<p style='text-align:center;color:#888;font-weight:600;'>Status: Pending</p>", unsafe_allow_html=True)
-            elif decision.get("action") == "reject":
-                st.markdown("<p style='text-align:center;color:#c0392b;font-weight:600;'>Status: Rejected</p>", unsafe_allow_html=True)
-            elif decision.get("action") == "save_for_later":
-                st.markdown("<p style='text-align:center;color:#8e44ad;font-weight:600;'>Status: Saved for later</p>", unsafe_allow_html=True)
-            else:
-                lbl = decision.get("label", "")
-                st.markdown(f"<p style='text-align:center;color:#1e8449;font-weight:600;'>Status: Accepted for {CATEGORY_LABELS.get(lbl, lbl)}</p>", unsafe_allow_html=True)
-
-    # Export decisions
-    if decisions:
-        st.markdown("")
-        decision_rows = []
-        for url, dec in decisions.items():
-            if dec.get("action") == "reject":
-                continue
-            article = df[df["url"] == url].iloc[0] if url in df["url"].values else {}
-            decision_rows.append({
-                "url": url,
-                "title": article.get("title", ""),
-                "curator_label": dec.get("label", ""),
-            })
-        decisions_df = pd.DataFrame(decision_rows)
-
-        buffer_dec = BytesIO()
-        decisions_df.to_excel(buffer_dec, index=False, engine="openpyxl")
-        buffer_dec.seek(0)
-
-        _, dl_dec_col, _ = st.columns([1, 3, 1])
-        with dl_dec_col:
-            st.download_button(
-                f"Download {len(decisions_df)} decisions",
-                buffer_dec,
-                file_name=f"curator_decisions_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+            colour = _STATUS_COLOUR.get(status, "#888")
+            st.markdown(
+                f"<p style='text-align:center;color:{colour};font-weight:600;'>Status: {status}</p>",
+                unsafe_allow_html=True,
             )

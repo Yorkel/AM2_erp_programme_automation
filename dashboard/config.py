@@ -51,3 +51,8 @@ NAVY = "#0f1e3d"
 TEAL = "#44b4a6"
 LIGHT_BLUE = "#5b9bd5"
 MID_BLUE = "#1d3461"
+
+# MS Form URL — Page 1 "Add article" hyperlink. Curators fill the form
+# externally; submissions are stored in MS only for now (post-AM2: sync
+# back into Supabase).
+MS_FORM_URL = "https://forms.office.com/Pages/ResponsePage.aspx?id=_oivH5ipW0yTySEKEdmlwtqBMy17V29Hgbgj295AyCRUNDZDWlJaWUU1V1VKNjRVUThPMklOOVRSWiQlQCN0PWcu"
