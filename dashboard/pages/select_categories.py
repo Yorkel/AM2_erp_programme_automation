@@ -47,8 +47,14 @@ def _status_for(action: str | None) -> str:
     return "Awaiting category"
 
 
+@st.fragment
 def _render_article(art: dict, idx_in_cluster: int):
-    """Render one article card with the category-assignment UI."""
+    """Render one article card with the category-assignment UI.
+
+    Wrapped in @st.fragment so button clicks (Top 1, Top 2, Manual, Reject)
+    only rerun this single card — not the whole page list. Massively cuts
+    perceived latency on a busy queue.
+    """
     url = art.get("url", "")
     title = art.get("title") or "No title"
     source = SOURCE_LABELS.get(art.get("source", ""), art.get("source", ""))
@@ -65,26 +71,50 @@ def _render_article(art: dict, idx_in_cluster: int):
     auth = is_authenticated()
 
     with st.container(border=True):
-        # Title row
-        link_html = (
-            f" &nbsp;<a href='{url}' target='_blank' style='font-size:13px;'>Open article ↗</a>"
-            if url else ""
-        )
-        st.markdown(f"**{title}**", unsafe_allow_html=False)
+        # Title
+        st.markdown(f"### {title}")
+
+        # Source · Date (same shape as Triage)
         st.markdown(
-            f"<p style='color:#666;font-size:14px;margin-top:0;'>"
-            f"<b>Source:</b> {source}  &middot;  <b>Date:</b> {article_date}{link_html}</p>",
+            f"<p style='color:#666;font-size:15px;margin-bottom:4px;'>"
+            f"<b>Source:</b> {source}  &middot;  <b>Date:</b> {article_date}</p>",
             unsafe_allow_html=True,
         )
 
-        # Category buttons
+        # URL (full, clickable) + Status (same line, status right-aligned)
+        col_url, col_status = st.columns([4, 1])
+        with col_url:
+            if url:
+                st.markdown(
+                    f"<p style='font-size:13px;margin:0;overflow-wrap:anywhere;'>"
+                    f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
+                    unsafe_allow_html=True,
+                )
+        with col_status:
+            if status == "Categorised":
+                label = CATEGORY_LABELS.get(curator_label, curator_label or "?")
+                badge_text = f"Status: {label}"
+            else:
+                badge_text = "Status: Awaiting category"
+            colour = _STATUS_COLOUR[status]
+            st.markdown(
+                f"<p style='text-align:right;color:{colour};font-weight:600;margin:0;'>{badge_text}</p>",
+                unsafe_allow_html=True,
+            )
+
+        # Category buttons. Top 1 = green (marker + CSS), Top 2 = blue (primary
+        # which is now orange via theme — we override to blue via marker too).
+        # Reject = secondary grey.
         col_t1, col_t2, col_man = st.columns([2, 2, 3])
         with col_t1:
             label1 = CATEGORY_LABELS.get(top1, "(no top1)") if top1 else "(no top1)"
+            # Green marker (reuses the green-keep CSS injected on Triage if
+            # rendered there; here we inject our own minimal version).
+            st.markdown('<div class="cat-top1-marker"></div>', unsafe_allow_html=True)
             if st.button(
                 f"Top 1: {label1}{conf1}",
-                key=f"cat_t1_{idx_in_cluster}_{url}",
-                type="primary" if action != "accept_top1" else "secondary",
+                key=f"cat_t1_{url}",
+                type="secondary",
                 use_container_width=True,
                 disabled=(not auth) or (top1 is None),
             ):
@@ -92,10 +122,11 @@ def _render_article(art: dict, idx_in_cluster: int):
                 st.rerun()
         with col_t2:
             label2 = CATEGORY_LABELS.get(top2, "(no top2)") if top2 else "(no top2)"
+            st.markdown('<div class="cat-top2-marker"></div>', unsafe_allow_html=True)
             if st.button(
                 f"Top 2: {label2}{conf2}",
-                key=f"cat_t2_{idx_in_cluster}_{url}",
-                type="primary" if action != "accept_top2" else "secondary",
+                key=f"cat_t2_{url}",
+                type="secondary",
                 use_container_width=True,
                 disabled=(not auth) or (top2 is None),
             ):
@@ -111,13 +142,13 @@ def _render_article(art: dict, idx_in_cluster: int):
                 options=CATEGORY_ORDER,
                 index=CATEGORY_ORDER.index(manual_default),
                 format_func=lambda x: CATEGORY_LABELS.get(x, x),
-                key=f"cat_man_choice_{idx_in_cluster}_{url}",
+                key=f"cat_man_choice_{url}",
                 label_visibility="collapsed",
                 disabled=not auth,
             )
             if st.button(
                 "Set manual",
-                key=f"cat_man_btn_{idx_in_cluster}_{url}",
+                key=f"cat_man_btn_{url}",
                 type="primary" if action != "manual" else "secondary",
                 use_container_width=True,
                 disabled=not auth,
@@ -125,17 +156,16 @@ def _render_article(art: dict, idx_in_cluster: int):
                 record_decision(url, "manual", manual_choice)
                 st.rerun()
 
-        # Status badge
-        if status == "Categorised":
-            label = CATEGORY_LABELS.get(curator_label, curator_label or "?")
-            badge_text = f"Status: Categorised as {label}"
-        else:
-            badge_text = "Status: Awaiting category"
-        colour = _STATUS_COLOUR[status]
-        st.markdown(
-            f"<p style='text-align:center;color:{colour};font-weight:600;margin:6px 0 0 0;'>{badge_text}</p>",
-            unsafe_allow_html=True,
-        )
+        # Reject button (full-width row below the category buttons)
+        if st.button(
+            "✕ Reject (remove from kept queue)",
+            key=f"cat_reject_{url}",
+            type="secondary",
+            use_container_width=True,
+            disabled=not auth,
+        ):
+            record_decision(url, "reject", "")
+            st.rerun()
 
 
 def render(df):
@@ -145,6 +175,26 @@ def render(df):
         "Articles covering the same story are grouped together — pick one or "
         "categorise several if they offer different angles."
     )
+
+    # Targeted button colours via marker-divs + sibling-selector CSS.
+    # Top 1 = green (model's best guess), Top 2 = blue (alternative).
+    # Same trick as the Keep button on Triage.
+    st.markdown("""
+    <style>
+    .element-container:has(.cat-top1-marker) { display: none; }
+    .element-container:has(.cat-top1-marker) + div [data-testid="stButton"] button {
+        background-color: #2ecc71 !important;
+        border-color: #27ae60 !important;
+        color: white !important;
+    }
+    .element-container:has(.cat-top2-marker) { display: none; }
+    .element-container:has(.cat-top2-marker) + div [data-testid="stButton"] button {
+        background-color: #3498db !important;
+        border-color: #2980b9 !important;
+        color: white !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     kept = get_kept_articles(df)
     if not kept:

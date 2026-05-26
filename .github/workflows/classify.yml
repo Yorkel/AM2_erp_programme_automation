@@ -38,6 +38,17 @@ jobs:
           CLASSIFIER_API_KEY: ${{ secrets.CLASSIFIER_API_KEY }}
         run: python src/pipeline.py --inference
 
+      - name: Sweep any still-unclassified articles (safety net)
+        # Catches articles missed by the main pipeline — single-article
+        # /predict failures, HF Space cold-start timeouts, race with scrape.
+        # Idempotent: no-op if everything is already classified.
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          CLASSIFIER_API_URL: ${{ secrets.CLASSIFIER_API_URL }}
+          CLASSIFIER_API_KEY: ${{ secrets.CLASSIFIER_API_KEY }}
+        run: python -m src.inference.sweep_unclassified
+
       - name: Summary
         if: always()
         env:

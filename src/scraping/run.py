@@ -272,44 +272,50 @@ def _filter_items(items: list, source: str,
 
 
 def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> None:
-    """Populate Article.summary for each kept item via Claude. Mutates in place.
+    """Populate Article.summary + .geographic_focus + .topic_tags for each kept
+    item via Claude. Mutates in place.
 
-    Cheap (~$0.0003–$0.0008 per item with prompt caching — see header of
-    src/inference/summarise.py). Failures are logged and skipped so a single
-    bad article never blocks the whole scrape.
+    Two Claude calls per article — one for the curator-voice summary
+    (style-anchored on few-shot examples), one for the structured tags.
+    Cheap (~$0.001/article with prompt caching). Failures are logged and
+    skipped — a single bad article never blocks the scrape.
 
-    REQUIRES migration 012 applied (articles.summary + summary_generated_at
-    columns must exist before the upsert touches them).
+    REQUIRES migrations 012 + 013 applied (articles.summary,
+    summary_generated_at, geographic_focus, topic_tags columns).
     """
     if dry_run:
-        print(f"  [dry-run] {source}: would generate summaries for {len(items)} article(s)")
+        print(f"  [dry-run] {source}: would enrich {len(items)} article(s)")
         return
     if not items:
         return
 
     from datetime import datetime
-    from src.inference.summarise import summarise_article
+    from src.inference.summarise import summarise_article, tag_article
 
-    n_ok = 0
+    n_ok_sum = 0
+    n_ok_tag = 0
     n_fail = 0
     for item in items:
         if not isinstance(item, Article):
             continue
-        if item.summary:
-            continue
-        try:
-            item.summary = summarise_article(
-                title=item.title or "",
-                text=item.text or item.text_clean or "",
-                category=None,    # classifier hasn't run yet at scrape time
-            )
-            item.summary_generated_at = datetime.utcnow()
-            n_ok += 1
-        except Exception as e:
-            n_fail += 1
-            print(f"    WARNING: summary failed for {item.url}: {type(e).__name__}: {e}")
-    if n_ok or n_fail:
-        print(f"  {source}: generated {n_ok} summaries"
+        title = item.title or ""
+        body = item.text or item.text_clean or ""
+        if not item.summary:
+            try:
+                item.summary = summarise_article(title=title, text=body, category=None)
+                item.summary_generated_at = datetime.utcnow()
+                n_ok_sum += 1
+            except Exception as e:
+                n_fail += 1
+                print(f"    WARNING: summary failed for {item.url}: {type(e).__name__}: {e}")
+        if not item.geographic_focus and not item.topic_tags:
+            tags = tag_article(title=title, text=body)
+            if tags.get("geographic_focus") or tags.get("topic_tags"):
+                item.geographic_focus = tags.get("geographic_focus") or None
+                item.topic_tags = tags.get("topic_tags") or None
+                n_ok_tag += 1
+    if n_ok_sum or n_ok_tag or n_fail:
+        print(f"  {source}: {n_ok_sum} summaries, {n_ok_tag} tags"
               + (f" ({n_fail} failed)" if n_fail else ""))
 
 

@@ -130,7 +130,7 @@ def render(df):
 
     # ── Filters ─────────────────────────────────────────────────────────────
     decisions = load_decisions()
-    STATUS_OPTIONS = ["Pending", "All", "Kept", "Rejected", "Categorised"]
+    STATUS_OPTIONS = ["Pending", "All", "Kept", "Rejected"]
     col_status, col_sort = st.columns(2)
     with col_status:
         status_filter = st.selectbox("Show", STATUS_OPTIONS, index=0)
@@ -154,93 +154,92 @@ def render(df):
     st.info(f"**{selected_label}** — {len(filtered)} article(s) shown ({status_filter})")
 
     # ── Article cards ───────────────────────────────────────────────────────
-    auth = is_authenticated()
     for idx, row in filtered.iterrows():
-        url = row.get("url") or str(idx)
-        title = row.get("title", "No title")
-        source_name = SOURCE_LABELS.get(row.get("source", ""), row.get("source", ""))
-        article_date = row.get("article_date", "")
-        status = _status_for(url, decisions)
-        # Display fallback: curator edit > pre-generated (articles.summary) > empty.
-        # articles.summary comes through v_dashboard after migration 012.
-        current_summary = (
-            (decisions.get(url) or {}).get("summary")
-            or row.get("summary")
-            or ""
-        )
+        _render_triage_card(row.to_dict())
 
+
+@st.fragment
+def _render_triage_card(row: dict):
+    """Render one article card. Wrapped in @st.fragment so clicks
+    (Keep, Reject, Generate Summary) only rerun this single card — not
+    the whole 100-card list. Fetches own decisions for fresh state."""
+    decisions = load_decisions()
+    auth = is_authenticated()
+    url = row.get("url") or ""
+    title = row.get("title", "No title") or "No title"
+    source_name = SOURCE_LABELS.get(row.get("source", ""), row.get("source", "") or "")
+    article_date = row.get("article_date", "") or ""
+    status = _status_for(url, decisions)
+    current_summary = (
+        (decisions.get(url) or {}).get("summary")
+        or row.get("summary")
+        or ""
+    )
+
+    st.markdown(
+        "<div style='border-top:3px solid #1d3461;margin:20px 0;'></div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(f"### {title}")
+
+    with st.container(border=True):
         st.markdown(
-            "<div style='border-top:3px solid #1d3461;margin:20px 0;'></div>",
+            f"<p style='color:#666;font-size:15px;margin-bottom:4px;'>"
+            f"<b>Source:</b> {source_name}  &middot;  <b>Date:</b> {article_date}</p>",
             unsafe_allow_html=True,
         )
-        st.markdown(f"### {title}")
 
-        with st.container(border=True):
-            # Source · Date
+        colour = _STATUS_COLOUR.get(status, "#888")
+        col_url, col_status = st.columns([4, 1])
+        with col_url:
+            if url:
+                st.markdown(
+                    f"<p style='font-size:13px;margin:0;overflow-wrap:anywhere;'>"
+                    f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
+                    unsafe_allow_html=True,
+                )
+        with col_status:
             st.markdown(
-                f"<p style='color:#666;font-size:15px;margin-bottom:4px;'>"
-                f"<b>Source:</b> {source_name}  &middot;  <b>Date:</b> {article_date}</p>",
+                f"<p style='text-align:right;color:{colour};font-weight:600;margin:0;'>"
+                f"Status: {status}</p>",
                 unsafe_allow_html=True,
             )
 
-            # URL (full, clickable) + Status (same line, status right-aligned)
-            colour = _STATUS_COLOUR.get(status, "#888")
-            col_url, col_status = st.columns([4, 1])
-            with col_url:
-                if url:
-                    st.markdown(
-                        f"<p style='font-size:13px;margin:0;overflow-wrap:anywhere;'>"
-                        f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
-                        unsafe_allow_html=True,
-                    )
-            with col_status:
+        with st.expander("📋 Show summary", expanded=False):
+            if current_summary:
                 st.markdown(
-                    f"<p style='text-align:right;color:{colour};font-weight:600;margin:0;'>"
-                    f"Status: {status}</p>",
+                    f"<div style='background:#f8f4ea;border-left:3px solid #f39c12;"
+                    f"padding:8px 12px;'>{current_summary}</div>",
                     unsafe_allow_html=True,
                 )
-
-            # Summary lives inside an expander — click to reveal. After the
-            # backfill + scrape-time pre-gen, every article has a summary, so
-            # showing it by default is too noisy. Re-generate lives on Page 3.
-            with st.expander("📋 Show summary", expanded=False):
-                if current_summary:
-                    st.markdown(
-                        f"<div style='background:#f8f4ea;border-left:3px solid #f39c12;"
-                        f"padding:8px 12px;'>{current_summary}</div>",
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.caption("No summary yet for this article.")
-                    if st.button(
-                        "✎ Generate summary", key=f"gen_{url}",
-                        type="primary", use_container_width=True, disabled=not auth,
-                    ):
-                        with st.spinner("Summarising via Claude…"):
-                            new_summary = summarise_article(
-                                title=title,
-                                text=row.get("text_clean", "") or "",
-                                category=row.get("top1"),
-                            )
-                        record_summary(url, new_summary)
-                        st.rerun()
-
-            # Keep / Reject — secondary actions below the summary.
-            # Keep is styled green via the .keep-btn-marker → CSS sibling rule
-            # injected above.
-            col_keep, col_reject = st.columns(2)
-            with col_keep:
-                st.markdown('<div class="keep-btn-marker"></div>', unsafe_allow_html=True)
+            else:
+                st.caption("No summary yet for this article.")
                 if st.button(
-                    "✓ Keep", key=f"keep_{url}",
-                    type="secondary", use_container_width=True, disabled=not auth,
+                    "✎ Generate summary", key=f"gen_{url}",
+                    type="primary", use_container_width=True, disabled=not auth,
                 ):
-                    record_decision(url, "keep", "")
+                    with st.spinner("Summarising via Claude…"):
+                        new_summary = summarise_article(
+                            title=title,
+                            text=row.get("text_clean", "") or "",
+                            category=row.get("top1"),
+                        )
+                    record_summary(url, new_summary)
                     st.rerun()
-            with col_reject:
-                if st.button(
-                    "✕ Reject", key=f"reject_{url}",
-                    type="secondary", use_container_width=True, disabled=not auth,
-                ):
-                    record_decision(url, "reject", "")
-                    st.rerun()
+
+        col_keep, col_reject = st.columns(2)
+        with col_keep:
+            st.markdown('<div class="keep-btn-marker"></div>', unsafe_allow_html=True)
+            if st.button(
+                "✓ Keep", key=f"keep_{url}",
+                type="secondary", use_container_width=True, disabled=not auth,
+            ):
+                record_decision(url, "keep", "")
+                st.rerun()
+        with col_reject:
+            if st.button(
+                "✕ Reject", key=f"reject_{url}",
+                type="secondary", use_container_width=True, disabled=not auth,
+            ):
+                record_decision(url, "reject", "")
+                st.rerun()

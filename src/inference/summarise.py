@@ -216,6 +216,76 @@ def summarise_article(*, title: str, text: str, category: str | None = None,
     return response.content[0].text.strip()
 
 
+# ─── Enrichment: geographic_focus + topic_tags ───────────────────────────────
+
+_ENRICH_SYSTEM = """You tag UK education-newsletter articles. The newsletter covers \
+UK schools, FE, and pre-HE education (NOT higher education).
+
+For each article, return STRICT JSON with these two fields and no commentary:
+
+- "geographic_focus": exactly one of "England", "Scotland", "Wales", \
+"Northern Ireland", "UK-wide", "International".
+- "topic_tags": list of 3-5 lowercase, hyphen-separated tags. Examples: \
+"send", "teacher-pay", "ai-in-classrooms", "raac", "child-poverty", \
+"ofsted-inspections", "school-funding", "mental-health", "exam-results". \
+Pick tags that are specific enough to be filter-useful but standardised \
+(reuse common tags rather than inventing new ones).
+
+Output ONLY the JSON object. No markdown fences, no preamble."""
+
+
+def tag_article(*, title: str, text: str, model: str = DEFAULT_MODEL,
+                client=None) -> dict:
+    """Return {"geographic_focus": str, "topic_tags": list[str]} for one article.
+
+    Separate from `summarise_article` so the curator-voice summary stays
+    style-anchored on few-shot examples while tagging gets a tight structured
+    prompt. Cheap — ~$0.0005 per call with prompt caching.
+
+    On parse failure returns {"geographic_focus": "", "topic_tags": []} rather
+    than raising — the scrape pipeline shouldn't break on a single bad article.
+    """
+    import json
+    if client is None:
+        from anthropic import Anthropic
+        client = Anthropic()
+
+    body_truncated = " ".join((text or "").split()[:TEXT_TRUNCATE_WORDS])
+    user_prompt = f"TITLE: {title}\n\nTEXT: {body_truncated}"
+
+    try:
+        resp = client.messages.create(
+            model=model,
+            max_tokens=200,
+            temperature=0.0,  # determinism — same article → same tags
+            system=[{
+                "type": "text",
+                "text": _ENRICH_SYSTEM,
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        # Strip code fences if Claude added them despite the instruction
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        parsed = json.loads(raw)
+        return {
+            "geographic_focus": (parsed.get("geographic_focus") or "").strip(),
+            "topic_tags": [
+                t.strip().lower() for t in (parsed.get("topic_tags") or [])
+                if isinstance(t, str) and t.strip()
+            ][:5],
+        }
+    except Exception as e:
+        import sys
+        print(f"  tag_article failed: {type(e).__name__}: {e}", file=sys.stderr)
+        return {"geographic_focus": "", "topic_tags": []}
+
+
 def summarise_batch(items: list[dict], *, model: str = DEFAULT_MODEL,
                     seed: int | None = None,
                     on_progress=None) -> list[dict]:

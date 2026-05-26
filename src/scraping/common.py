@@ -36,6 +36,8 @@ class Article:
     week_number: int | None = None
     summary: str | None = None         # pre-generated Claude summary (filled in run.py)
     summary_generated_at: datetime | None = None
+    geographic_focus: str | None = None  # one of England/Scotland/Wales/NI/UK-wide/International
+    topic_tags: list[str] | None = None  # 3-5 lowercase hyphen-separated tags
     extra: dict = field(default_factory=dict)
 
     def to_record(self) -> dict:
@@ -56,6 +58,8 @@ class Article:
             "summary_generated_at": (
                 self.summary_generated_at.isoformat() if self.summary_generated_at else None
             ),
+            "geographic_focus": self.geographic_focus,
+            "topic_tags": self.topic_tags,
         }
         return {k: v for k, v in rec.items() if v is not None}
 
