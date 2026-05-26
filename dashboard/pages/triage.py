@@ -200,28 +200,30 @@ def render(df):
                     unsafe_allow_html=True,
                 )
 
-            # Generate summary (orange — primary action, top of action area)
-            if st.button(
-                "✎ Generate summary", key=f"gen_{url}",
-                type="primary", use_container_width=True, disabled=not auth,
-            ):
-                with st.spinner("Summarising via Claude…"):
-                    new_summary = summarise_article(
-                        title=title,
-                        text=row.get("text_clean", "") or "",
-                        category=row.get("top1"),
+            # Summary lives inside an expander — click to reveal. After the
+            # backfill + scrape-time pre-gen, every article has a summary, so
+            # showing it by default is too noisy. Re-generate lives on Page 3.
+            with st.expander("📋 Show summary", expanded=False):
+                if current_summary:
+                    st.markdown(
+                        f"<div style='background:#f8f4ea;border-left:3px solid #f39c12;"
+                        f"padding:8px 12px;'>{current_summary}</div>",
+                        unsafe_allow_html=True,
                     )
-                record_summary(url, new_summary)
-                st.rerun()
-
-            # Summary text — appears between Generate button and Keep/Reject
-            if current_summary:
-                st.markdown(
-                    f"<div style='background:#f8f4ea;border-left:3px solid #f39c12;"
-                    f"padding:8px 12px;margin:8px 0;'>"
-                    f"<b>Summary:</b> {current_summary}</div>",
-                    unsafe_allow_html=True,
-                )
+                else:
+                    st.caption("No summary yet for this article.")
+                    if st.button(
+                        "✎ Generate summary", key=f"gen_{url}",
+                        type="primary", use_container_width=True, disabled=not auth,
+                    ):
+                        with st.spinner("Summarising via Claude…"):
+                            new_summary = summarise_article(
+                                title=title,
+                                text=row.get("text_clean", "") or "",
+                                category=row.get("top1"),
+                            )
+                        record_summary(url, new_summary)
+                        st.rerun()
 
             # Keep / Reject — secondary actions below the summary.
             # Keep is styled green via the .keep-btn-marker → CSS sibling rule
