@@ -125,9 +125,9 @@ def _render_article(art: dict, idx_in_cluster: int):
                 unsafe_allow_html=True,
             )
 
-        # Action buttons — all four on ONE row.
-        # Top 1 (green) | Top 2 (blue) | Manual (dropdown + Set) | Remove (grey)
-        col_t1, col_t2, col_man, col_rem = st.columns([2, 2, 3, 1])
+        # Action buttons — all four on ONE row, equal-width.
+        # Top 1 (green) | Top 2 (blue) | Select (dropdown) | Remove (grey)
+        col_t1, col_t2, col_man, col_rem = st.columns([2, 2, 2, 1])
         with col_t1:
             short1 = CATEGORY_SHORT_LABELS.get(top1, "(no top1)") if top1 else "(no top1)"
             st.markdown('<div class="cat-top1-marker"></div>', unsafe_allow_html=True)
@@ -157,7 +157,7 @@ def _render_article(art: dict, idx_in_cluster: int):
             # on_change callback — no separate Apply button.
             # First option is "Manual ▾" placeholder; picking a real category
             # records action=manual with that label.
-            MANUAL_PLACEHOLDER = "Manual ▾"
+            MANUAL_PLACEHOLDER = "Select"
             options = [MANUAL_PLACEHOLDER] + list(CATEGORY_ORDER)
 
             def _on_pick_manual(_url=url):
@@ -203,19 +203,30 @@ def render(df):
         "categorise several if they offer different angles."
     )
 
-    # Aggressive page-wide shrink — buttons + selectbox inputs were too big.
+    # Aggressive page-wide shrink — buttons + selectbox should look the
+    # same size (height + font) so the 4-button row reads as one unit.
     st.markdown("""
     <style>
+    /* Buttons */
     [data-testid="stButton"] button,
     [data-testid="stPopover"] button {
         font-size: 11px !important;
         padding: 3px 6px !important;
         min-height: 28px !important;
+        height: 28px !important;
         line-height: 1.2 !important;
     }
-    [data-testid="stSelectbox"] div[data-baseweb="select"] {
-        font-size: 11px !important;
+    /* Selectbox — match button height. Streamlit wraps in multiple divs;
+       the real input lives inside [data-baseweb="select"]. */
+    [data-testid="stSelectbox"] > div,
+    [data-testid="stSelectbox"] [data-baseweb="select"],
+    [data-testid="stSelectbox"] [data-baseweb="select"] > div {
         min-height: 28px !important;
+        height: 28px !important;
+        font-size: 11px !important;
+    }
+    [data-testid="stSelectbox"] [data-baseweb="select"] input {
+        font-size: 11px !important;
     }
     [data-testid="stSelectbox"] label {
         font-size: 11px !important;
