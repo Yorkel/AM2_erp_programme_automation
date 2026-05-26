@@ -174,6 +174,18 @@ def add_curator_article(
     load_classified_articles.clear()
 
 
+def record_feedback(suggestions: str) -> None:
+    """Append a free-text feedback row to curator_feedback (table from migration 008).
+    Anonymous — no curator identity is recorded, per the Page 3 feedback-box spec.
+    """
+    if not suggestions or not suggestions.strip():
+        return
+    client = get_client()
+    client.table("curator_feedback").insert({
+        "suggestions": suggestions.strip(),
+    }).execute()
+
+
 def record_summary(url: str, summary: str) -> None:
     """Persist a generated LLM summary onto a curator_decisions row.
 

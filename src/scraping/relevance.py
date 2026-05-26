@@ -163,6 +163,219 @@ def is_non_uk_content(title: str | None, body: str | None) -> str | None:
     return None
 
 
+# Approved-domain allowlist. Articles whose URL netloc isn't in this list are
+# dropped at scrape time — regardless of which source/alert surfaced them.
+# Derived from data/sources_master.csv URLs (+ a few hand-added approved
+# domains: bbc.co.uk, teachertapp.com, education-ni.gov.uk). Sub-domains of
+# an approved domain also pass (e.g. educationhub.blog.gov.uk matches gov.uk).
+# To regenerate after editing sources_master.csv:
+#   python -c "from urllib.parse import urlparse; import pandas as pd; \
+#     df = pd.read_csv('data/sources_master.csv'); \
+#     print(sorted({urlparse(u).netloc.lower().lstrip('.').removeprefix('www.') for u in df['url'].dropna()}))"
+APPROVED_DOMAINS: tuple[str, ...] = (
+    "5rightsfoundation.com",
+    "adalovelaceinstitute.org",
+    "ades.scot",
+    "ascl.org.uk",
+    "bbc.co.uk",
+    "belfasttelegraph.co.uk",
+    "bera.ac.uk",
+    "blogs.gov.scot",
+    "blogs.ucl.ac.uk",
+    "cfey.org",
+    "chartered.college",
+    "childreninscotland.org.uk",
+    "childrens-participation.org",
+    "childrenscommissioner.gov.uk",
+    "closer.ac.uk",
+    "committees.parliament.uk",
+    "cpag.org.uk",
+    "cstuk.org.uk",
+    "defenddigitalme.org",
+    "digitalpovertyalliance.org",
+    "durham.ac.uk",
+    "edtech.oii.ox.ac.uk",
+    "education-ni.gov.uk",
+    "educationdevelopmenttrust.com",
+    "educationendowmentfoundation.org.uk",
+    "epi.org.uk",
+    "eppi.ioe.ac.uk",
+    "fed.education",
+    "ffteducationdatalab.org.uk",
+    "futuregenerations.wales",
+    "gla.ac.uk",
+    "google.co.uk",
+    "gov.scot",
+    "gov.uk",
+    "gov.wales",
+    "greatermanchester-ca.gov.uk",
+    "gtcs.org.uk",
+    "hepi.ac.uk",
+    "hwb.gov.wales",
+    "instituteforgovernment.org.uk",
+    "jacobsfoundation.org",
+    "joehallgarten.substack.com",
+    "jrf.org.uk",
+    "local.gov.uk",
+    "lpiphub.bham.ac.uk",
+    "magicsmoke.substack.com",
+    "matthewevanseducation.substack.com",
+    "mmu.ac.uk",
+    "naht.org.uk",
+    "nesta.org.uk",
+    "neu.org.uk",
+    "nfer.ac.uk",
+    "northernireland.gov.uk",
+    "nottingham.ac.uk",
+    "nuffieldfoundation.org",
+    "oecd.org",
+    "parliament.scot",
+    "parliament.uk",
+    "post.parliament.uk",
+    "profbeckyallen.substack.com",
+    "publicengagement.ac.uk",
+    "ripl.uk",
+    "schoolsweek.co.uk",
+    "senedd.wales",
+    "sera.ac.uk",
+    "spice-spotlight.scot",
+    "suttontrust.com",
+    "teacherselect.org",
+    "teachertapp.co.uk",
+    "teachertapp.com",
+    "tes.com",
+    "theguardian.com",
+    "theippo.co.uk",
+    "tpea.ac.uk",
+    "ucl.ac.uk",
+    "ukri.org",
+    "upen.us14.list-manage.com",
+    "wcpp.org.uk",
+    "wonkhe.com",
+)
+
+# Broad subset of APPROVED_DOMAINS where the keyword filter must additionally
+# pass before the article is kept. These are general-purpose sources
+# (BBC, Guardian, universities, parliaments, broader policy bodies) that
+# publish on many topics, not just education.
+BROAD_DOMAINS: tuple[str, ...] = (
+    # General news / TV
+    "bbc.co.uk",
+    "belfasttelegraph.co.uk",
+    "theguardian.com",
+    # Universities (their news pages publish on every research area)
+    "durham.ac.uk",
+    "gla.ac.uk",
+    "mmu.ac.uk",
+    "nottingham.ac.uk",
+    "ucl.ac.uk",
+    # Parliaments + select committees
+    "committees.parliament.uk",
+    "parliament.scot",
+    "parliament.uk",
+    "post.parliament.uk",
+    "senedd.wales",
+    "spice-spotlight.scot",
+    # Broader policy / research orgs
+    "adalovelaceinstitute.org",
+    "closer.ac.uk",
+    "futuregenerations.wales",
+    "instituteforgovernment.org.uk",
+    "jrf.org.uk",
+    "nesta.org.uk",
+    "oecd.org",
+    "theippo.co.uk",
+    "ukri.org",
+    "wcpp.org.uk",
+    # Single-author general-topic Substacks
+    "magicsmoke.substack.com",
+)
+
+
+# Title-keyword blocklist — articles whose title contains any of these
+# (word-boundary match) are dropped, regardless of source. Editorial scope
+# decision: trans-rights coverage is out of scope for the ERP newsletter.
+BLOCKED_TITLE_KEYWORDS: tuple[str, ...] = (
+    "trans",
+    "transgender",
+)
+
+
+# Known paywall domains — articles from these are dropped before the
+# approved-domain check, even if the domain were ever added to APPROVED_DOMAINS.
+# Belts-and-braces: protects against accidental approval. Curators can add
+# observed paywall domains here as they appear.
+PAYWALL_DOMAINS: tuple[str, ...] = (
+    "telegraph.co.uk",
+    "thetimes.com",
+    "thetimes.co.uk",
+    "thesundaytimes.co.uk",
+    "ft.com",
+    "spectator.co.uk",
+    "spectator.com",
+    "thesun.co.uk",  # tabloid, partial paywall
+)
+
+_APPROVED_DOMAINS_SET = frozenset(APPROVED_DOMAINS)
+_BROAD_DOMAINS_SET = frozenset(BROAD_DOMAINS)
+_PAYWALL_DOMAINS_SET = frozenset(PAYWALL_DOMAINS)
+_BLOCKED_TITLE_PATTERNS: list | None = None  # lazy-compiled on first use
+
+
+def _article_netloc(url: str) -> str:
+    """Normalise a URL down to its netloc — lowercased, leading dots stripped,
+    `www.` stripped. Returns "" for invalid input."""
+    if not isinstance(url, str) or not url:
+        return ""
+    netloc = urlparse(url).netloc.lower().lstrip(".")
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    return netloc
+
+
+def is_approved_domain(url: str) -> bool:
+    """True if `url`'s netloc exactly matches an entry in APPROVED_DOMAINS.
+
+    NOTE: exact match only — sub-domains of an approved domain are NOT
+    automatically approved. This avoids accidentally approving e.g.
+    argyll-bute.gov.uk (a council on the gov.uk subdomain) when only gov.uk
+    is intended. Add new sub-domains explicitly to APPROVED_DOMAINS if needed.
+    """
+    return _article_netloc(url) in _APPROVED_DOMAINS_SET
+
+
+def matched_blocked_title_keyword(title: str | None) -> str | None:
+    """Return the first matching BLOCKED_TITLE_KEYWORDS entry if `title`
+    contains any of them (word-boundary), else None. Used to drop articles
+    on out-of-scope topics regardless of which approved source surfaced them."""
+    global _BLOCKED_TITLE_PATTERNS
+    if not isinstance(title, str) or not title.strip():
+        return None
+    if _BLOCKED_TITLE_PATTERNS is None:
+        _BLOCKED_TITLE_PATTERNS = compile_keyword_patterns(BLOCKED_TITLE_KEYWORDS)
+    haystack = title.lower()
+    for kw, p in zip(BLOCKED_TITLE_KEYWORDS, _BLOCKED_TITLE_PATTERNS):
+        if p.search(haystack):
+            return kw
+    return None
+
+
+def is_paywall_domain(url: str) -> bool:
+    """True if `url`'s netloc exactly matches a known paywall domain
+    (see PAYWALL_DOMAINS). Checked before is_approved_domain() so paywall
+    rejections get a specific reason in the rejection log."""
+    return _article_netloc(url) in _PAYWALL_DOMAINS_SET
+
+
+def is_broad_domain(url: str) -> bool:
+    """True if `url`'s netloc is on the BROAD_DOMAINS subset of approved
+    sources. Broad-domain articles need the education keyword filter to
+    pass before being kept (general news / university news / parliaments
+    cover many topics, not just education). Exact match only — same rule
+    as is_approved_domain()."""
+    return _article_netloc(url) in _BROAD_DOMAINS_SET
+
+
 DEFAULT_EDUCATION_KEYWORDS: tuple[str, ...] = (
     # Core schools + sectors
     "school", "schools", "pupil", "pupils", "student", "students",

@@ -726,11 +726,9 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2233608528354694374"}
     # source: NEU news mentions (Google Alert)  |  coverage: alert
 
-  - name: scotland_scottish_parliament_children_young_people_four_nati
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11186449324381143780"}
-    # source: Scottish Parliament Education C&YP Committee (Google Alert)  |  coverage: four_nations_scotland
+# scotland_scottish_parliament_children_young_people_four_nati REMOVED 2026-05-26
+# — duplicate of scotland_scottish_parliament_children_young_people (line 538);
+# both Google Alerts monitor the same Scottish Parliament Education C&YP Committee.
 
   - name: deni_dept_education_ni_alert
     type: google_alert

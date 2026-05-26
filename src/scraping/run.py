@@ -32,10 +32,14 @@ from src.scraping.config import load_sources
 from src.scraping.relevance import (
     DEFAULT_EDUCATION_KEYWORDS,
     compile_keyword_patterns,
+    is_approved_domain,
     is_blocked_domain,
     is_blocked_url_pattern,
+    is_broad_domain,
     is_non_uk_content,
+    is_paywall_domain,
     log_rejection,
+    matched_blocked_title_keyword,
 )
 from src.scraping.supabase_client import (
     get_client,
@@ -131,7 +135,81 @@ def _filter_items(items: list, source: str,
               f"(domain or URL-path; see data/archive/rejected/)")
     items = pre_kept
 
-    if not apply_filter and require_keywords is None:
+    # ── Title-keyword blocklist (universal — applies to every source) ─────
+    # Drop articles whose title contains an out-of-scope keyword
+    # (e.g. trans-rights coverage). Most specific reason — checked first.
+    title_kept: list = []
+    n_rejected_title = 0
+    for item in items:
+        if isinstance(item, Article):
+            kw = matched_blocked_title_keyword(item.title)
+            if kw:
+                log_rejection(
+                    source=source,
+                    url=item.url,
+                    title=item.title or "",
+                    source_type=item.source_type,
+                    article_date=item.article_date,
+                    matched_keywords_attempted=[f"__blocked_title:{kw}__"],
+                )
+                n_rejected_title += 1
+                continue
+        title_kept.append(item)
+    if n_rejected_title:
+        print(f"  {source}: {n_rejected_title} dropped — blocked title keyword")
+    items = title_kept
+
+    # ── Paywall check (universal — applies to every source) ────────────────
+    # Drop articles whose URL is on the paywall list. Checked before the
+    # approved-domain check so paywall rejections get a distinct reason.
+    paywall_kept: list = []
+    n_rejected_paywall = 0
+    for item in items:
+        if isinstance(item, Article) and is_paywall_domain(item.url):
+            log_rejection(
+                source=source,
+                url=item.url,
+                title=item.title or "",
+                source_type=item.source_type,
+                article_date=item.article_date,
+                matched_keywords_attempted=["__paywall__"],
+            )
+            n_rejected_paywall += 1
+            continue
+        paywall_kept.append(item)
+    if n_rejected_paywall:
+        print(f"  {source}: {n_rejected_paywall} dropped — paywall domain")
+    items = paywall_kept
+
+    # ── Approved-domain allowlist (universal — applies to every source) ────
+    # Drop any article whose URL domain isn't on the curator-approved list.
+    # Mainly catches Google-Alert-sourced articles that landed on random
+    # councils, tabloids, foreign news, etc.
+    domain_kept: list = []
+    n_rejected_domain = 0
+    for item in items:
+        if isinstance(item, Article) and not is_approved_domain(item.url):
+            log_rejection(
+                source=source,
+                url=item.url,
+                title=item.title or "",
+                source_type=item.source_type,
+                article_date=item.article_date,
+                matched_keywords_attempted=["__not_approved_domain__"],
+            )
+            n_rejected_domain += 1
+            continue
+        domain_kept.append(item)
+    if n_rejected_domain:
+        print(f"  {source}: {n_rejected_domain} dropped — URL domain not in approved list")
+    items = domain_kept
+
+    # Determine whether the keyword filter needs to run on each item. The flag
+    # is forced ON for items on BROAD_DOMAINS (BBC, Guardian, universities,
+    # parliaments etc. — covered in relevance.py).
+    if not apply_filter and require_keywords is None and not any(
+        isinstance(it, Article) and is_broad_domain(it.url) for it in items
+    ):
         return items
 
     kws = tuple(require_keywords) if require_keywords is not None else DEFAULT_EDUCATION_KEYWORDS
@@ -140,8 +218,14 @@ def _filter_items(items: list, source: str,
     kept: list = []
     n_rejected_kw = 0
     n_rejected_country = 0
+    n_broad_filtered = 0
     for item in items:
         if not isinstance(item, Article):
+            kept.append(item)
+            continue
+        item_apply_filter = apply_filter or is_broad_domain(item.url)
+        if not item_apply_filter and require_keywords is None:
+            # Non-broad approved domain, source didn't opt in → no filter
             kept.append(item)
             continue
         # Country veto first — uses title + body since locations are usually
@@ -165,6 +249,8 @@ def _filter_items(items: list, source: str,
         matched = [kw for kw, p in zip(kws, patterns) if p.search(title)]
         if matched:
             kept.append(item)
+            if is_broad_domain(item.url) and not apply_filter:
+                n_broad_filtered += 1
         else:
             log_rejection(
                 source=source,
@@ -180,6 +266,8 @@ def _filter_items(items: list, source: str,
         print(f"  {source}: {n_rejected_country} dropped as non-UK content")
     if n_rejected_kw:
         print(f"  {source}: {n_rejected_kw} dropped — no edu keyword in title")
+    if n_broad_filtered:
+        print(f"  {source}: {n_broad_filtered} broad-domain items passed the keyword filter")
     return kept
 
 
