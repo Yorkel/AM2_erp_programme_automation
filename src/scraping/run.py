@@ -299,10 +299,20 @@ def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> N
         if not isinstance(item, Article):
             continue
         title = item.title or ""
-        body = item.text or item.text_clean or ""
+        # Use only item.text (real body). NEVER fall back to text_clean —
+        # it's a noisy 80-word truncation that often starts with nav cruft
+        # ("HOME > Blog >"). If body is empty, the Claude prompt now returns
+        # "Summary unavailable" rather than fabricating from nothing.
+        body = item.text or ""
         if not item.summary:
             try:
-                item.summary = summarise_article(title=title, text=body, category=None)
+                # Pass only item.text (the real body). If empty, Claude
+                # returns "Summary unavailable" — better than summarising
+                # from text_clean which is a noisy 80-word truncation that
+                # often starts with nav like "HOME > Blog >".
+                item.summary = summarise_article(
+                    title=title, text=item.text or "", category=None,
+                )
                 item.summary_generated_at = datetime.utcnow()
                 n_ok_sum += 1
             except Exception as e:

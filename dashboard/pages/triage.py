@@ -252,10 +252,12 @@ def _render_triage_card(row: dict):
                     type="primary", use_container_width=True, disabled=not auth,
                 ):
                     with st.spinner("Summarising via Claude…"):
-                        # v_dashboard only exposes text_clean (80-word snippet
-                        # that often starts with nav cruft). Fetch the full
-                        # body from articles.text for a better summary.
-                        body = fetch_article_text(url) or row.get("text_clean") or ""
+                        # Fetch full body from articles.text. NEVER fall back
+                        # to text_clean — its first-80-words truncation often
+                        # contains nav cruft ("HOME > Blog >") which produces
+                        # bad summaries. If text is empty, summarise_article
+                        # honestly returns "Summary unavailable".
+                        body = fetch_article_text(url)
                         new_summary = summarise_article(
                             title=title, text=body, category=row.get("top1"),
                         )

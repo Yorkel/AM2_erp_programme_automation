@@ -232,9 +232,9 @@ def render(df):
                         use_container_width=True, disabled=not auth,
                     ):
                         with st.spinner("Summarising via Claude…"):
-                            # Fetch full body from articles.text (v_dashboard
-                            # only exposes text_clean, the 80-word snippet).
-                            body = fetch_article_text(art_url) or art.get("text_clean") or ""
+                            # Fetch full body from articles.text only — no
+                            # fallback to text_clean (nav-heavy truncation).
+                            body = fetch_article_text(art_url)
                             new_summary = summarise_article(
                                 title=title, text=body, category=cat_key,
                             )
