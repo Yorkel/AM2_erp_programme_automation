@@ -15,7 +15,7 @@ import pandas as pd
 from dashboard.config import NAVY, TEAL
 from dashboard.styles import get_css
 from dashboard.data import load_classified_articles, init_session_state
-from dashboard.pages import about, triage, select_categories, draft
+from dashboard.pages import triage, select_categories, draft
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
     st.sidebar.title("Newsletter Curator")
 
     NAV = [
-        "Triage", "Select Categories", "Newsletter Draft", "About",
+        "Triage", "Select Categories", "Newsletter Draft",
     ]
 
     if "current_page" not in st.session_state:
@@ -89,7 +89,7 @@ def main():
 
     df = load_classified_articles()
 
-    if df.empty and page != "About":
+    if df.empty:
         st.error("No classified articles found in Supabase. Run the inference pipeline (s07 → classify_via_api → s10) to populate `classify_newsletter`.")
         st.stop()
 
@@ -98,9 +98,7 @@ def main():
 
     init_session_state()
 
-    if page == "About":
-        about.render()
-    elif page == "Triage":
+    if page == "Triage":
         triage.render(df)
     elif page == "Select Categories":
         select_categories.render(df)
