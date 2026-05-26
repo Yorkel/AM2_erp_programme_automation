@@ -83,7 +83,61 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
     ]
     df = pd.DataFrame(rows, columns=columns)
     buf = BytesIO()
-    df.to_excel(buf, index=False, engine="openpyxl")
+
+    # Formatted Excel — bold header row, ESRC navy fill on headers,
+    # auto-width per column (capped), wrapped text on long-content columns,
+    # frozen header row, banded rows.
+    from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Newsletter draft")
+        ws = writer.sheets["Newsletter draft"]
+
+        # Header styling
+        header_fill = PatternFill("solid", fgColor="0F1E3D")  # ESRC navy
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        thin = Side(border_style="thin", color="888888")
+        cell_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+        for col_idx, col_name in enumerate(columns, start=1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center
+            cell.border = cell_border
+
+        # Per-column widths (chars) + wrap settings
+        wrap_cols = {"Title", "Short description", "Any other comments?", "Question"}
+        width_map = {
+            "Id": 6, "Start time": 13, "Organisation": 22, "Title": 50,
+            "Include": 9, "Link (website address / URL)": 60,
+            "Short description": 60,
+            "Which section of the newsletter is this for?": 28,
+            "Any other comments?": 30, "Submitter": 14, "Question": 24,
+        }
+        for col_idx, col_name in enumerate(columns, start=1):
+            letter = get_column_letter(col_idx)
+            ws.column_dimensions[letter].width = width_map.get(col_name, 18)
+
+        # Body cell styling — wrap text on long-text columns, vertical-top
+        # alignment everywhere so wrapped content stays readable.
+        wrap_align = Alignment(wrap_text=True, vertical="top")
+        plain_align = Alignment(vertical="top")
+        for row_idx in range(2, ws.max_row + 1):
+            # Banded zebra fill on even rows (subtle)
+            band_fill = PatternFill("solid", fgColor="F4F6FA") if row_idx % 2 == 0 else None
+            for col_idx, col_name in enumerate(columns, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                cell.alignment = wrap_align if col_name in wrap_cols else plain_align
+                if band_fill:
+                    cell.fill = band_fill
+
+        # Header row taller; freeze it
+        ws.row_dimensions[1].height = 32
+        ws.freeze_panes = "A2"
+
     buf.seek(0)
     return buf.getvalue()
 
@@ -128,17 +182,7 @@ def render(df):
         unsafe_allow_html=True,
     )
 
-    # Submitter — applies to every row of the Excel download. Lives in session
-    # state only (no persistence) — set per session by the curator running the
-    # draft. Empty cells in MS Form merges are fine.
     auth = is_authenticated()
-    st.text_input(
-        "Submitter",
-        key="draft_submitter",
-        placeholder="e.g. Louise Y",
-        disabled=not auth,
-    )
-
     decisions = load_decisions()
 
     # ── Articles by section ─────────────────────────────────────────────────
