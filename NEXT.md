@@ -1,6 +1,10 @@
 # Pick up here next session
 
-Snapshot saved 2026-05-17 end of day. AM2 deadline: **2026-05-31** (14 days).
+> ⚠️ **SUPERSEDED 2026-05-26.** AM2 deadline is now **end of June 2026** (not 31 May). Most of the 5-step list below has been actioned or overtaken by events. Current pickup state lives in auto-memory `project_state_2026_05_26.md`. Original 2026-05-17 EOD content kept below for history.
+
+---
+
+Snapshot saved 2026-05-17 end of day. AM2 deadline: **2026-05-31** (14 days) — *was current at time of writing; now end of June 2026*.
 
 ## Tomorrow's first 5 steps (in order)
 

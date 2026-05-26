@@ -15,7 +15,7 @@ import pandas as pd
 from dashboard.config import NAVY, TEAL
 from dashboard.styles import get_css
 from dashboard.data import load_classified_articles, init_session_state
-from dashboard.pages import overview, about, add_article, review, organise, draft, feedback
+from dashboard.pages import about, review, draft
 
 
 def main():
@@ -33,12 +33,11 @@ def main():
     st.sidebar.title("Newsletter Curator")
 
     NAV = [
-        "Overview", "Review Articles", "Organise", "Newsletter Draft", "Add Article",
-        "Feedback", "About",
+        "Review", "Newsletter Draft", "About",
     ]
 
     if "current_page" not in st.session_state:
-        st.session_state.current_page = "Overview"
+        st.session_state.current_page = "Review"
     cur = st.session_state.current_page
 
     nav_idx = NAV.index(cur) if cur in NAV else 0
@@ -99,20 +98,12 @@ def main():
 
     init_session_state()
 
-    if page == "Overview":
-        overview.render(df)
-    elif page == "About":
+    if page == "About":
         about.render()
-    elif page == "Add Article":
-        add_article.render()
-    elif page == "Review Articles":
+    elif page == "Review":
         review.render(df)
-    elif page == "Organise":
-        organise.render(df)
     elif page == "Newsletter Draft":
         draft.render(df)
-    elif page == "Feedback":
-        feedback.render()
 
 
 main()

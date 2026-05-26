@@ -6,8 +6,8 @@ Compiled feedback and action items from curator meetings during April–May 2026
 
 ## Deadlines
 
-- **AM2 write-up due 15 May 2026**
-- **Presentation for Goncalo on 15 May 2026**
+- **AM2 write-up due end of June 2026** *(updated 2026-05-26; was 15 May, then 31 May)*
+- **Presentation for Goncalo on 15 May 2026** *(past)*
 - Phase 5 consultation with Gemma and Nina (date open)
 
 ---
