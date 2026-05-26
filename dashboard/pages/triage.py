@@ -146,28 +146,59 @@ def render(df):
         st.markdown(f"### {title}")
 
         with st.container(border=True):
-            link_html = (
-                f" &nbsp;<a href='{url}' target='_blank' style='font-size:14px;'>Open article ↗</a>"
-                if url else ""
-            )
+            # Source · Date
             st.markdown(
-                f"<p style='color:#666;font-size:16px;'>"
-                f"<b>Source:</b> {source_name}  &middot;  <b>Date:</b> {article_date}{link_html}</p>",
+                f"<p style='color:#666;font-size:15px;margin-bottom:4px;'>"
+                f"<b>Source:</b> {source_name}  &middot;  <b>Date:</b> {article_date}</p>",
                 unsafe_allow_html=True,
             )
 
-            if row.get("text_clean"):
-                with st.expander("Preview text"):
-                    st.write(str(row["text_clean"])[:500])
+            # URL (full, clickable) + Status (same line, status right-aligned)
+            colour = _STATUS_COLOUR.get(status, "#888")
+            col_url, col_status = st.columns([4, 1])
+            with col_url:
+                if url:
+                    st.markdown(
+                        f"<p style='font-size:13px;margin:0;overflow-wrap:anywhere;'>"
+                        f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
+                        unsafe_allow_html=True,
+                    )
+            with col_status:
+                st.markdown(
+                    f"<p style='text-align:right;color:{colour};font-weight:600;margin:0;'>"
+                    f"Status: {status}</p>",
+                    unsafe_allow_html=True,
+                )
 
+            # Generate summary (orange — primary action, top of action area)
+            if st.button(
+                "✎ Generate summary", key=f"gen_{url}",
+                type="primary", use_container_width=True, disabled=not auth,
+            ):
+                with st.spinner("Summarising via Claude…"):
+                    new_summary = summarise_article(
+                        title=title,
+                        text=row.get("text_clean", "") or "",
+                        category=row.get("top1"),
+                    )
+                record_summary(url, new_summary)
+                st.rerun()
+
+            # Summary text — appears between Generate button and Keep/Reject
             if current_summary:
-                st.markdown(f"**Summary:** {current_summary}")
+                st.markdown(
+                    f"<div style='background:#f8f4ea;border-left:3px solid #f39c12;"
+                    f"padding:8px 12px;margin:8px 0;'>"
+                    f"<b>Summary:</b> {current_summary}</div>",
+                    unsafe_allow_html=True,
+                )
 
-            col_keep, col_reject, col_summary = st.columns(3)
+            # Keep / Reject — secondary actions below the summary
+            col_keep, col_reject = st.columns(2)
             with col_keep:
                 if st.button(
                     "✓ Keep", key=f"keep_{url}",
-                    type="primary", use_container_width=True, disabled=not auth,
+                    type="secondary", use_container_width=True, disabled=not auth,
                 ):
                     record_decision(url, "keep", "")
                     st.rerun()
@@ -178,22 +209,3 @@ def render(df):
                 ):
                     record_decision(url, "reject", "")
                     st.rerun()
-            with col_summary:
-                if st.button(
-                    "✎ Generate summary", key=f"gen_{url}",
-                    use_container_width=True, disabled=not auth,
-                ):
-                    with st.spinner("Summarising via Claude…"):
-                        new_summary = summarise_article(
-                            title=title,
-                            text=row.get("text_clean", "") or "",
-                            category=row.get("top1"),
-                        )
-                    record_summary(url, new_summary)
-                    st.rerun()
-
-            colour = _STATUS_COLOUR.get(status, "#888")
-            st.markdown(
-                f"<p style='text-align:center;color:{colour};font-weight:600;'>Status: {status}</p>",
-                unsafe_allow_html=True,
-            )
