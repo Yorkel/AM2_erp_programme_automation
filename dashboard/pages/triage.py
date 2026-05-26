@@ -67,11 +67,11 @@ _STATUS_COLOUR = {
 
 
 def render(df):
-    st.title("Review")
+    st.title("Triage")
     st.markdown(
         "Quickly **keep** or **reject** each article from this week's pull. "
-        "Kept articles move to **Organise** for category assignment, then to "
-        "**Newsletter Draft**."
+        "Kept articles move to **Select Categories** for category assignment, "
+        "then to **Newsletter Draft**."
     )
 
     # ── Add Article: external link to MS Form ──────────────────────────────
