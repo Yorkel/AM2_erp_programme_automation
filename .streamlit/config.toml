@@ -1,2 +1,7 @@
 [client]
 showSidebarNavigation = false
+
+[theme]
+# Generate Summary (and other primary actions) render in orange — matches
+# the editorial pattern where "create" actions stand out from accept/reject.
+primaryColor = "#f39c12"

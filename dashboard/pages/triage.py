@@ -74,6 +74,26 @@ def render(df):
         "then to **Newsletter Draft**."
     )
 
+    # Targeted button colours: the Keep button uses a marker div + sibling-selector
+    # so it can be green (positive action) without recolouring every secondary button.
+    # Reject stays neutral grey (Streamlit's default secondary).
+    st.markdown("""
+    <style>
+    /* Keep button = green. The .keep-btn-marker div is placed immediately
+       before the st.button("Keep") call; the adjacent-sibling selector then
+       targets the button's element-container. */
+    .element-container:has(.keep-btn-marker) + div [data-testid="stButton"] button {
+        background-color: #2ecc71 !important;
+        border-color: #27ae60 !important;
+        color: white !important;
+    }
+    .element-container:has(.keep-btn-marker) + div [data-testid="stButton"] button:hover {
+        background-color: #27ae60 !important;
+        border-color: #229954 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # ── Add Article: external link to MS Form ──────────────────────────────
     st.link_button(
         "➕  Add article via form  ↗",
@@ -193,9 +213,12 @@ def render(df):
                     unsafe_allow_html=True,
                 )
 
-            # Keep / Reject — secondary actions below the summary
+            # Keep / Reject — secondary actions below the summary.
+            # Keep is styled green via the .keep-btn-marker → CSS sibling rule
+            # injected above.
             col_keep, col_reject = st.columns(2)
             with col_keep:
+                st.markdown('<div class="keep-btn-marker"></div>', unsafe_allow_html=True)
                 if st.button(
                     "✓ Keep", key=f"keep_{url}",
                     type="secondary", use_container_width=True, disabled=not auth,
