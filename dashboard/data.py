@@ -217,6 +217,29 @@ def init_session_state() -> None:
         st.session_state.draft_descriptions = {}
 
 
+def get_kept_articles(df: pd.DataFrame) -> list[dict]:
+    """Return articles the curator has kept on Page 1 (action='keep') or
+    already categorised (action ∈ {accept_top1, accept_top2, manual}).
+
+    Used by Page 2 (Select Categories). Excludes rejected and save_for_later.
+    Each row carries `action` and `curator_label` so the page can render the
+    correct status badge.
+    """
+    decisions = load_decisions()
+    KEPT_ACTIONS = {"keep", "accept_top1", "accept_top2", "manual"}
+    out: list[dict] = []
+    for url, dec in decisions.items():
+        if dec.get("action") not in KEPT_ACTIONS:
+            continue
+        match = df[df["url"] == url] if not df.empty else pd.DataFrame()
+        row = match.iloc[0].to_dict() if len(match) else {"url": url, "title": "Unknown"}
+        row["action"] = dec.get("action")
+        row["curator_label"] = dec.get("label") or None
+        row["summary"] = dec.get("summary")
+        out.append(row)
+    return out
+
+
 def get_accepted_articles(df: pd.DataFrame) -> list[dict]:
     """Join `v_dashboard` rows with current curator_decisions; return only
     articles the curator has actually accepted (top1, top2, or manual).
