@@ -81,7 +81,11 @@ def render(df):
     <style>
     /* Keep button = green. The .keep-btn-marker div is placed immediately
        before the st.button("Keep") call; the adjacent-sibling selector then
-       targets the button's element-container. */
+       targets the button's element-container. The marker's wrapper is
+       collapsed to 0 height so Keep stays aligned with Reject. */
+    .element-container:has(.keep-btn-marker) {
+        display: none;
+    }
     .element-container:has(.keep-btn-marker) + div [data-testid="stButton"] button {
         background-color: #2ecc71 !important;
         border-color: #27ae60 !important;

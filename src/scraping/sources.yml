@@ -83,8 +83,12 @@ sources:
   - name: children_s_commissioner
     type: rss
     scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.childrenscommissioner.gov.uk/feed"}
+    params:
+      feed_url: "https://www.childrenscommissioner.gov.uk/feed"
+      apply_relevance_filter: true
     # source: Children's commissioner  |  coverage: sector_body
+    # Filter added 2026-05-26 — Commissioner statements often cover crime / wellbeing
+    # rather than education, so the education keyword filter is required.
 
   - name: nesta
     type: google_alert

@@ -106,7 +106,7 @@ def is_blocked_url_pattern(url: str) -> bool:
 # are the surer signal.
 NEGATIVE_COUNTRY_KEYWORDS: tuple[str, ...] = (
     # United States
-    "virginia", "texas", "california", "florida", "ohio",
+    "usa", "virginia", "texas", "california", "florida", "ohio",
     "new york state", "washington dc", "los angeles", "chicago", "boston",
     "white house", "donald trump", "biden",
     "u.s. department", "us department of education",
@@ -117,18 +117,18 @@ NEGATIVE_COUNTRY_KEYWORDS: tuple[str, ...] = (
     # Pakistan / South Asia (also covers India spillover)
     "islamabad", "karachi", "lahore",
     # Australia / NZ
-    "sydney", "melbourne", "brisbane", "canberra", "auckland",
+    "australia", "australian", "sydney", "melbourne", "brisbane", "canberra", "auckland",
     # Continental Europe (general — not London EU coverage)
-    "berlin", "munich", "frankfurt",
-    "paris suburb", "marseille",
-    "madrid", "barcelona",
-    "rome italy", "milan",
+    "germany", "berlin", "munich", "frankfurt",
+    "paris suburb", "marseille", "france",
+    "spain", "madrid", "barcelona",
+    "italy", "rome italy", "milan",
     "switzerland", "swiss", "zurich", "geneva",
     # Middle East
     "tehran", "beirut", "damascus",
     "gaza", "west bank", "nakba",
     # East Asia
-    "tokyo", "beijing", "shanghai", "seoul", "pyongyang",
+    "china", "japan", "tokyo", "beijing", "shanghai", "seoul", "pyongyang",
     # Pacific / Commonwealth overseas
     "solomon islands", "honiara", "fiji", "suva", "papua new guinea",
     "vanuatu", "samoa", "tonga", "kiribati",
@@ -298,6 +298,7 @@ BROAD_DOMAINS: tuple[str, ...] = (
 BLOCKED_TITLE_KEYWORDS: tuple[str, ...] = (
     "trans",
     "transgender",
+    "private school",
 )
 
 
@@ -383,7 +384,9 @@ DEFAULT_EDUCATION_KEYWORDS: tuple[str, ...] = (
     "primary", "secondary", "nursery", "early years", "eyfs",
     "academy", "academies", "trust", "trusts",
     "college", "colleges", "further education", "sixth form",
-    "university", "universities", "higher education", "campus",
+    # HE keywords removed 2026-05-26 — newsletter is schools/pre-HE/FE only
+    # (university/universities/higher education/campus → out of scope; HE
+    # publications like Wonkhe/HEPI are deliberately not re-enabled).
     "education", "educational",
     # Curriculum & assessment
     "curriculum", "gcse", "a-level", "a level", "phonics",
