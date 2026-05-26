@@ -18,7 +18,8 @@ import pandas as pd
 
 from dashboard.config import MS_FORM_URL, SOURCE_LABELS
 from dashboard.data import (
-    is_authenticated, load_decisions, record_decision, record_summary,
+    fetch_article_text, is_authenticated, load_decisions,
+    record_decision, record_summary,
 )
 from src.inference.summarise import summarise_article
 
@@ -251,10 +252,12 @@ def _render_triage_card(row: dict):
                     type="primary", use_container_width=True, disabled=not auth,
                 ):
                     with st.spinner("Summarising via Claude…"):
+                        # v_dashboard only exposes text_clean (80-word snippet
+                        # that often starts with nav cruft). Fetch the full
+                        # body from articles.text for a better summary.
+                        body = fetch_article_text(url) or row.get("text_clean") or ""
                         new_summary = summarise_article(
-                            title=title,
-                            text=row.get("text_clean", "") or "",
-                            category=row.get("top1"),
+                            title=title, text=body, category=row.get("top1"),
                         )
                     record_summary(url, new_summary)
                     st.rerun()

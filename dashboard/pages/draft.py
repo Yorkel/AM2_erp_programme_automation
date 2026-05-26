@@ -18,7 +18,7 @@ import pandas as pd
 
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
 from dashboard.data import (
-    get_accepted_articles, is_authenticated, load_decisions,
+    fetch_article_text, get_accepted_articles, is_authenticated, load_decisions,
     record_decision, record_feedback, record_summary,
 )
 from src.inference.summarise import summarise_article
@@ -232,10 +232,11 @@ def render(df):
                         use_container_width=True, disabled=not auth,
                     ):
                         with st.spinner("Summarising via Claude…"):
+                            # Fetch full body from articles.text (v_dashboard
+                            # only exposes text_clean, the 80-word snippet).
+                            body = fetch_article_text(art_url) or art.get("text_clean") or ""
                             new_summary = summarise_article(
-                                title=title,
-                                text=art.get("text_clean", "") or "",
-                                category=cat_key,
+                                title=title, text=body, category=cat_key,
                             )
                         record_summary(art_url, new_summary)
                         # Drop the widget's session_state key so the next

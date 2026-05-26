@@ -91,6 +91,22 @@ def record_decision(url: str, action: str, label: str) -> None:
     load_decisions.clear()
 
 
+def fetch_article_text(url: str) -> str:
+    """Pull full article body text from `articles.text` for one URL.
+
+    `v_dashboard` only exposes `text_clean` (a truncated 80-word snippet that
+    often starts with nav cruft). The on-demand Generate-Summary buttons on
+    Triage and Draft need the full body to produce a good summary, so this
+    helper fetches it directly from `articles` on click.
+    """
+    if not url:
+        return ""
+    client = get_client()
+    resp = client.table("articles").select("text").eq("url", url).limit(1).execute()
+    rows = resp.data or []
+    return (rows[0].get("text") if rows else "") or ""
+
+
 def is_authenticated() -> bool:
     """True if the curator has entered the correct password this session.
     Read-only browsing is allowed without auth; mutating buttons are gated
