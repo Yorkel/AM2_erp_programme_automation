@@ -222,19 +222,11 @@ def _render_triage_card(row: dict):
             unsafe_allow_html=True,
         )
 
-        # URL + Status on one row
-        col_url, col_status = st.columns([4, 1])
-        with col_url:
-            if url:
-                st.markdown(
-                    f"<p style='font-size:12px;margin:0;overflow-wrap:anywhere;'>"
-                    f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
-                    unsafe_allow_html=True,
-                )
-        with col_status:
+        # URL (full-width, no per-card Status badge — filter already gates view)
+        if url:
             st.markdown(
-                f"<p style='text-align:right;color:{colour};font-weight:600;margin:0;'>"
-                f"Status: {status}</p>",
+                f"<p style='font-size:12px;margin:0;overflow-wrap:anywhere;'>"
+                f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
                 unsafe_allow_html=True,
             )
 
