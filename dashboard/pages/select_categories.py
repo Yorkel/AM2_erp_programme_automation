@@ -153,28 +153,30 @@ def _render_article(art: dict, idx_in_cluster: int):
                 record_decision(url, "accept_top2", top2)
                 st.rerun()
         with col_man:
-            manual_default = (
-                curator_label if action == "manual" and curator_label in CATEGORY_ORDER
-                else CATEGORY_ORDER[0]
-            )
-            sub_select, sub_btn = st.columns([3, 1])
-            with sub_select:
+            # Manual = popover. One button to open; the dropdown lives inside.
+            # Cleaner than always-visible selectbox + Set button.
+            with st.popover(
+                "Manual",
+                use_container_width=True,
+                disabled=not auth,
+            ):
+                manual_default = (
+                    curator_label if action == "manual" and curator_label in CATEGORY_ORDER
+                    else CATEGORY_ORDER[0]
+                )
                 manual_choice = st.selectbox(
-                    "Manual override",
+                    "Pick category",
                     options=CATEGORY_ORDER,
                     index=CATEGORY_ORDER.index(manual_default),
                     format_func=lambda x: CATEGORY_SHORT_LABELS.get(x, x),
                     key=f"cat_man_choice_{url}",
                     label_visibility="collapsed",
-                    disabled=not auth,
                 )
-            with sub_btn:
                 if st.button(
-                    "Set",
-                    key=f"cat_man_btn_{url}",
-                    type="primary" if action != "manual" else "secondary",
+                    "Apply",
+                    key=f"cat_man_apply_{url}",
+                    type="primary",
                     use_container_width=True,
-                    disabled=not auth,
                 ):
                     record_decision(url, "manual", manual_choice)
                     st.rerun()
@@ -197,6 +199,24 @@ def render(df):
         "Articles covering the same story are grouped together; pick one or "
         "categorise several if they offer different angles."
     )
+
+    # Page-wide button + popover shrink (Top 1 / Top 2 / Manual / Remove
+    # buttons were too tall and the labels too big at default Streamlit size).
+    st.markdown("""
+    <style>
+    /* Shrink all buttons + popover triggers on this page only */
+    [data-testid="stButton"] button,
+    [data-testid="stPopover"] button {
+        font-size: 12px !important;
+        padding: 4px 8px !important;
+        min-height: 32px !important;
+    }
+    /* Tighten the selectbox inside popovers too */
+    [data-testid="stPopover"] [data-testid="stSelectbox"] {
+        font-size: 12px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Targeted button colours via marker-divs + sibling-selector CSS.
     # Top 1 = green (model's best guess), Top 2 = blue (alternative).

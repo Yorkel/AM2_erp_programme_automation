@@ -206,18 +206,28 @@ def _render_triage_card(row: dict):
     st.markdown(f"### {title}")
 
     with st.container(border=True):
+        # Status badge sits inline with title area on the right; URL + tags
+        # take up the rest. Tags go ABOVE source (matches Select Categories).
+        colour = _STATUS_COLOUR.get(status, "#888")
+
+        # Key tags row — directly under title, before source/date
+        badges = _badges_html(row.get("geographic_focus"), row.get("topic_tags"))
+        if badges:
+            st.markdown(badges, unsafe_allow_html=True)
+
+        # Source · Date
         st.markdown(
-            f"<p style='color:#666;font-size:15px;margin-bottom:4px;'>"
-            f"<b>Source:</b> {source_name}  &middot;  <b>Date:</b> {article_date}</p>",
+            f"<p style='color:#666;font-size:14px;margin:2px 0;'>"
+            f"<b>Source:</b> {source_name} &nbsp;&nbsp; <b>Date:</b> {article_date}</p>",
             unsafe_allow_html=True,
         )
 
-        colour = _STATUS_COLOUR.get(status, "#888")
+        # URL + Status on one row
         col_url, col_status = st.columns([4, 1])
         with col_url:
             if url:
                 st.markdown(
-                    f"<p style='font-size:13px;margin:0;overflow-wrap:anywhere;'>"
+                    f"<p style='font-size:12px;margin:0;overflow-wrap:anywhere;'>"
                     f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
                     unsafe_allow_html=True,
                 )
@@ -227,11 +237,6 @@ def _render_triage_card(row: dict):
                 f"Status: {status}</p>",
                 unsafe_allow_html=True,
             )
-
-        # Geographic focus + topic tags (badges) — from migration 013 enrichment
-        badges = _badges_html(row.get("geographic_focus"), row.get("topic_tags"))
-        if badges:
-            st.markdown(badges, unsafe_allow_html=True)
 
         with st.expander("📋 Show summary", expanded=False):
             if current_summary:

@@ -133,7 +133,7 @@ def render(df):
     # draft. Empty cells in MS Form merges are fine.
     auth = is_authenticated()
     st.text_input(
-        "Submitter (your name — appears on every row of the Excel download)",
+        "Submitter",
         key="draft_submitter",
         placeholder="e.g. Louise Y",
         disabled=not auth,
