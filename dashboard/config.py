@@ -23,6 +23,18 @@ CATEGORY_ORDER = [
     "what_matters_ed",
 ]
 
+# Short labels used on the Select Categories buttons — full CATEGORY_LABELS
+# names ("Political environment and key organisations" etc.) make Top 1 /
+# Top 2 buttons enormous because they wrap to three lines.
+CATEGORY_SHORT_LABELS = {
+    "teacher_rrd":                            "Teacher RRD",
+    "edtech":                                 "EdTech",
+    "political_environment_key_organisations":"Politics & key orgs",
+    "four_nations":                           "Four Nations",
+    "policy_practice_research":               "Research/Practice/Policy",
+    "what_matters_ed":                        "What matters",
+}
+
 CATEGORY_COLORS = {
     "edtech": "#5b9bd5",
     "four_nations": "#70ad47",

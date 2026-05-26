@@ -258,11 +258,11 @@ For each article, return STRICT JSON with these two fields and no commentary:
 
 - "geographic_focus": exactly one of "England", "Scotland", "Wales", \
 "Northern Ireland", "UK-wide", "International".
-- "topic_tags": list of 3-5 lowercase, hyphen-separated tags. Examples: \
+- "topic_tags": list of EXACTLY 3 lowercase, hyphen-separated tags. Examples: \
 "send", "teacher-pay", "ai-in-classrooms", "raac", "child-poverty", \
 "ofsted-inspections", "school-funding", "mental-health", "exam-results". \
 Pick tags that are specific enough to be filter-useful but standardised \
-(reuse common tags rather than inventing new ones).
+(reuse common tags rather than inventing new ones). Always return exactly 3.
 
 Output ONLY the JSON object. No markdown fences, no preamble."""
 
@@ -311,7 +311,7 @@ def tag_article(*, title: str, text: str, model: str = DEFAULT_MODEL,
             "topic_tags": [
                 t.strip().lower() for t in (parsed.get("topic_tags") or [])
                 if isinstance(t, str) and t.strip()
-            ][:5],
+            ][:3],
         }
     except Exception as e:
         import sys

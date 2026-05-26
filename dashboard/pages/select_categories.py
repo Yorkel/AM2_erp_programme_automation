@@ -18,7 +18,7 @@ from collections import defaultdict
 import streamlit as st
 import pandas as pd
 
-from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
+from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, CATEGORY_SHORT_LABELS, SOURCE_LABELS
 from dashboard.data import (
     get_kept_articles, is_authenticated, record_decision,
 )
@@ -29,34 +29,26 @@ _STATUS_COLOUR = {
     "Categorised": "#1e8449",
 }
 
-_GEO_COLOUR = {
-    "England":          "#1d3461",
-    "Scotland":         "#005EB8",
-    "Wales":            "#D30731",
-    "Northern Ireland": "#005C4B",
-    "UK-wide":          "#444",
-    "International":    "#8B0000",
-}
+_TAG_STYLE = (
+    "background:#eef;color:#333;padding:2px 8px;border-radius:10px;"
+    "font-size:11px;border:1px solid #ccd;margin-right:4px;"
+)
 
 
 def _badges_html(geo, topics) -> str:
+    """'Key tags:' row — geographic_focus + up to 3 topic_tags, all in the
+    same neutral style (country no longer coloured differently)."""
     parts = []
     if geo:
-        bg = _GEO_COLOUR.get(geo, "#666")
-        parts.append(
-            f"<span style='background:{bg};color:white;padding:2px 8px;"
-            f"border-radius:10px;font-size:11px;font-weight:600;"
-            f"margin-right:4px;'>{geo}</span>"
-        )
-    for t in (topics or [])[:5]:
-        parts.append(
-            f"<span style='background:#eef;color:#333;padding:2px 8px;"
-            f"border-radius:10px;font-size:11px;border:1px solid #ccd;"
-            f"margin-right:4px;'>{t}</span>"
-        )
+        parts.append(f"<span style='{_TAG_STYLE}'>{geo}</span>")
+    for t in (topics or [])[:3]:
+        parts.append(f"<span style='{_TAG_STYLE}'>{t}</span>")
     if not parts:
         return ""
-    return "<p style='margin:6px 0 0 0;line-height:22px;'>" + "".join(parts) + "</p>"
+    return (
+        "<p style='margin:4px 0 0 0;font-size:12px;color:#555;'>"
+        "<b>Key tags:</b> " + "".join(parts) + "</p>"
+    )
 
 
 def _format_conf(c) -> str:
@@ -100,53 +92,47 @@ def _render_article(art: dict, idx_in_cluster: int):
     auth = is_authenticated()
 
     with st.container(border=True):
-        # Title
-        st.markdown(f"### {title}")
+        # Title row — title on the left, status badge inline on the right
+        col_title, col_status = st.columns([5, 1])
+        with col_title:
+            st.markdown(f"### {title}")
+        with col_status:
+            colour = _STATUS_COLOUR[status]
+            badge_text = "Categorised" if status == "Categorised" else "Awaiting category"
+            st.markdown(
+                f"<p style='text-align:right;color:{colour};font-weight:600;"
+                f"margin:14px 0 0 0;font-size:13px;'>{badge_text}</p>",
+                unsafe_allow_html=True,
+            )
 
-        # Source · Date (same shape as Triage)
+        # Source · Date
         st.markdown(
             f"<p style='color:#666;font-size:15px;margin-bottom:4px;'>"
             f"<b>Source:</b> {source}  &middot;  <b>Date:</b> {article_date}</p>",
             unsafe_allow_html=True,
         )
 
-        # URL (full, clickable) + Status (same line, status right-aligned)
-        col_url, col_status = st.columns([4, 1])
-        with col_url:
-            if url:
-                st.markdown(
-                    f"<p style='font-size:13px;margin:0;overflow-wrap:anywhere;'>"
-                    f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
-                    unsafe_allow_html=True,
-                )
-        with col_status:
-            if status == "Categorised":
-                label = CATEGORY_LABELS.get(curator_label, curator_label or "?")
-                badge_text = f"Status: {label}"
-            else:
-                badge_text = "Status: Awaiting category"
-            colour = _STATUS_COLOUR[status]
+        # URL (full, clickable)
+        if url:
             st.markdown(
-                f"<p style='text-align:right;color:{colour};font-weight:600;margin:0;'>{badge_text}</p>",
+                f"<p style='font-size:13px;margin:0;overflow-wrap:anywhere;'>"
+                f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
                 unsafe_allow_html=True,
             )
 
-        # Geographic focus + topic tags from migration 013 enrichment
+        # Geographic focus + topic tags
         badges = _badges_html(art.get("geographic_focus"), art.get("topic_tags"))
         if badges:
             st.markdown(badges, unsafe_allow_html=True)
 
-        # Category buttons. Top 1 = green (marker + CSS), Top 2 = blue (primary
-        # which is now orange via theme — we override to blue via marker too).
-        # Reject = secondary grey.
+        # Category buttons — short labels so they don't wrap to 3 lines.
+        # Top 1 = green, Top 2 = blue, Manual = orange.
         col_t1, col_t2, col_man = st.columns([2, 2, 3])
         with col_t1:
-            label1 = CATEGORY_LABELS.get(top1, "(no top1)") if top1 else "(no top1)"
-            # Green marker (reuses the green-keep CSS injected on Triage if
-            # rendered there; here we inject our own minimal version).
+            short1 = CATEGORY_SHORT_LABELS.get(top1, "(no top1)") if top1 else "(no top1)"
             st.markdown('<div class="cat-top1-marker"></div>', unsafe_allow_html=True)
             if st.button(
-                f"Top 1: {label1}{conf1}",
+                f"Top 1 · {short1}{conf1}",
                 key=f"cat_t1_{url}",
                 type="secondary",
                 use_container_width=True,
@@ -155,10 +141,10 @@ def _render_article(art: dict, idx_in_cluster: int):
                 record_decision(url, "accept_top1", top1)
                 st.rerun()
         with col_t2:
-            label2 = CATEGORY_LABELS.get(top2, "(no top2)") if top2 else "(no top2)"
+            short2 = CATEGORY_SHORT_LABELS.get(top2, "(no top2)") if top2 else "(no top2)"
             st.markdown('<div class="cat-top2-marker"></div>', unsafe_allow_html=True)
             if st.button(
-                f"Top 2: {label2}{conf2}",
+                f"Top 2 · {short2}{conf2}",
                 key=f"cat_t2_{url}",
                 type="secondary",
                 use_container_width=True,
@@ -175,7 +161,7 @@ def _render_article(art: dict, idx_in_cluster: int):
                 "Manual override",
                 options=CATEGORY_ORDER,
                 index=CATEGORY_ORDER.index(manual_default),
-                format_func=lambda x: CATEGORY_LABELS.get(x, x),
+                format_func=lambda x: CATEGORY_SHORT_LABELS.get(x, x),
                 key=f"cat_man_choice_{url}",
                 label_visibility="collapsed",
                 disabled=not auth,

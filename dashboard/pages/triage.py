@@ -65,39 +65,26 @@ _STATUS_COLOUR = {
     "Categorised": "#2980b9",
 }
 
-_GEO_COLOUR = {
-    "England":          "#1d3461",
-    "Scotland":         "#005EB8",
-    "Wales":            "#D30731",
-    "Northern Ireland": "#005C4B",
-    "UK-wide":          "#444",
-    "International":    "#8B0000",
-}
+_TAG_STYLE = (
+    "background:#eef;color:#333;padding:2px 8px;border-radius:10px;"
+    "font-size:11px;border:1px solid #ccd;margin-right:4px;"
+)
 
 
 def _badges_html(geo: str | None, topics: list[str] | None) -> str:
-    """Return an HTML snippet of badges for geographic_focus + topic_tags.
-    Empty string if nothing to render."""
+    """Return an HTML snippet for the 'Key tags:' row — geographic_focus +
+    up to 3 topic_tags. All badges share one neutral style (country isn't
+    coloured differently from topics). Empty string if nothing to render."""
     parts = []
     if geo:
-        bg = _GEO_COLOUR.get(geo, "#666")
-        parts.append(
-            f"<span style='background:{bg};color:white;padding:2px 8px;"
-            f"border-radius:10px;font-size:11px;font-weight:600;"
-            f"margin-right:4px;'>{geo}</span>"
-        )
-    for t in (topics or [])[:5]:
-        parts.append(
-            f"<span style='background:#eef;color:#333;padding:2px 8px;"
-            f"border-radius:10px;font-size:11px;border:1px solid #ccd;"
-            f"margin-right:4px;'>{t}</span>"
-        )
+        parts.append(f"<span style='{_TAG_STYLE}'>{geo}</span>")
+    for t in (topics or [])[:3]:
+        parts.append(f"<span style='{_TAG_STYLE}'>{t}</span>")
     if not parts:
         return ""
     return (
-        "<p style='margin:6px 0 0 0;line-height:22px;'>"
-        + "".join(parts)
-        + "</p>"
+        "<p style='margin:4px 0 0 0;font-size:12px;color:#555;'>"
+        "<b>Key tags:</b> " + "".join(parts) + "</p>"
     )
 
 
