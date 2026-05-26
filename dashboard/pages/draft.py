@@ -172,10 +172,18 @@ def render(df):
                 )
 
             with st.container(border=True):
-                # Top row: TITLE on the left, × on the right
+                # Title / Source / URL in one tight block (no gaps between).
+                # X-remove button sits in the top-right corner.
                 col_t, col_x = st.columns([10, 1])
                 with col_t:
-                    st.markdown(f"**TITLE:** {title}")
+                    st.markdown(
+                        f"<p style='margin:0;'><b>TITLE:</b> {title}</p>"
+                        f"<p style='margin:0;'><b>SOURCE:</b> {source_name}</p>"
+                        + (f"<p style='margin:0 0 6px 0;overflow-wrap:anywhere;'>"
+                           f"<b>URL:</b> <a href='{art_url}' target='_blank'>{art_url}</a></p>"
+                           if art_url else ""),
+                        unsafe_allow_html=True,
+                    )
                 with col_x:
                     if st.button(
                         "×",
@@ -186,22 +194,30 @@ def render(df):
                         record_decision(art_url, "reject", "")
                         st.rerun()
 
-                st.markdown(f"**SOURCE:** {source_name}")
-                if art_url:
-                    st.markdown(f"**URL:** [{art_url}]({art_url})")
-
+                # Summary text area + Save inline on the right (no Generate
+                # button — summaries are pre-generated at scrape time).
                 st.markdown("**SUMMARY:**")
-                edited_desc = st.text_area(
-                    "summary",
-                    key=session_key,
-                    height=120,
-                    label_visibility="collapsed",
-                    disabled=not auth,
-                )
+                col_summary, col_save = st.columns([6, 1])
+                with col_summary:
+                    edited_desc = st.text_area(
+                        "summary",
+                        key=session_key,
+                        height=120,
+                        label_visibility="collapsed",
+                        disabled=not auth,
+                    )
+                with col_save:
+                    st.markdown(
+                        "<div style='height:28px'></div>", unsafe_allow_html=True
+                    )  # vertical align nudge
+                    if st.button(
+                        "💾 Save", key=f"sv_{art_url}",
+                        type="primary", disabled=not auth,
+                    ):
+                        record_summary(art_url, edited_desc)
+                        st.toast("Saved.")
 
-                # Per-article curator-fillable fields. Written into the Excel
-                # download under the MS-Form column headers. Session-only for
-                # now — survives within a tab, resets on reload.
+                # Per-article fillable fields — BELOW the summary
                 col_notes, col_question = st.columns(2)
                 with col_notes:
                     st.text_input(
@@ -217,35 +233,6 @@ def render(df):
                         placeholder="Optional",
                         disabled=not auth,
                     )
-
-                col_save, col_gen = st.columns(2)
-                with col_save:
-                    if st.button(
-                        "💾 Save", key=f"sv_{art_url}",
-                        use_container_width=True, disabled=not auth,
-                    ):
-                        record_summary(art_url, edited_desc)
-                        st.toast("Saved.")
-                with col_gen:
-                    if st.button(
-                        "✎ Generate summary", key=f"gn_{art_url}",
-                        use_container_width=True, disabled=not auth,
-                    ):
-                        with st.spinner("Summarising via Claude…"):
-                            # Fetch full body from articles.text only — no
-                            # fallback to text_clean (nav-heavy truncation).
-                            body = fetch_article_text(art_url)
-                            new_summary = summarise_article(
-                                title=title, text=body, category=cat_key,
-                            )
-                        record_summary(art_url, new_summary)
-                        # Drop the widget's session_state key so the next
-                        # render re-seeds from the freshly-saved Supabase
-                        # summary. Streamlit forbids writing to a widget key
-                        # in the same script run that created the widget.
-                        if session_key in st.session_state:
-                            del st.session_state[session_key]
-                        st.rerun()
 
     # ── Download Excel ──────────────────────────────────────────────────────
     st.markdown("---")
@@ -266,7 +253,6 @@ def render(df):
     # ── Feedback ────────────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("### Feedback")
-    st.caption("Anonymous. Whatever you write here goes to the curator_feedback log.")
     feedback_text = st.text_area(
         "Free-text feedback",
         key="_feedback_box",
