@@ -110,6 +110,9 @@ NEGATIVE_COUNTRY_KEYWORDS: tuple[str, ...] = (
     "new york state", "washington dc", "los angeles", "chicago", "boston",
     "white house", "donald trump", "biden",
     "u.s. department", "us department of education",
+    # US universities (added 2026-05-26 after Harvard A-grade story slipped through)
+    "harvard", "yale", "stanford", "princeton", "columbia university", "cornell",
+    "mit", "berkeley", "ucla",
     # India
     "mumbai", "delhi", "chennai", "kolkata", "bengaluru",
     "narendra modi", "ipl 2026", "ipl 2025", "tamil nadu", "kerala",
@@ -269,6 +272,13 @@ BROAD_DOMAINS: tuple[str, ...] = (
     "mmu.ac.uk",
     "nottingham.ac.uk",
     "ucl.ac.uk",
+    # Government — broad-policy publishers (added 2026-05-26)
+    "gov.uk",
+    "gov.scot",
+    "gov.wales",
+    "hwb.gov.wales",
+    "northernireland.gov.uk",
+    "local.gov.uk",
     # Parliaments + select committees
     "committees.parliament.uk",
     "parliament.scot",
@@ -299,6 +309,10 @@ BLOCKED_TITLE_KEYWORDS: tuple[str, ...] = (
     "trans",
     "transgender",
     "private school",
+    "rape",
+    "sentencing",
+    "immigration",
+    "transparency data",
 )
 
 
@@ -382,7 +396,10 @@ DEFAULT_EDUCATION_KEYWORDS: tuple[str, ...] = (
     "school", "schools", "pupil", "pupils", "student", "students",
     "teacher", "teachers", "teaching", "classroom",
     "primary", "secondary", "nursery", "early years", "eyfs",
-    "academy", "academies", "trust", "trusts",
+    # "trust"/"trusts" removed 2026-05-26 — too broad (matched "undermine
+    # trust in government" etc.). Academy trusts still caught by "academy"/
+    # "academies"/"trustees"/"governance" below.
+    "academy", "academies",
     "college", "colleges", "further education", "sixth form",
     # HE keywords removed 2026-05-26 — newsletter is schools/pre-HE/FE only
     # (university/universities/higher education/campus → out of scope; HE
@@ -408,7 +425,10 @@ DEFAULT_EDUCATION_KEYWORDS: tuple[str, ...] = (
     "early career framework", "ecf",
     "governance", "trustees",
     # Policy bodies / actors
-    "dfe", "department for education", "department education",
+    # "dfe" removed 2026-05-26 — generic "DfE Update" bulletins were slipping
+    # through. Real DfE policy articles still match via "department for
+    # education", "schools", "send", etc.
+    "department for education", "department education",
     "schools week", "schoolsweek",
     "select committee", "education committee",
     "minister", "education minister", "education secretary",
@@ -416,7 +436,9 @@ DEFAULT_EDUCATION_KEYWORDS: tuple[str, ...] = (
     "research", "evidence-based", "pedagogy",
     "education research", "education policy",
     # Demographic / broader
-    "child", "children", "young people", "youth",
+    # "young people"/"youth" removed 2026-05-26 — too broad (matched health
+    # and social-services content, not just education).
+    "child", "children",
     "skills", "apprenticeship", "apprenticeships",
     # Specific frequently-newslettered topics
     "white paper", "schools bill", "curriculum assessment",
