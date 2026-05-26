@@ -247,7 +247,8 @@ def get_kept_articles(df: pd.DataFrame) -> list[dict]:
         row = match.iloc[0].to_dict() if len(match) else {"url": url, "title": "Unknown"}
         row["action"] = dec.get("action")
         row["curator_label"] = dec.get("label") or None
-        row["summary"] = dec.get("summary")
+        # Curator edit > pre-generated articles.summary (from v_dashboard)
+        row["summary"] = dec.get("summary") or row.get("summary")
         out.append(row)
     return out
 
@@ -274,8 +275,11 @@ def get_accepted_articles(df: pd.DataFrame) -> list[dict]:
         row["curator_label"] = dec.get("label") or row.get("top1")
         if url in st.session_state.get("category_overrides", {}):
             row["curator_label"] = st.session_state.category_overrides[url]
-        # Carry the summary along for the Draft page
-        row["summary"] = dec.get("summary")
+        # Summary precedence: curator's edit > pre-generated (articles.summary
+        # from v_dashboard). Without the fallback to row.get("summary"),
+        # Draft page would show empty for articles the curator never edited
+        # even after the pre-gen backfill.
+        row["summary"] = dec.get("summary") or row.get("summary")
         accepted.append(row)
 
     for art in st.session_state.get("curator_articles", []):

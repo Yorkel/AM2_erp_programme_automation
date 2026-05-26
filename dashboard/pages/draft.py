@@ -179,8 +179,12 @@ def render(df):
                                 category=cat_key,
                             )
                         record_summary(art_url, new_summary)
-                        # Update widget state so the text_area shows the new text
-                        st.session_state[session_key] = new_summary
+                        # Drop the widget's session_state key so the next
+                        # render re-seeds from the freshly-saved Supabase
+                        # summary. Streamlit forbids writing to a widget key
+                        # in the same script run that created the widget.
+                        if session_key in st.session_state:
+                            del st.session_state[session_key]
                         st.rerun()
 
     # ── Download Excel ──────────────────────────────────────────────────────
