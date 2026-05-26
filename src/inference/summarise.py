@@ -115,6 +115,19 @@ unless they appear in the article.
 - UK English spelling. Use the article's own terminology.
 - No headlines, no titles, no markdown, no quotation marks. Plain summary text only.
 
+CRITICAL behavioural rules:
+- NEVER write meta-text like "I'd be happy to help", "the article content \
+appears to be incomplete", "could you share more", "I cannot provide…". \
+No apology, no commentary, no request for more content.
+- If the body text is missing or too sparse to faithfully summarise (e.g. you \
+have only the title with no further substance), output EXACTLY this string \
+and nothing else: Summary unavailable
+- Do NOT hallucinate. Do NOT extrapolate. Do NOT invent facts, names, \
+findings, or context that aren't in the supplied text. If you are tempted to \
+write something the article doesn't actually say, write "Summary unavailable" \
+instead.
+- Output ONLY the summary text (or "Summary unavailable"). No preamble.
+
 You will be given example summaries from past issues to anchor on, then asked \
 to summarise a new article. Match their style: descriptive, close to source, no commentary."""
 
@@ -213,7 +226,27 @@ def summarise_article(*, title: str, text: str, category: str | None = None,
         system=system,
         messages=messages,
     )
-    return response.content[0].text.strip()
+    result = response.content[0].text.strip()
+    # Final-belts-and-braces guard: if Claude still returned an empty or
+    # obviously meta-response despite the no-refusal system prompt, fall
+    # back to a clean placeholder rather than leaking model meta-text into
+    # the dashboard.
+    if not result or _looks_like_refusal(result):
+        return "Summary unavailable"
+    return result
+
+
+def _looks_like_refusal(s: str) -> bool:
+    """True if the model returned a meta/refusal response rather than a summary."""
+    if not s:
+        return True
+    head = s.lower()[:80]
+    return any(p in head for p in (
+        "i cannot", "i can't", "i'd be happy", "i don't have", "i would need",
+        "i am unable", "i'm unable", "could you provide", "could you share",
+        "the article content", "the article appears", "please share",
+        "please provide", "i appreciate the request",
+    ))
 
 
 # ─── Enrichment: geographic_focus + topic_tags ───────────────────────────────

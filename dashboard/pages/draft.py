@@ -30,28 +30,58 @@ def _category_of(art: dict) -> str | None:
 
 
 def _build_excel(grouped: dict, today: datetime) -> bytes:
-    """Single-sheet Excel — TITLE / SOURCE / URL / SUMMARY / SECTION / DATE.
-    Pulls SUMMARY from session_state (the latest text-area value) so unsaved
-    edits still flow through to the download even if the curator forgot to Save.
+    """Single-sheet Excel matching the curator MS Form export structure, so the
+    download can be merged directly with the curator-suggestions spreadsheet.
+
+    Columns match the MS Form column headers exactly (including punctuation):
+      Id, Start time, Organisation, Title, Include,
+      Link (website address / URL), Short description,
+      Which section of the newsletter is this for?, Any other comments?,
+      Submitter, Question
+
+    "Include" defaults to "Yes" (the curator accepted all of these on Page 2).
+    "Submitter" / "Any other comments?" / "Question" are left blank for the
+    curator to fill on review.
     """
     rows = []
+    row_id = 1
     for cat_key in CATEGORY_ORDER:
         for art in grouped.get(cat_key, []):
-            url = art.get("url", "") or ""
+            url = art.get("url") or ""
             session_key = f"desc_{url}"
             summary = (
                 st.session_state.get(session_key)
                 or (art.get("summary") or "")
+                or "Summary unavailable"
             )
+            article_date = art.get("article_date") or ""
+            # Render article_date as DD/MM/YYYY to match MS Forms convention
+            try:
+                d = pd.to_datetime(article_date, errors="coerce", dayfirst=True)
+                date_str = d.strftime("%d/%m/%Y") if not pd.isna(d) else (article_date or "")
+            except Exception:
+                date_str = article_date or ""
             rows.append({
-                "TITLE": art.get("title") or "",
-                "SOURCE": SOURCE_LABELS.get(art.get("source", ""), art.get("source") or ""),
-                "URL": url,
-                "SUMMARY": summary,
-                "SECTION": CATEGORY_LABELS.get(cat_key, cat_key),
-                "DATE": art.get("article_date") or "",
+                "Id": row_id,
+                "Start time": date_str,
+                "Organisation": SOURCE_LABELS.get(art.get("source", ""), art.get("source") or ""),
+                "Title": art.get("title") or "",
+                "Include": "Yes",
+                "Link (website address / URL)": url,
+                "Short description": summary,
+                "Which section of the newsletter is this for?": CATEGORY_LABELS.get(cat_key, cat_key),
+                "Any other comments?": st.session_state.get(f"notes_{url}", "") or "",
+                "Submitter": st.session_state.get("draft_submitter", "") or "",
+                "Question": st.session_state.get(f"question_{url}", "") or "",
             })
-    df = pd.DataFrame(rows, columns=["TITLE", "SOURCE", "URL", "SUMMARY", "SECTION", "DATE"])
+            row_id += 1
+    columns = [
+        "Id", "Start time", "Organisation", "Title", "Include",
+        "Link (website address / URL)", "Short description",
+        "Which section of the newsletter is this for?",
+        "Any other comments?", "Submitter", "Question",
+    ]
+    df = pd.DataFrame(rows, columns=columns)
     buf = BytesIO()
     df.to_excel(buf, index=False, engine="openpyxl")
     buf.seek(0)
@@ -98,8 +128,18 @@ def render(df):
         unsafe_allow_html=True,
     )
 
-    decisions = load_decisions()
+    # Submitter — applies to every row of the Excel download. Lives in session
+    # state only (no persistence) — set per session by the curator running the
+    # draft. Empty cells in MS Form merges are fine.
     auth = is_authenticated()
+    st.text_input(
+        "Submitter (your name — appears on every row of the Excel download)",
+        key="draft_submitter",
+        placeholder="e.g. Louise Y",
+        disabled=not auth,
+    )
+
+    decisions = load_decisions()
 
     # ── Articles by section ─────────────────────────────────────────────────
     for cat_key in CATEGORY_ORDER:
@@ -158,6 +198,25 @@ def render(df):
                     label_visibility="collapsed",
                     disabled=not auth,
                 )
+
+                # Per-article curator-fillable fields. Written into the Excel
+                # download under the MS-Form column headers. Session-only for
+                # now — survives within a tab, resets on reload.
+                col_notes, col_question = st.columns(2)
+                with col_notes:
+                    st.text_input(
+                        "Any other comments?",
+                        key=f"notes_{art_url}",
+                        placeholder="Optional curator note for this row",
+                        disabled=not auth,
+                    )
+                with col_question:
+                    st.text_input(
+                        "Question",
+                        key=f"question_{art_url}",
+                        placeholder="Optional",
+                        disabled=not auth,
+                    )
 
                 col_save, col_gen = st.columns(2)
                 with col_save:

@@ -65,6 +65,41 @@ _STATUS_COLOUR = {
     "Categorised": "#2980b9",
 }
 
+_GEO_COLOUR = {
+    "England":          "#1d3461",
+    "Scotland":         "#005EB8",
+    "Wales":            "#D30731",
+    "Northern Ireland": "#005C4B",
+    "UK-wide":          "#444",
+    "International":    "#8B0000",
+}
+
+
+def _badges_html(geo: str | None, topics: list[str] | None) -> str:
+    """Return an HTML snippet of badges for geographic_focus + topic_tags.
+    Empty string if nothing to render."""
+    parts = []
+    if geo:
+        bg = _GEO_COLOUR.get(geo, "#666")
+        parts.append(
+            f"<span style='background:{bg};color:white;padding:2px 8px;"
+            f"border-radius:10px;font-size:11px;font-weight:600;"
+            f"margin-right:4px;'>{geo}</span>"
+        )
+    for t in (topics or [])[:5]:
+        parts.append(
+            f"<span style='background:#eef;color:#333;padding:2px 8px;"
+            f"border-radius:10px;font-size:11px;border:1px solid #ccd;"
+            f"margin-right:4px;'>{t}</span>"
+        )
+    if not parts:
+        return ""
+    return (
+        "<p style='margin:6px 0 0 0;line-height:22px;'>"
+        + "".join(parts)
+        + "</p>"
+    )
+
 
 def render(df):
     st.title("Triage")
@@ -205,6 +240,11 @@ def _render_triage_card(row: dict):
                 unsafe_allow_html=True,
             )
 
+        # Geographic focus + topic tags (badges) — from migration 013 enrichment
+        badges = _badges_html(row.get("geographic_focus"), row.get("topic_tags"))
+        if badges:
+            st.markdown(badges, unsafe_allow_html=True)
+
         with st.expander("📋 Show summary", expanded=False):
             if current_summary:
                 st.markdown(
@@ -213,7 +253,12 @@ def _render_triage_card(row: dict):
                     unsafe_allow_html=True,
                 )
             else:
-                st.caption("No summary yet for this article.")
+                st.markdown(
+                    "<div style='background:#f5f5f5;border-left:3px solid #aaa;"
+                    "padding:8px 12px;color:#666;font-style:italic;'>"
+                    "Summary unavailable</div>",
+                    unsafe_allow_html=True,
+                )
                 if st.button(
                     "✎ Generate summary", key=f"gen_{url}",
                     type="primary", use_container_width=True, disabled=not auth,

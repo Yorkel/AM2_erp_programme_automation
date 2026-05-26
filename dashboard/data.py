@@ -36,7 +36,7 @@ def get_client():
 
 # ── Reads ────────────────────────────────────────────────────────────────────
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def load_classified_articles(min_week: int | None = None) -> pd.DataFrame:
     """Pull article + prediction rows from the `v_dashboard` view.
 

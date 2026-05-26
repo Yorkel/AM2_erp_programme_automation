@@ -29,6 +29,35 @@ _STATUS_COLOUR = {
     "Categorised": "#1e8449",
 }
 
+_GEO_COLOUR = {
+    "England":          "#1d3461",
+    "Scotland":         "#005EB8",
+    "Wales":            "#D30731",
+    "Northern Ireland": "#005C4B",
+    "UK-wide":          "#444",
+    "International":    "#8B0000",
+}
+
+
+def _badges_html(geo, topics) -> str:
+    parts = []
+    if geo:
+        bg = _GEO_COLOUR.get(geo, "#666")
+        parts.append(
+            f"<span style='background:{bg};color:white;padding:2px 8px;"
+            f"border-radius:10px;font-size:11px;font-weight:600;"
+            f"margin-right:4px;'>{geo}</span>"
+        )
+    for t in (topics or [])[:5]:
+        parts.append(
+            f"<span style='background:#eef;color:#333;padding:2px 8px;"
+            f"border-radius:10px;font-size:11px;border:1px solid #ccd;"
+            f"margin-right:4px;'>{t}</span>"
+        )
+    if not parts:
+        return ""
+    return "<p style='margin:6px 0 0 0;line-height:22px;'>" + "".join(parts) + "</p>"
+
 
 def _format_conf(c) -> str:
     """Return ' (87%)' style suffix; empty if confidence missing."""
@@ -101,6 +130,11 @@ def _render_article(art: dict, idx_in_cluster: int):
                 f"<p style='text-align:right;color:{colour};font-weight:600;margin:0;'>{badge_text}</p>",
                 unsafe_allow_html=True,
             )
+
+        # Geographic focus + topic tags from migration 013 enrichment
+        badges = _badges_html(art.get("geographic_focus"), art.get("topic_tags"))
+        if badges:
+            st.markdown(badges, unsafe_allow_html=True)
 
         # Category buttons. Top 1 = green (marker + CSS), Top 2 = blue (primary
         # which is now orange via theme — we override to blue via marker too).
