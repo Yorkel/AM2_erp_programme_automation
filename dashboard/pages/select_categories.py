@@ -31,7 +31,7 @@ _STATUS_COLOUR = {
 
 _TAG_STYLE = (
     "background:#eef;color:#333;padding:2px 8px;border-radius:10px;"
-    "font-size:11px;border:1px solid #ccd;margin-right:4px;"
+    "font-size:10px;border:1px solid #ccd;margin-right:3px;"
 )
 
 
@@ -46,7 +46,7 @@ def _badges_html(geo, topics) -> str:
     if not parts:
         return ""
     return (
-        "<p style='margin:4px 0 0 0;font-size:12px;color:#555;'>"
+        "<p style='margin:2px 0;font-size:11px;color:#555;'>"
         "<b>Key tags:</b> " + "".join(parts) + "</p>"
     )
 
@@ -105,34 +105,34 @@ def _render_article(art: dict, idx_in_cluster: int):
                 unsafe_allow_html=True,
             )
 
-        # Source · Date
+        # Key tags row — directly under title, smaller font.
+        badges = _badges_html(art.get("geographic_focus"), art.get("topic_tags"))
+        if badges:
+            st.markdown(badges, unsafe_allow_html=True)
+
+        # Source, Date
         st.markdown(
-            f"<p style='color:#666;font-size:15px;margin-bottom:4px;'>"
-            f"<b>Source:</b> {source}  &middot;  <b>Date:</b> {article_date}</p>",
+            f"<p style='color:#666;font-size:13px;margin:2px 0;'>"
+            f"<b>Source:</b> {source} &nbsp;&nbsp; <b>Date:</b> {article_date}</p>",
             unsafe_allow_html=True,
         )
 
         # URL (full, clickable)
         if url:
             st.markdown(
-                f"<p style='font-size:13px;margin:0;overflow-wrap:anywhere;'>"
+                f"<p style='font-size:12px;margin:0 0 6px 0;overflow-wrap:anywhere;'>"
                 f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
                 unsafe_allow_html=True,
             )
 
-        # Geographic focus + topic tags
-        badges = _badges_html(art.get("geographic_focus"), art.get("topic_tags"))
-        if badges:
-            st.markdown(badges, unsafe_allow_html=True)
-
-        # Category buttons — short labels so they don't wrap to 3 lines.
-        # Top 1 = green, Top 2 = blue, Manual = orange.
-        col_t1, col_t2, col_man = st.columns([2, 2, 3])
+        # Action buttons — all four on ONE row.
+        # Top 1 (green) | Top 2 (blue) | Manual (dropdown + Set) | Remove (grey)
+        col_t1, col_t2, col_man, col_rem = st.columns([2, 2, 3, 1])
         with col_t1:
             short1 = CATEGORY_SHORT_LABELS.get(top1, "(no top1)") if top1 else "(no top1)"
             st.markdown('<div class="cat-top1-marker"></div>', unsafe_allow_html=True)
             if st.button(
-                f"Top 1 · {short1}{conf1}",
+                f"{short1}{conf1}",
                 key=f"cat_t1_{url}",
                 type="secondary",
                 use_container_width=True,
@@ -144,7 +144,7 @@ def _render_article(art: dict, idx_in_cluster: int):
             short2 = CATEGORY_SHORT_LABELS.get(top2, "(no top2)") if top2 else "(no top2)"
             st.markdown('<div class="cat-top2-marker"></div>', unsafe_allow_html=True)
             if st.button(
-                f"Top 2 · {short2}{conf2}",
+                f"{short2}{conf2}",
                 key=f"cat_t2_{url}",
                 type="secondary",
                 use_container_width=True,
@@ -157,42 +157,44 @@ def _render_article(art: dict, idx_in_cluster: int):
                 curator_label if action == "manual" and curator_label in CATEGORY_ORDER
                 else CATEGORY_ORDER[0]
             )
-            manual_choice = st.selectbox(
-                "Manual override",
-                options=CATEGORY_ORDER,
-                index=CATEGORY_ORDER.index(manual_default),
-                format_func=lambda x: CATEGORY_SHORT_LABELS.get(x, x),
-                key=f"cat_man_choice_{url}",
-                label_visibility="collapsed",
-                disabled=not auth,
-            )
+            sub_select, sub_btn = st.columns([3, 1])
+            with sub_select:
+                manual_choice = st.selectbox(
+                    "Manual override",
+                    options=CATEGORY_ORDER,
+                    index=CATEGORY_ORDER.index(manual_default),
+                    format_func=lambda x: CATEGORY_SHORT_LABELS.get(x, x),
+                    key=f"cat_man_choice_{url}",
+                    label_visibility="collapsed",
+                    disabled=not auth,
+                )
+            with sub_btn:
+                if st.button(
+                    "Set",
+                    key=f"cat_man_btn_{url}",
+                    type="primary" if action != "manual" else "secondary",
+                    use_container_width=True,
+                    disabled=not auth,
+                ):
+                    record_decision(url, "manual", manual_choice)
+                    st.rerun()
+        with col_rem:
             if st.button(
-                "Set manual",
-                key=f"cat_man_btn_{url}",
-                type="primary" if action != "manual" else "secondary",
+                "Remove",
+                key=f"cat_reject_{url}",
+                type="secondary",
                 use_container_width=True,
                 disabled=not auth,
             ):
-                record_decision(url, "manual", manual_choice)
+                record_decision(url, "reject", "")
                 st.rerun()
-
-        # Reject button (full-width row below the category buttons)
-        if st.button(
-            "✕ Reject (remove from kept queue)",
-            key=f"cat_reject_{url}",
-            type="secondary",
-            use_container_width=True,
-            disabled=not auth,
-        ):
-            record_decision(url, "reject", "")
-            st.rerun()
 
 
 def render(df):
     st.title("Select Categories")
     st.markdown(
         "For each article kept on **Triage**, pick a newsletter section. "
-        "Articles covering the same story are grouped together — pick one or "
+        "Articles covering the same story are grouped together; pick one or "
         "categorise several if they offer different angles."
     )
 
@@ -257,7 +259,7 @@ def render(df):
     n_articles = len(kept)
     n_awaiting = sum(1 for a in kept if _status_for(a.get("action")) == "Awaiting category")
     st.info(
-        f"**{n_articles}** kept article(s) across **{n_groups}** group(s) — "
+        f"**{n_articles}** kept article(s) across **{n_groups}** group(s); "
         f"{n_awaiting} awaiting category."
     )
 
@@ -279,7 +281,7 @@ def render(df):
             st.markdown(
                 f"### {lead_title}  "
                 f"<span style='background:#1d3461;color:white;padding:2px 8px;"
-                f"border-radius:10px;font-size:12px;'>+{size - 1} similar</span>",
+                f"border-radius:10px;font-size:11px;'>+{size - 1} similar</span>",
                 unsafe_allow_html=True,
             )
             st.caption(f"Cluster lead from {lead_source}. Expand to see {size - 1} other item(s) covering the same story.")

@@ -67,8 +67,8 @@ _STATUS_COLOUR = {
 }
 
 _TAG_STYLE = (
-    "background:#eef;color:#333;padding:2px 8px;border-radius:10px;"
-    "font-size:11px;border:1px solid #ccd;margin-right:4px;"
+    "background:#eef;color:#333;padding:1px 6px;border-radius:8px;"
+    "font-size:10px;border:1px solid #ccd;margin-right:3px;"
 )
 
 
@@ -84,7 +84,7 @@ def _badges_html(geo: str | None, topics: list[str] | None) -> str:
     if not parts:
         return ""
     return (
-        "<p style='margin:4px 0 0 0;font-size:12px;color:#555;'>"
+        "<p style='margin:2px 0;font-size:11px;color:#555;'>"
         "<b>Key tags:</b> " + "".join(parts) + "</p>"
     )
 

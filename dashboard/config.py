@@ -10,7 +10,7 @@ CATEGORY_LABELS = {
     "edtech": "EdTech",
     "political_environment_key_organisations": "Political environment and key organisations",
     "four_nations": "Four Nations",
-    "policy_practice_research": "Research \u2013 Practice \u2013 Policy",
+    "policy_practice_research": "Research, Practice, Policy",
     "what_matters_ed": "What matters in education?",
 }
 
