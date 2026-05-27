@@ -46,6 +46,10 @@ def load_classified_articles(min_week: int | None = None) -> pd.DataFrame:
     q = client.table("v_dashboard").select("*")
     if min_week is not None:
         q = q.gte("week_number", min_week)
+    # TEMP HIDE: 2026-05-26 onwards (this week's leaky scrape — Slade art-school
+    # noise + nan-summary issues — pending curator review before re-enabling).
+    # Remove this line once cleaned up.
+    q = q.lt("article_date", "2026-05-26")
     resp = q.execute()
     df = pd.DataFrame(resp.data or [])
     if df.empty:
