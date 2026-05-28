@@ -40,11 +40,18 @@ def main():
         st.session_state.current_page = "Triage"
     cur = st.session_state.current_page
 
+    # Top-of-page horizontal nav (replaces the sidebar radio so the three
+    # pages sit clearly at the top of the dashboard).
     nav_idx = NAV.index(cur) if cur in NAV else 0
-    choice = st.sidebar.radio("Navigate", NAV, index=nav_idx, label_visibility="collapsed")
+    choice = st.radio(
+        "Navigate", NAV, index=nav_idx,
+        horizontal=True, label_visibility="collapsed",
+        key="_top_nav_radio",
+    )
     if choice and choice != cur:
         st.session_state.current_page = choice
         st.rerun()
+    st.markdown("---")
 
     # ── Curator login (write access) ─────────────────────────────────────────
     # Read-only browsing is open; mutating buttons (Accept/Reject/etc.) are

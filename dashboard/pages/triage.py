@@ -24,23 +24,56 @@ from dashboard.data import (
 from src.inference.summarise import summarise_article
 
 
-N_WEEKS = 8  # how many recent weeks to surface in the selector
-
-
 def _tuesday_on_or_before(d: date) -> date:
     """Most recent Tuesday on or before `d` — anchors a scrape-week (Tue→Mon)."""
     return d - timedelta(days=(d.weekday() - 1) % 7)
 
 
-def _week_options(df: pd.DataFrame, n: int = N_WEEKS) -> list[tuple[str, date, date]]:
-    """Build N most recent Tue→Mon weeks as (label, start, end). Newest first."""
-    dates = df["_article_date"].dropna() if "_article_date" in df.columns else pd.Series([], dtype=object)
-    anchor = _tuesday_on_or_before(dates.max() if not dates.empty else date.today())
+def _ordinal(n: int) -> str:
+    """1 -> '1st', 2 -> '2nd', 11 -> '11th', etc."""
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def _format_week_label(wk_start: date, wk_end: date) -> str:
+    """e.g. 'Tuesday 19th May - Monday 25th May 2026' (year only on the end
+    date to keep the label readable). If the week spans years, show both."""
+    start = f"Tuesday {_ordinal(wk_start.day)} {wk_start:%B}"
+    if wk_start.year != wk_end.year:
+        start = f"{start} {wk_start.year}"
+    end = f"Monday {_ordinal(wk_end.day)} {wk_end:%B} {wk_end.year}"
+    return f"{start} - {end}"
+
+
+def _week_options(df: pd.DataFrame) -> list[tuple[str, date, date]]:
+    """Build every completed Tue→Mon week back to the earliest article we have.
+    A week is 'completed' only once its Monday end has passed (so the
+    in-progress week isn't shown until the following Tuesday).
+    Newest first."""
+    if "_article_date" not in df.columns:
+        return []
+    dates = df["_article_date"].dropna()
+    if dates.empty:
+        return []
+    earliest = _tuesday_on_or_before(dates.min())
+    # Latest completed week ends on the most recent Monday < today.
+    today = date.today()
+    days_since_mon = (today.weekday() - 0) % 7  # Mon=0
+    last_completed_end = today - timedelta(days=days_since_mon + 1) if days_since_mon == 0 else today - timedelta(days=days_since_mon)
+    # If today is Mon, the week ending yesterday hasn't quite finished — so
+    # only show weeks ending strictly before today.
+    if last_completed_end >= today:
+        last_completed_end = today - timedelta(days=1)
+    anchor = _tuesday_on_or_before(last_completed_end)
     out: list[tuple[str, date, date]] = []
-    for i in range(n):
-        wk_start = anchor - timedelta(days=7 * i)
-        wk_end = wk_start + timedelta(days=6)
-        out.append((f"Week of {wk_start:%d %b %Y}", wk_start, wk_end))
+    cur = anchor
+    while cur >= earliest:
+        wk_end = cur + timedelta(days=6)
+        out.append((_format_week_label(cur, wk_end), cur, wk_end))
+        cur = cur - timedelta(days=7)
     return out
 
 
@@ -91,11 +124,6 @@ def _badges_html(geo: str | None, topics: list[str] | None) -> str:
 
 def render(df):
     st.title("Triage")
-    st.markdown(
-        "Quickly **keep** or **reject** each article from this week's pull. "
-        "Kept articles move to **Select Categories** for category assignment, "
-        "then to **Newsletter Draft**."
-    )
 
     # Targeted button colours: the Keep button uses a marker div + sibling-selector
     # so it can be green (positive action) without recolouring every secondary button.
@@ -151,30 +179,16 @@ def render(df):
         (df["_article_date"] >= week_start) & (df["_article_date"] <= week_end)
     ].copy()
 
-    # ── Filters ─────────────────────────────────────────────────────────────
+    # Default behaviour: show only Pending articles, newest first. The filter
+    # and sort selectboxes used to live here but Gemma asked them removed —
+    # in practice she always used the defaults anyway.
     decisions = load_decisions()
-    STATUS_OPTIONS = ["Pending", "All", "Kept", "Rejected"]
-    col_status, col_sort = st.columns(2)
-    with col_status:
-        status_filter = st.selectbox("Show", STATUS_OPTIONS, index=0)
-    with col_sort:
-        sort_by = st.selectbox(
-            "Order by", ["Date (newest first)", "Date (oldest first)", "Source"]
-        )
+    filtered = filtered[filtered["url"].apply(
+        lambda u: _status_for(u, decisions) == "Pending"
+    )].copy()
+    filtered = filtered.sort_values("_article_date", ascending=False, na_position="last")
 
-    if status_filter != "All":
-        filtered = filtered[filtered["url"].apply(
-            lambda u: _status_for(u, decisions) == status_filter
-        )].copy()
-
-    if sort_by == "Date (newest first)":
-        filtered = filtered.sort_values("_article_date", ascending=False, na_position="last")
-    elif sort_by == "Date (oldest first)":
-        filtered = filtered.sort_values("_article_date", ascending=True, na_position="last")
-    else:
-        filtered = filtered.sort_values("source", ascending=True, na_position="last")
-
-    st.info(f"**{selected_label}** — {len(filtered)} article(s) shown ({status_filter})")
+    st.info(f"**{selected_label}** — {len(filtered)} pending article(s)")
 
     # ── Article cards ───────────────────────────────────────────────────────
     for idx, row in filtered.iterrows():

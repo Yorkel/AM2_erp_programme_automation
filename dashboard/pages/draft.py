@@ -37,11 +37,11 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
       Id, Start time, Organisation, Title, Include,
       Link (website address / URL), Short description,
       Which section of the newsletter is this for?, Any other comments?,
-      Submitter, Question
+      Submitter
 
     "Include" defaults to "Yes" (the curator accepted all of these on Page 2).
-    "Submitter" / "Any other comments?" / "Question" are left blank for the
-    curator to fill on review.
+    "Submitter" is per-article — curator picks GM/RF/NC on Draft page.
+    "Any other comments?" is left blank for the curator to fill on review.
     """
     rows = []
     row_id = 1
@@ -71,15 +71,14 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
                 "Short description": summary,
                 "Which section of the newsletter is this for?": CATEGORY_LABELS.get(cat_key, cat_key),
                 "Any other comments?": st.session_state.get(f"notes_{url}", "") or "",
-                "Submitter": st.session_state.get("draft_submitter", "") or "",
-                "Question": st.session_state.get(f"question_{url}", "") or "",
+                "Submitter": st.session_state.get(f"submitter_{url}", "") or "",
             })
             row_id += 1
     columns = [
         "Id", "Start time", "Organisation", "Title", "Include",
         "Link (website address / URL)", "Short description",
         "Which section of the newsletter is this for?",
-        "Any other comments?", "Submitter", "Question",
+        "Any other comments?", "Submitter",
     ]
     df = pd.DataFrame(rows, columns=columns)
     buf = BytesIO()
@@ -109,13 +108,13 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
             cell.border = cell_border
 
         # Per-column widths (chars) + wrap settings
-        wrap_cols = {"Title", "Short description", "Any other comments?", "Question"}
+        wrap_cols = {"Title", "Short description", "Any other comments?"}
         width_map = {
             "Id": 6, "Start time": 13, "Organisation": 22, "Title": 50,
             "Include": 9, "Link (website address / URL)": 60,
             "Short description": 60,
             "Which section of the newsletter is this for?": 28,
-            "Any other comments?": 30, "Submitter": 14, "Question": 24,
+            "Any other comments?": 30, "Submitter": 14,
         }
         for col_idx, col_name in enumerate(columns, start=1):
             letter = get_column_letter(col_idx)
@@ -257,7 +256,7 @@ def render(df):
                         st.toast("Saved.")
 
                 # Per-article fillable fields — BELOW the summary
-                col_notes, col_question = st.columns(2)
+                col_notes, col_submitter = st.columns(2)
                 with col_notes:
                     st.text_input(
                         "Any other comments?",
@@ -265,11 +264,11 @@ def render(df):
                         placeholder="Optional curator note for this row",
                         disabled=not auth,
                     )
-                with col_question:
-                    st.text_input(
-                        "Question",
-                        key=f"question_{art_url}",
-                        placeholder="Optional",
+                with col_submitter:
+                    st.selectbox(
+                        "Submitted by",
+                        options=["", "GM", "RF", "NC"],
+                        key=f"submitter_{art_url}",
                         disabled=not auth,
                     )
 
