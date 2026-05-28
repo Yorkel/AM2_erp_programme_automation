@@ -15,7 +15,7 @@ import pandas as pd
 
 from dashboard.config import NAVY, TEAL
 from dashboard.styles import get_css
-from dashboard.data import load_classified_articles, init_session_state
+from dashboard.data import load_classified_articles, init_session_state, record_feedback
 from dashboard.pages import triage, select_categories, draft
 
 
@@ -37,18 +37,20 @@ def main():
     /* Pull main content flush with the viewport top so the grey header bar
        hugs the top of the window with no Streamlit whitespace above it. */
     .block-container { padding-top: 1rem !important; }
+    /* Hide Streamlit's "Press ↵ to submit" helper text under text inputs. */
+    [data-testid="InputInstructions"] { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Grey gradient header bar with embedded logo ──────────────────────────
+    # ── ESRC navy header bar with embedded logo ──────────────────────────────
     _logo_path = Path(__file__).parent / "erp_logo.png"
     if _logo_path.exists():
         logo_b64 = base64.b64encode(_logo_path.read_bytes()).decode()
         st.markdown(f"""
-        <div style='background:linear-gradient(90deg,#e8e8e8 0%,#cfcfcf 50%,#bababa 100%);
-                    padding:12px 24px;margin:-1rem -2rem 16px -2rem;
-                    display:flex;align-items:center;border-bottom:1px solid #999;'>
-            <img src='data:image/png;base64,{logo_b64}' style='height:46px;'/>
+        <div style='background:{NAVY};
+                    padding:18px 28px;margin:-1rem -2rem 20px -2rem;
+                    display:flex;align-items:center;border-bottom:1px solid #0a142b;'>
+            <img src='data:image/png;base64,{logo_b64}' style='height:80px;'/>
         </div>
         """, unsafe_allow_html=True)
 
@@ -120,6 +122,32 @@ def main():
         select_categories.render(df)
     elif page == "Newsletter Draft":
         draft.render(df)
+
+    # ── Feedback on dashboard (every page) ──────────────────────────────────
+    auth = bool(st.session_state.get("authenticated"))
+    st.markdown("---")
+    st.markdown("### 💬 Feedback on dashboard design & functionality")
+    st.caption(
+        "Send a note to Louise about anything that's broken, missing, "
+        "confusing, or could work better. This goes straight to her, not "
+        "into the newsletter."
+    )
+    feedback_text = st.text_area(
+        "Feedback",
+        key="_feedback_box",
+        height=110,
+        placeholder="e.g. \"The Triage page is too slow\" / \"I can't find X\" / \"Why does the source filter not include Y?\"",
+        label_visibility="collapsed",
+        disabled=not auth,
+    )
+    if st.button("Send feedback to Louise", key="_feedback_submit", disabled=not auth, type="primary"):
+        if feedback_text and feedback_text.strip():
+            record_feedback(feedback_text.strip())
+            st.session_state["_feedback_box"] = ""
+            st.success("Feedback sent. Thank you.")
+            st.rerun()
+        else:
+            st.warning("Feedback is empty.")
 
 
 main()

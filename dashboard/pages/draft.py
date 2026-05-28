@@ -288,23 +288,4 @@ def render(df):
         "unsaved edits will still appear in the Excel, but won't persist if you reload."
     )
 
-    # ── Feedback ────────────────────────────────────────────────────────────
-    st.markdown("---")
-    st.markdown("### Feedback")
-    feedback_text = st.text_area(
-        "Free-text feedback",
-        key="_feedback_box",
-        height=120,
-        placeholder="Anything you'd like to flag — wrong categorisations, broken articles, sources missing, etc.",
-        label_visibility="collapsed",
-        disabled=not auth,
-    )
-    if st.button("Submit feedback", key="_feedback_submit", disabled=not auth):
-        if feedback_text and feedback_text.strip():
-            record_feedback(feedback_text.strip())
-            # Reset the box on the next rerun
-            st.session_state["_feedback_box"] = ""
-            st.success("Feedback submitted. Thank you.")
-            st.rerun()
-        else:
-            st.warning("Feedback is empty.")
+    # Feedback box has been moved to app.py (renders at the bottom of every page).

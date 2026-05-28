@@ -593,35 +593,42 @@ sources:
     params: {feed_url: "https://blogs.ucl.ac.uk/ioe/feed/"}
     # source: UCL/IOE: IOE Blog  |  coverage: internal_ucl
 
-  - name: ucl_ioe_research_news
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: IOE Research News  |  coverage: internal_ucl
+  # DISABLED 2026-05-28 — these 8 entries (block continues below) all piped
+  # through the broad UCL Google Alert (...8311366451942549277), which pulls
+  # site:ucl.ac.uk + edu terms. That alert produced non-IOE content (Slade
+  # School, Bartlett, EDI awards, Clinical) regardless of source name.
+  # Gemma's curator ask: drop all non-IOE UCL content at source.
+  # IOE-specific sources kept: ucl_ioe_blog, ucl_cepeo_blog,
+  # ucl_research_for_the_real_world_ioe_podcast, ucl_cel (own CEL alert).
+  # - name: ucl_ioe_research_news
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: IOE Research News  |  coverage: internal_ucl
 
-  - name: ucl_ioe_professorial_lectures
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: IOE Professorial lectures  |  coverage: internal_ucl
+  # - name: ucl_ioe_professorial_lectures
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: IOE Professorial lectures  |  coverage: internal_ucl
 
-  - name: ucl_eppi_centre_events_news
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: EPPI Centre Events & News  |  coverage: internal_ucl
+  # - name: ucl_eppi_centre_events_news
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: EPPI Centre Events & News  |  coverage: internal_ucl
 
-  - name: ucl_ioe_in_the_media
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: IOE in the Media  |  coverage: internal_ucl
+  # - name: ucl_ioe_in_the_media
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: IOE in the Media  |  coverage: internal_ucl
 
-  - name: ucl_ucl_knowledge_lab
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: UCL Knowledge lab  |  coverage: internal_ucl
+  # - name: ucl_ucl_knowledge_lab
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: UCL Knowledge lab  |  coverage: internal_ucl
 
   # DISABLED 2026-05-16 — closer.ac.uk/feed is mostly job vacancies (Research Associate,
   # Internship x4, Technical Manager, Data Manager) plus older-people health, not research.
@@ -633,17 +640,18 @@ sources:
   #   params: {feed_url: "https://closer.ac.uk/feed"}
   #   # source: UCL/IOE: CLOSER blog  |  coverage: internal_ucl
 
-  - name: ucl_hhcp
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: HHCP  |  coverage: internal_ucl
+  # DISABLED 2026-05-28 — broad UCL Google Alert (see block above).
+  # - name: ucl_hhcp
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: HHCP  |  coverage: internal_ucl
 
-  - name: ucl_ioe_announcements
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: IOE Announcements  |  coverage: internal_ucl
+  # - name: ucl_ioe_announcements
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: IOE Announcements  |  coverage: internal_ucl
 
   # DISABLED 2026-05-28 — Gemma's ask: drop non-IOE UCL sources.
   # Note: this entry pointed at the broad UCL Google Alert; other UCL entries
@@ -654,11 +662,12 @@ sources:
   #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
   #   # source: UCL/IOE: ECHILD  |  coverage: internal_ucl
 
-  - name: ucl_eppi_centre_evidence_for_policy_and_practice
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: EPPI Centre - Evidence for Policy and Practice  |  coverage: internal_ucl
+  # DISABLED 2026-05-28 — broad UCL Google Alert (see block above).
+  # - name: ucl_eppi_centre_evidence_for_policy_and_practice
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: EPPI Centre - Evidence for Policy and Practice  |  coverage: internal_ucl
 
   # DISABLED 2026-05-28 — Gemma's ask: drop non-IOE UCL sources.
   # - name: ucl_ucl_co_production_collective

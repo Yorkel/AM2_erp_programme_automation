@@ -188,7 +188,7 @@ def render(df):
     )].copy()
     filtered = filtered.sort_values("_article_date", ascending=False, na_position="last")
 
-    st.info(f"**{selected_label}** — {len(filtered)} pending article(s)")
+    st.info(f"{len(filtered)} pending article(s)")
 
     # ── Article cards ───────────────────────────────────────────────────────
     for idx, row in filtered.iterrows():
