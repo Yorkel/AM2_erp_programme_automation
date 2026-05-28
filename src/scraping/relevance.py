@@ -78,6 +78,7 @@ BLOCKED_URL_PATTERNS: tuple[str, ...] = (
     "/fashion/",
     "/lifestyle/",
     "/travel/",
+    "/slade/",
 )
 
 
