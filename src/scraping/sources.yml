@@ -311,11 +311,12 @@ sources:
     params: {feed_url: "https://defenddigitalme.org/feed"}
     # source: Defend Digital Me  |  coverage: edtech
 
-  - name: the_guardian
-    type: rss
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.theguardian.com/education/rss"}
-    # source: The Guardian  |  coverage: media
+  # DISABLED 2026-05-28 — Gemma's curator-feedback ask. Drop Guardian Education entirely.
+  # - name: the_guardian
+  #   type: rss
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.theguardian.com/education/rss"}
+  #   # source: The Guardian  |  coverage: media
 
   # RE-ENABLED 2026-05-17 with apply_relevance_filter — IfG publishes general UK politics;
   # filter captures only entries mentioning schools/teachers/education/etc.
@@ -644,11 +645,14 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
     # source: UCL/IOE: IOE Announcements  |  coverage: internal_ucl
 
-  - name: ucl_echild
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: ECHILD  |  coverage: internal_ucl
+  # DISABLED 2026-05-28 — Gemma's ask: drop non-IOE UCL sources.
+  # Note: this entry pointed at the broad UCL Google Alert; other UCL entries
+  # still use the same feed, so similar content may appear under their names.
+  # - name: ucl_echild
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: ECHILD  |  coverage: internal_ucl
 
   - name: ucl_eppi_centre_evidence_for_policy_and_practice
     type: google_alert
@@ -656,11 +660,12 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
     # source: UCL/IOE: EPPI Centre - Evidence for Policy and Practice  |  coverage: internal_ucl
 
-  - name: ucl_ucl_co_production_collective
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
-    # source: UCL/IOE: UCL Co Production Collective  |  coverage: internal_ucl
+  # DISABLED 2026-05-28 — Gemma's ask: drop non-IOE UCL sources.
+  # - name: ucl_ucl_co_production_collective
+  #   type: google_alert
+  #   scraper: src.scraping.rss_adapter
+  #   params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8311366451942549277"}
+  #   # source: UCL/IOE: UCL Co Production Collective  |  coverage: internal_ucl
 
   - name: bbc_education
     type: rss

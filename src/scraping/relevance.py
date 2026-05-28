@@ -248,7 +248,7 @@ APPROVED_DOMAINS: tuple[str, ...] = (
     "teachertapp.co.uk",
     "teachertapp.com",
     "tes.com",
-    "theguardian.com",
+    # "theguardian.com",  # REMOVED 2026-05-28 — Gemma curator ask, source dropped
     "theippo.co.uk",
     "tpea.ac.uk",
     "ucl.ac.uk",
@@ -266,7 +266,7 @@ BROAD_DOMAINS: tuple[str, ...] = (
     # General news / TV
     "bbc.co.uk",
     "belfasttelegraph.co.uk",
-    "theguardian.com",
+    # "theguardian.com",  # REMOVED 2026-05-28 — Gemma curator ask, source dropped
     # Universities (their news pages publish on every research area)
     "durham.ac.uk",
     "gla.ac.uk",

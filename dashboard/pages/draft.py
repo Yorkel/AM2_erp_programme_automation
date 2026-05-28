@@ -144,11 +144,6 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
 
 def render(df):
     st.title("Newsletter Draft")
-    st.markdown(
-        "Each categorised article appears below, grouped by section. "
-        "**Save** persists summary edits; **Generate summary** re-drafts via Claude; "
-        "**×** removes the article from the draft. Download as Excel at the bottom."
-    )
 
     accepted = get_accepted_articles(df)
     if not accepted:
