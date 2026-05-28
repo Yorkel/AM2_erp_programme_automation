@@ -6,6 +6,7 @@ ESRC ERP Newsletter Curator Dashboard
 # to dashboard/, not the repo root. Without the next 3 lines, every
 # `from dashboard.<…> import` raises ModuleNotFoundError.
 import sys
+import base64
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -23,14 +24,33 @@ def main():
         page_title="ESRC ERP Newsletter",
         page_icon="\U0001f4f0",
         layout="wide",
+        initial_sidebar_state="collapsed",
     )
 
     st.markdown(get_css(), unsafe_allow_html=True)
 
+    # Hide the sidebar entirely (the toggle chevron + the panel itself).
+    st.markdown("""
+    <style>
+    section[data-testid="stSidebar"] { display: none !important; }
+    div[data-testid="collapsedControl"] { display: none !important; }
+    /* Pull main content flush with the viewport top so the grey header bar
+       hugs the top of the window with no Streamlit whitespace above it. */
+    .block-container { padding-top: 1rem !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ── Grey gradient header bar with embedded logo ──────────────────────────
     _logo_path = Path(__file__).parent / "erp_logo.png"
     if _logo_path.exists():
-        st.sidebar.image(str(_logo_path), use_container_width=True)
-    st.sidebar.title("Newsletter Curator")
+        logo_b64 = base64.b64encode(_logo_path.read_bytes()).decode()
+        st.markdown(f"""
+        <div style='background:linear-gradient(90deg,#e8e8e8 0%,#cfcfcf 50%,#bababa 100%);
+                    padding:12px 24px;margin:-1rem -2rem 16px -2rem;
+                    display:flex;align-items:center;border-bottom:1px solid #999;'>
+            <img src='data:image/png;base64,{logo_b64}' style='height:46px;'/>
+        </div>
+        """, unsafe_allow_html=True)
 
     NAV = [
         "Triage", "Select Categories", "Newsletter Draft",
@@ -40,57 +60,46 @@ def main():
         st.session_state.current_page = "Triage"
     cur = st.session_state.current_page
 
-    # Top-of-page horizontal nav (replaces the sidebar radio so the three
-    # pages sit clearly at the top of the dashboard).
-    nav_idx = NAV.index(cur) if cur in NAV else 0
-    choice = st.radio(
-        "Navigate", NAV, index=nav_idx,
-        horizontal=True, label_visibility="collapsed",
-        key="_top_nav_radio",
-    )
-    if choice and choice != cur:
-        st.session_state.current_page = choice
-        st.rerun()
-    st.markdown("---")
-
-    # ── Curator login (write access) ─────────────────────────────────────────
-    # Read-only browsing is open; mutating buttons (Accept/Reject/etc.) are
-    # disabled unless the curator authenticates with the password stored in
-    # Streamlit secrets as CURATOR_PASSWORD.
-    st.sidebar.markdown("---")
-    if st.session_state.get("authenticated"):
-        # Dark green background + white text — high contrast and works with
-        # the sidebar's `color: white !important` default rule.
-        st.sidebar.markdown(
-            "<div style='background:#1e7e34;border:1px solid #28a745;border-radius:5px;"
-            "padding:10px 14px;font-weight:700;text-align:center;"
-            "margin-bottom:8px;'>🔓 Curator mode</div>",
-            unsafe_allow_html=True,
+    # ── Top row: page nav on the left, login popover on the right ────────────
+    col_nav, col_login = st.columns([5, 1])
+    with col_nav:
+        nav_idx = NAV.index(cur) if cur in NAV else 0
+        choice = st.radio(
+            "Navigate", NAV, index=nav_idx,
+            horizontal=True, label_visibility="collapsed",
+            key="_top_nav_radio",
         )
-        if st.sidebar.button("Log out", use_container_width=True, key="_logout_btn"):
-            st.session_state.authenticated = False
+        if choice and choice != cur:
+            st.session_state.current_page = choice
             st.rerun()
-    else:
-        st.sidebar.markdown("### 🔒 Curator login")
-        st.sidebar.caption("Read-only — log in to edit.")
-        with st.sidebar.form("_login_form", clear_on_submit=False):
-            pwd = st.text_input(
-                "Password", type="password", key="_curator_pw",
-                label_visibility="collapsed", placeholder="Password",
-            )
-            submit = st.form_submit_button(
-                "Log in", use_container_width=True, type="primary",
-            )
-        if submit:
-            try:
-                expected = st.secrets["CURATOR_PASSWORD"]
-            except (KeyError, FileNotFoundError):
-                expected = None
-            if expected and pwd == expected:
-                st.session_state.authenticated = True
-                st.rerun()
-            else:
-                st.sidebar.error("Wrong password" if pwd else "Enter a password")
+    with col_login:
+        if st.session_state.get("authenticated"):
+            with st.popover("🔓 Curator", use_container_width=True):
+                if st.button("Log out", use_container_width=True, key="_logout_btn"):
+                    st.session_state.authenticated = False
+                    st.rerun()
+        else:
+            with st.popover("🔒 Log in", use_container_width=True):
+                with st.form("_login_form", clear_on_submit=False):
+                    pwd = st.text_input(
+                        "Password", type="password", key="_curator_pw",
+                        label_visibility="collapsed", placeholder="Password",
+                    )
+                    submit = st.form_submit_button(
+                        "Log in", use_container_width=True, type="primary",
+                    )
+                if submit:
+                    try:
+                        expected = st.secrets["CURATOR_PASSWORD"]
+                    except (KeyError, FileNotFoundError):
+                        expected = None
+                    if expected and pwd == expected:
+                        st.session_state.authenticated = True
+                        st.rerun()
+                    else:
+                        st.error("Wrong password" if pwd else "Enter a password")
+
+    st.markdown("---")
 
     page = st.session_state.current_page
 
