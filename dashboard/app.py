@@ -127,11 +127,6 @@ def main():
     auth = bool(st.session_state.get("authenticated"))
     st.markdown("---")
     st.markdown("### 💬 Feedback on dashboard design & functionality")
-    st.caption(
-        "Send a note to Louise about anything that's broken, missing, "
-        "confusing, or could work better. This goes straight to her, not "
-        "into the newsletter."
-    )
     feedback_text = st.text_area(
         "Feedback",
         key="_feedback_box",
@@ -140,7 +135,7 @@ def main():
         label_visibility="collapsed",
         disabled=not auth,
     )
-    if st.button("Send feedback to Louise", key="_feedback_submit", disabled=not auth, type="primary"):
+    if st.button("Send feedback", key="_feedback_submit", disabled=not auth, type="primary"):
         if feedback_text and feedback_text.strip():
             record_feedback(feedback_text.strip())
             st.session_state["_feedback_box"] = ""
