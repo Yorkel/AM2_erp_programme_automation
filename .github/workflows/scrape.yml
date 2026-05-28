@@ -5,7 +5,7 @@ on:
     # GitHub Actions cron uses UTC. Off-peak overnight slot to maximise the
     # chance scheduled runs actually fire on the free tier (peak skips runs).
     # During BST (Mar–Oct) this is 03:23 UK; during GMT (Nov–Feb) it's 02:23 UK.
-    - cron: '23 2 * * 1-5'  # Mon–Fri 02:23 UTC = 03:23 UK (BST)
+    - cron: '23 2 * * 2'  # Tuesday 02:23 UTC = 03:23 UK (BST)
   workflow_dispatch:        # also allow manual triggering from the Actions tab
 
 jobs:
@@ -32,6 +32,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python -m src.scraping.run --since-last-run
 
       - name: Summary
