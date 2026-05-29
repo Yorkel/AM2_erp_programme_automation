@@ -68,6 +68,17 @@ def main():
         st.session_state.current_page = "Triage"
     cur = st.session_state.current_page
 
+    # Make the step buttons larger + bolder so the workflow order reads clearly.
+    st.markdown("""
+    <style>
+    [data-testid="stSegmentedControl"] button {
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        padding: 8px 22px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # ── Top row: page nav on the left, login popover on the right ────────────
     col_nav, col_login = st.columns([5, 1])
     with col_nav:
