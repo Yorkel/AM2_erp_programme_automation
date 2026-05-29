@@ -54,9 +54,15 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
+    # Internal page keys (drive dispatch below) → curator-facing step labels.
     NAV = [
         "Triage", "Select Categories", "Newsletter Draft",
     ]
+    NAV_LABELS = {
+        "Triage": "Step 1: Triage",
+        "Select Categories": "Step 2: Categorise",
+        "Newsletter Draft": "Step 3: Draft Newsletter",
+    }
 
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Triage"
@@ -65,11 +71,14 @@ def main():
     # ── Top row: page nav on the left, login popover on the right ────────────
     col_nav, col_login = st.columns([5, 1])
     with col_nav:
-        nav_idx = NAV.index(cur) if cur in NAV else 0
-        choice = st.radio(
-            "Navigate", NAV, index=nav_idx,
-            horizontal=True, label_visibility="collapsed",
-            key="_top_nav_radio",
+        # Button-like segmented control reading "Step 1 / 2 / 3" so the curator
+        # sees the workflow order at a glance.
+        choice = st.segmented_control(
+            "Navigate", NAV,
+            format_func=lambda x: NAV_LABELS.get(x, x),
+            default=cur if cur in NAV else NAV[0],
+            label_visibility="collapsed",
+            key="_top_nav_seg",
         )
         if choice and choice != cur:
             st.session_state.current_page = choice
