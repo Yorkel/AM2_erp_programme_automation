@@ -256,7 +256,26 @@ def render(df):
                         st.toast("Saved.")
 
                 # Per-article fillable fields — BELOW the summary
-                col_notes, col_submitter = st.columns(2)
+                col_section, col_notes, col_submitter = st.columns(3)
+                with col_section:
+                    # Re-assign the newsletter section in place. Picking a
+                    # different category commits immediately via on_change —
+                    # records action=manual and the card regroups under the
+                    # new section on rerun (same mechanic as Page 2).
+                    def _on_change_section(_url=art_url, _current=cat_key):
+                        choice = st.session_state.get(f"sect_{_url}")
+                        if choice and choice != _current:
+                            record_decision(_url, "manual", choice)
+
+                    st.selectbox(
+                        "Section",
+                        options=list(CATEGORY_ORDER),
+                        index=list(CATEGORY_ORDER).index(cat_key),
+                        format_func=lambda x: CATEGORY_LABELS.get(x, x),
+                        key=f"sect_{art_url}",
+                        on_change=_on_change_section,
+                        disabled=not auth,
+                    )
                 with col_notes:
                     st.text_input(
                         "Any other comments?",

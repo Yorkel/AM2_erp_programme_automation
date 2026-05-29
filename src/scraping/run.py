@@ -271,6 +271,53 @@ def _filter_items(items: list, source: str,
     return kept
 
 
+# Feed bodies shorter than this (chars) are treated as headline-only — many
+# RSS feeds and ~all Google Alerts give a one-line blurb with no article body.
+# Below the threshold we fetch the page and extract the real content.
+MIN_BODY_CHARS = 200
+
+
+def _backfill_bodies(items: list, source: str, *, dry_run: bool = False) -> None:
+    """Fill missing article bodies by fetching the page for kept articles.
+
+    Runs AFTER _filter_items, so we only fetch pages for articles we're actually
+    keeping — the fetch count tracks the weekly survivor volume, not the much
+    larger raw feed count. For each kept Article whose `text` is shorter than
+    MIN_BODY_CHARS (headline-only feed entry), fetch the URL and extract the main
+    content via the same selector ladder used elsewhere (extract_body_text).
+    If the fetched body is longer than what we had, swap it in and rebuild
+    text_clean so the snippet stays consistent.
+
+    Failures are swallowed: soup_of returns None on a 403/timeout, the item keeps
+    its short body, and the summary step degrades to 'Summary unavailable' rather
+    than blocking the scrape. This is why hard-blocked sites (e.g. Belfast
+    Telegraph) simply stay un-summarised instead of erroring.
+    """
+    if dry_run or not items:
+        return
+    from src.scraping.common import build_text_clean, extract_body_text, soup_of
+
+    n_fetched = 0
+    n_unreachable = 0
+    for item in items:
+        if not isinstance(item, Article) or not item.url:
+            continue
+        if len((item.text or "").strip()) >= MIN_BODY_CHARS:
+            continue
+        soup = soup_of(item.url)
+        if soup is None:
+            n_unreachable += 1
+            continue
+        body = extract_body_text(soup)
+        if len(body.strip()) > len((item.text or "").strip()):
+            item.text = body
+            item.text_clean = build_text_clean(item.title, body)
+            n_fetched += 1
+    if n_fetched or n_unreachable:
+        print(f"  {source}: body backfill — {n_fetched} fetched"
+              + (f", {n_unreachable} unreachable" if n_unreachable else ""))
+
+
 def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> None:
     """Populate Article.summary + .geographic_focus + .topic_tags for each kept
     item via Claude. Mutates in place.
@@ -449,6 +496,7 @@ def _execute_run(args):
             )
             items = _filter_items(items, name, apply_filter, require_keywords)
             if not args.no_summaries:
+                _backfill_bodies(items, name, dry_run=args.dry_run)
                 _generate_summaries(items, name, dry_run=args.dry_run)
             records = _to_records(items)
             rows_scraped = len(records)
