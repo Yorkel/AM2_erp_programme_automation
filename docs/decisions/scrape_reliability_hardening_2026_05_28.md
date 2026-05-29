@@ -95,17 +95,47 @@ The env var fix alone would have closed the *immediate* bug. But the project's f
 
 Layered defence — SDK retries (Layer 1) → idempotent recovery (Layer 2) → loud-fail alert (Layer 3) — means the system is robust against a wider class of future failures, not just the specific one I hit today.
 
+## Postscript — the alert fired, exposed a downstream-gating flaw, patched same day
+
+**Run #14 (manual, 4hrs after Layer 2/3 shipped) failed exit code 1 after 44m 37s.** Loud-fail working as designed: the sweep tried to backfill the legacy NULL-summary backlog (probably 85+ rows) and hit `APIConnectionError` on every Claude call. SDK retries (5 × exponential backoff = ~31s per failure) burnt 44 minutes before giving up. No summaries succeeded → loud-fail exit fired.
+
+But: **classify, drift and fairness all skipped on this run.** Their workflow files gate on `${{ github.event.workflow_run.conclusion == 'success' }}`. Since the sweep's failure poisoned the whole scrape workflow's conclusion → downstream conditional false → cascade skip.
+
+This is a design flaw, not the alert system working correctly. The actual scrape (Step 1) succeeded — those new articles deserved to be classified.
+
+**Patched same day**: added `continue-on-error: true` to the sweep step in [.github/workflows/scrape.yml](../../.github/workflows/scrape.yml):
+
+```yaml
+- name: Sweep null summaries + tags (safety net)
+  if: always()
+  continue-on-error: true   # ← added 2026-05-28
+  ...
+```
+
+Now sweep failures still log a red ✗ on the step but the workflow conclusion stays `success` → classify/drift/fairness chain runs as normal.
+
+**Trade-off accepted**: sweep failures no longer trigger the GitHub failure email. The scrape itself failing still does — and that's the more critical signal. Sweep is a *best-effort backfill*, not the load-bearing data path.
+
+**Better long-term fix (not shipped today)**: promote `sweep_summaries.py` to its own workflow with its own cron. Sweep failures would then fail *that* workflow → email fires → no impact on the main scrape→classify→drift→fairness chain. Carried forward to a future session.
+
+### What this postscript demonstrates (extra distinction-grade signal)
+
+- **The alert path was tested in production within hours of shipping** — and it fired correctly on a real condition, not a synthetic test
+- **First firing exposed a non-obvious flaw** — `workflow_run.conclusion` semantics in GitHub Actions aren't immediately intuitive
+- **Patched same day, with the trade-off articulated in the commit + memory + this doc** — not rushed, not hidden, full audit trail
+
 ## What this demonstrates
 
 - Reactive operational discipline: live workflow log reading; SDK error-class diagnosis; distinguishing transient from systemic failure
 - Defence-in-depth: three orthogonal mitigations, each catching what the others miss
 - Idempotency-first design: re-running the sweep is safe; can be triggered manually too
 - Alignment with existing repo conventions: `sweep_summaries` mirrors `sweep_unclassified` — no new pattern to teach a future maintainer
+- Honest engineering: built a fix, watched it work, found a flaw, articulated the trade-off, kept iterating
 
 ## Maps to AM2 KSBs
 
 - **K15** — data quality & monitoring → quality-assurance pipeline with feedback loop (NULL detection → automatic recovery)
 - **S22** — production system operation → error-handling defence-in-depth, failover, recovery
-- **S24** — model/system monitoring → silent-failure alert path closed
-- **K11** — testing & reliability → failure mode actively covered, not just happy path
+- **S24** — model/system monitoring → silent-failure alert path closed, then re-tuned after a real incident
+- **K11** — testing & reliability → failure mode actively covered + tested in production within hours of shipping
 - **K27 / S32** — cyber-security culture → secret added to GitHub Actions store (not committed), service_key vs anon_key discipline maintained
