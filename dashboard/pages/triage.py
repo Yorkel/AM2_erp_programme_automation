@@ -16,7 +16,7 @@ from datetime import date, timedelta
 import streamlit as st
 import pandas as pd
 
-from dashboard.config import MS_FORM_URL, SOURCE_LABELS
+from dashboard.config import SOURCE_LABELS
 from dashboard.data import (
     fetch_article_text, is_authenticated, load_decisions,
     record_decision, record_summary,
@@ -148,13 +148,6 @@ def render(df):
     }
     </style>
     """, unsafe_allow_html=True)
-
-    # ── Add Article: external link to MS Form ──────────────────────────────
-    st.link_button(
-        "➕  Add article via form  ↗",
-        MS_FORM_URL,
-        help="Opens the ERP newsletter-suggestions Microsoft Form in a new tab.",
-    )
 
     st.markdown("---")
 
