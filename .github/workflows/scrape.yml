@@ -37,6 +37,10 @@ jobs:
 
       - name: Sweep null summaries + tags (safety net)
         if: always()
+        continue-on-error: true   # sweep failure must NOT poison the downstream
+                                  # classify→drift→fairness chain (they gate on
+                                  # this workflow's conclusion). Scrape success
+                                  # is the load-bearing signal; sweep is best-effort.
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
