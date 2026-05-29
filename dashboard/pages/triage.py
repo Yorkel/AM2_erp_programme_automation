@@ -123,7 +123,7 @@ def _badges_html(geo: str | None, topics: list[str] | None) -> str:
 
 
 def render(df):
-    st.title("Triage")
+    st.title("Step 1: Triage")
 
     # Targeted button colours: the Keep button uses a marker div + sibling-selector
     # so it can be green (positive action) without recolouring every secondary button.

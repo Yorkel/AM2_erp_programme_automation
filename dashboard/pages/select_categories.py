@@ -214,7 +214,7 @@ def _render_article(art: dict, idx_in_cluster: int):
 
 
 def render(df):
-    st.title("Select Categories")
+    st.title("Step 2: Categorise")
     st.markdown(
         "For each article kept on **Triage**, pick a newsletter section. "
         "Articles covering the same story are grouped together; pick one or "

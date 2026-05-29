@@ -142,7 +142,7 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
 
 
 def render(df):
-    st.title("Newsletter Draft")
+    st.title("Step 3: Draft Newsletter")
 
     accepted = get_accepted_articles(df)
     if not accepted:
