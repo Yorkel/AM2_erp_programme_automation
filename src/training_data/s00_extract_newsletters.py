@@ -32,6 +32,14 @@ CALLOUT_PREFIXES = re.compile(
     re.I
 )
 
+# Footer/boilerplate boundary — everything from here down is the unsubscribe +
+# feedback blurb, NOT newsletter items. Stop parsing when a block matches.
+FOOTER_RE = re.compile(
+    r'(You have indicated that you are|Do you find this newsletter useful|'
+    r'Answer these short questions|To unsubscribe)',
+    re.I
+)
+
 ANCHOR_ONLY_TOKENS = {
     "more", "read more", "report", "paper", "full report", "full story",
     "youtube", "tes", "gov.uk", "schoolsweek", "bera", "book now", "book on this link"
@@ -248,6 +256,8 @@ def fallback_parse_by_link(soup, newsletter_no, issue_date):
         title, desc_parts, link = None, [], None
 
     for el in blocks:
+        if FOOTER_RE.search(first_text(el)):
+            break
         if el.name == "table":
             bg = get_bg_color(el)
             if bg and (bg in DARK_BLUE_BG or bg in GREY_BG):
@@ -433,6 +443,10 @@ def parse_file(path):
     i = 0
     while i < len(blocks):
         el = blocks[i]
+
+        # Stop at the unsubscribe/feedback footer — nothing below is an item.
+        if FOOTER_RE.search(first_text(el)):
+            break
 
         if el.name == "table":
             bg = get_bg_color(el)
