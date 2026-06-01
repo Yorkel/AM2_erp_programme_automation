@@ -177,6 +177,14 @@ def is_non_uk_content(title: str | None, body: str | None) -> str | None:
 #     df = pd.read_csv('data/sources_master.csv'); \
 #     print(sorted({urlparse(u).netloc.lower().lstrip('.').removeprefix('www.') for u in df['url'].dropna()}))"
 APPROVED_DOMAINS: tuple[str, ...] = (
+    # Republic of Ireland sources (imported 2026-06-01 from policy-tracker repo)
+    "gov.ie",
+    "rte.ie",
+    "esri.ie",
+    "erc.ie",
+    "thejournal.ie",
+    "teachingcouncil.ie",
+    "educationmatters.ie",
     "5rightsfoundation.com",
     "adalovelaceinstitute.org",
     "ades.scot",

@@ -26,3 +26,4 @@ pydantic>=2.0.0
 streamlit>=1.30
 openpyxl>=3.1            # used by review.py / organise.py for .xlsx download buttons
 prometheus-fastapi-instrumentator>=7.0.0
+langdetect>=1.0.9
