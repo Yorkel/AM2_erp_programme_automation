@@ -76,48 +76,6 @@ sources:
 
 
   # ─────────────────────────────────────────────────────────────────────
-  # Republic of Ireland custom scrapers (imported from policy-tracker repo 2026-06-01)
-  # web/ireland/<name>.py — WP API (erc, teaching_council, education_matters) +
-  # HTML pagination (gov_ie, rte, esri, thejournal). Domains added to APPROVED_DOMAINS.
-  # ─────────────────────────────────────────────────────────────────────
-
-  - name: gov_ie
-    type: web
-    scraper: src.scraping.web.custom_scraper_adapter
-    params: {module: src.scraping.web.ireland.gov_ie}
-
-  - name: rte
-    type: web
-    scraper: src.scraping.web.custom_scraper_adapter
-    params: {module: src.scraping.web.ireland.rte}
-
-  - name: esri
-    type: web
-    scraper: src.scraping.web.custom_scraper_adapter
-    params: {module: src.scraping.web.ireland.esri}
-
-  - name: erc
-    type: web
-    scraper: src.scraping.web.custom_scraper_adapter
-    params: {module: src.scraping.web.ireland.erc}
-
-  - name: thejournal
-    type: web
-    scraper: src.scraping.web.custom_scraper_adapter
-    params: {module: src.scraping.web.ireland.thejournal}
-
-  - name: teaching_council
-    type: web
-    scraper: src.scraping.web.custom_scraper_adapter
-    params: {module: src.scraping.web.ireland.teaching_council}
-
-  - name: education_matters
-    type: web
-    scraper: src.scraping.web.custom_scraper_adapter
-    params: {module: src.scraping.web.ireland.education_matters}
-
-
-  # ─────────────────────────────────────────────────────────────────────
   # RSS feeds + Google Alerts (auto-generated from sources_master.csv)
   # 103 entries
   # ─────────────────────────────────────────────────────────────────────
