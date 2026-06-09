@@ -44,6 +44,25 @@ def upsert_articles(client: Client, records: list[dict], *, label: str = "",
         print(f"  {label}: no rows to upsert")
         return 0
 
+    # Canonicalise URLs (strip ?_locale=, utm_*, trailing slash, lowercase host)
+    # so the same article isn't stored twice, then drop within-batch duplicates
+    # that now collapse to the same URL. Keys on `url` (on_conflict=url).
+    from src.scraping.common import normalise_url
+    seen: set[str] = set()
+    deduped: list[dict] = []
+    for r in records:
+        if "url" in r and r.get("url"):
+            r["url"] = normalise_url(r["url"])
+        u = r.get("url")
+        if u and u in seen:
+            continue
+        if u:
+            seen.add(u)
+        deduped.append(r)
+    if len(deduped) < len(records):
+        print(f"  {label}: dropped {len(records) - len(deduped)} duplicate URL(s) after normalising")
+    records = deduped
+
     if dry_run:
         print(f"  [dry-run] {label}: would upsert {len(records)} rows")
         return len(records)

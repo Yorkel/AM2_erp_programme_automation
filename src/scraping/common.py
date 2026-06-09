@@ -74,6 +74,38 @@ def scrape_week(d: date) -> int:
     return (d - timedelta(days=1)).isocalendar().week
 
 
+# Query params that are noise for de-duplication — same article, different URL.
+# Tracking/analytics + locale/lang defaults (e.g. neu.org.uk's ?_locale=en).
+_NOISE_QUERY_PARAMS = {
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "utm_name", "mkt_tok", "mc_cid", "mc_eid", "gclid", "fbclid", "igshid",
+    "_locale", "locale", "lang", "ref", "cmp", "_ga",
+}
+
+
+def normalise_url(u: str) -> str:
+    """Canonicalise an article URL for de-duplication: lowercase the host, drop
+    the #fragment, strip a trailing slash, and remove noise/tracking/locale
+    query params (e.g. ?_locale=en) so the same article isn't stored twice.
+    Content-bearing params (anything not in _NOISE_QUERY_PARAMS) are kept."""
+    if not u or not isinstance(u, str):
+        return u
+    from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
+    try:
+        p = urlparse(u.strip())
+        if not p.netloc:           # not an absolute URL — leave untouched
+            return u.strip()
+        path = p.path.rstrip("/") or "/"
+        kept = [(k, v) for k, v in parse_qsl(p.query, keep_blank_values=True)
+                if k.lower() not in _NOISE_QUERY_PARAMS]
+        return urlunparse(
+            (p.scheme.lower() or "https", p.netloc.lower(), path, "",
+             urlencode(kept, doseq=True), "")
+        )
+    except Exception:
+        return u
+
+
 def build_text_clean(title: str | None, body: str | None, max_words: int = MAX_SNIPPET_WORDS) -> str:
     """Build the title + first N words snippet that the classifier expects."""
     title = (title or "").strip()
