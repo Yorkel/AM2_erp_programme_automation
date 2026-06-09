@@ -132,7 +132,7 @@ def main():
         st.stop()
 
     if "article_date" in df.columns:
-        df["article_date"] = pd.to_datetime(df["article_date"], errors="coerce").dt.strftime("%d-%m-%Y")
+        df["article_date"] = pd.to_datetime(df["article_date"], errors="coerce", dayfirst=True).dt.strftime("%d-%m-%Y")
 
     init_session_state()
 

@@ -154,18 +154,28 @@ def render(df):
     # Normalise article_date. Scraped rows = ISO; curator-added = DD-MM-YYYY;
     # dayfirst=True handles both.
     df = df.copy()
-    df["_article_date"] = pd.to_datetime(
-        df["article_date"], errors="coerce", dayfirst=True
-    ).dt.date
+    # Defensive: if the loaded data is missing article_date (schema drift in
+    # classify_newsletter), don't crash — create an all-NaT column so the rest
+    # of the page renders an empty week instead of white-screening.
+    if "article_date" in df.columns:
+        df["_article_date"] = pd.to_datetime(
+            df["article_date"], errors="coerce", dayfirst=True
+        ).dt.date
+    else:
+        df["_article_date"] = pd.Series([pd.NaT] * len(df), index=df.index)
 
     # ── Week selector ───────────────────────────────────────────────────────
     weeks = _week_options(df)
+    if not weeks:
+        st.info("No completed weeks of articles to review yet.")
+        return
     selected_label = st.selectbox(
         "Week", [w[0] for w in weeks], index=0,
         help="Articles are scraped once a week (Tuesday morning). Each week runs Tue–Mon.",
     )
     week_start, week_end = next(
-        (s, e) for (lbl, s, e) in weeks if lbl == selected_label
+        ((s, e) for (lbl, s, e) in weeks if lbl == selected_label),
+        (weeks[0][1], weeks[0][2]),
     )
 
     filtered = df[
