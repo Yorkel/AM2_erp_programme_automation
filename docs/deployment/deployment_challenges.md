@@ -28,6 +28,13 @@ order they were diagnosed (A–C in the morning; D–H through the day).
   back to the placeholder after a manual pick — the choice was saved but looked
   lost).
 - Ingested **newsletter issue #114** (19 items) into the dataset.
+- Added an **extractive "topic sentence"** (verbatim lead sentence) alongside the
+  abstractive summary — Triage shows the topic sentence (fast to verify), Draft
+  shows the editable summary (newsletter copy); both stored (`articles.summary`
+  + `articles.topic_sentence`, migration 016). Direct response to Gemma's
+  "find a topic sentence ... not write its own" feedback.
+- Identified the **leftover Render service** as the source of recurring deploy-
+  failure emails (see Issue I).
 
 ### Issue A — Triage page white-screens with `KeyError: '_article_date'`
 
@@ -207,14 +214,35 @@ the corpus and are not newsletter content.
 word-boundary match) so they're dropped at scrape time, and removed the 15
 existing matches from the corpus (all DfE).
 
+### Issue I — Recurring Render deploy-failure emails after migrating off Render
+
+**Symptom.** Repeated "Render deploy failed" notices, despite the classifier
+having been moved to **HuggingFace Spaces** (`CLASSIFIER_API_URL=…hf.space`).
+
+**Root cause.** A **leftover Render service** is still linked to the GitHub repo.
+`render.yaml` has `autoDeploy: true` + `branch: main`, so every push to main
+triggers a Render redeploy of the old `am2-classifier` service, which fails on
+the free tier (the 512 MB OOM previously logged). The pipeline doesn't use it —
+it's an orphaned deploy target firing on every push.
+
+**Fix.** Suspend/delete the `am2-classifier` service in the Render dashboard
+(definitive). Keep `render.yaml` + `Dockerfile` in the repo as AM2 portfolio
+evidence (Docker / IaC story); optionally set `autoDeploy: false` as belt-and-
+braces. **Lesson:** when migrating off a platform, retire the connected service,
+not just the code path — an orphaned auto-deploy keeps firing (and emailing).
+
 ### Curator feedback captured (Gemma, 2026-06-01, from `curator_feedback`)
-- "The summary just says **nan**" → fixed (Issue B).
+- "The summary just says **nan**" → **fixed** (Issue B).
 - Picked up **press commentary** on the Milburn review, not the review itself;
-  curator's own list was longer → recall/coverage gap.
+  curator's own list was longer → recall/coverage gap. Root cause found: the
+  Milburn report is a **DWP** publication, outside the monitored education
+  sources (noted in open risks; source not yet added).
 - Could **not change category** beyond the two AI suggestions; **"Other" didn't
-  stick** → known UX gap.
+  stick** → **fixed** (Issue, 2026-06-09: dropdown no longer resets after a
+  manual pick).
 - "Checking the summary is what takes time. Can the AI **find a topic sentence**
-  rather than write its own?" → a concrete summariser-design suggestion.
+  rather than write its own?" → **built** (extractive topic sentence on Triage;
+  migration 016).
 
 ---
 
