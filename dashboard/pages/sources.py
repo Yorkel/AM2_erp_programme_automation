@@ -1,12 +1,16 @@
 """
 Page 4 — Sources.
 
-A coverage view of every source running through the dashboard (the web-scrape /
-Google-Alert path), with how many articles were scraped OVERALL and in the LAST
+A coverage view of every source running through the dashboard (web scrape +
+Google Alerts), with how many articles were scraped OVERALL and in the LAST
 COMPLETED week. Built by joining the live source roster
-(`data/sources_master.csv`, excluding newsletter sources which arrive by email,
-not the scraper) with actual article counts — so approved sources that produced
-nothing still appear (with 0), making coverage gaps visible.
+(`data/sources_master.csv`, excluding newsletter sources which arrive by email)
+with actual article counts — so approved sources that produced nothing still
+appear (with 0), making coverage gaps visible.
+
+Columns: Source · Link · Overall · Last week. The Link column shows
+"Google Alert" for alert-type sources (their feed URL isn't a real link), and
+the publisher URL otherwise.
 
 "Last week" = the most recent completed Tue→Mon scrape week (matches Triage).
 """
@@ -34,20 +38,20 @@ def render(df):
     st.title("Sources")
 
     # Scrape weeks run Tue→Mon (matches Triage). "Last week" = the most recently
-    # completed one — today's week is still in progress, so step back.
+    # completed one (today's week is still in progress).
     today = date.today()
-    this_tue = today - timedelta(days=(today.weekday() - 1) % 7)   # most recent Tue ≤ today
-    wk_start = pd.Timestamp(this_tue - timedelta(days=7))          # previous Tuesday
-    wk_end_incl = this_tue - timedelta(days=1)                     # previous Monday
-    wk_end = pd.Timestamp(wk_end_incl) + pd.Timedelta(days=1)      # exclusive bound
+    this_tue = today - timedelta(days=(today.weekday() - 1) % 7)
+    wk_start = pd.Timestamp(this_tue - timedelta(days=7))
+    wk_end_incl = this_tue - timedelta(days=1)
+    wk_end = pd.Timestamp(wk_end_incl) + pd.Timedelta(days=1)
     wk_label = f"{(this_tue - timedelta(days=7)).day}–{wk_end_incl.day} {wk_end_incl:%b}"
     wk_col = f"Last week ({wk_label})"
 
     st.caption(
-        "All sources running through the dashboard (web scrape + Google Alerts), "
-        f"with articles scraped overall and in the last full week ({wk_label}). "
-        "Newsletter sources arrive by email and aren't included. A source shows "
-        "0 if it's approved but produced nothing that week."
+        "Every source running through the dashboard, with articles scraped "
+        f"overall and in the last full week ({wk_label}). The Link column shows "
+        '"Google Alert" where content comes via an alert. Newsletter sources '
+        "arrive by email and aren't included."
     )
 
     if df is None or df.empty or "source" not in df.columns:
@@ -58,13 +62,13 @@ def render(df):
     d["_date"] = pd.to_datetime(d.get("article_date"), errors="coerce", dayfirst=True)
     d["source"] = d["source"].fillna("").replace("", "(unknown)")
 
-    # Article counts per raw source string (overall + last week).
     counts: dict[str, list[int]] = {}
     for src, g in d.groupby("source"):
         wk = int(((g["_date"] >= wk_start) & (g["_date"] < wk_end)).sum())
         counts[src] = [len(g), wk]
 
-    # Live, non-newsletter roster (the dashboard-path sources).
+    # Live roster, minus newsletters (email path). Google Alerts are kept and
+    # flagged in the Link column.
     try:
         master = pd.read_csv(_MASTER).fillna("")
         master = master[
@@ -74,8 +78,9 @@ def render(df):
     except Exception:
         master = pd.DataFrame()
 
-    # Lookups: exact id/name (unambiguous) and domain (only used when unique, to
-    # avoid e.g. every gov.uk source claiming a generic "gov.uk" article-source).
+    # Match each article-source to at most one roster row (exact id/name first;
+    # domain only when unique, so a generic "gov.uk" isn't claimed by every
+    # gov.uk source).
     exact: dict[str, int] = {}
     domain_rows: dict[str, list[int]] = {}
     for idx, r in master.iterrows():
@@ -86,7 +91,6 @@ def render(df):
             if dk:
                 domain_rows.setdefault(dk, []).append(idx)
 
-    # Assign each article-source to AT MOST ONE roster row (exact > unique-domain).
     tally = {idx: [0, 0] for idx in master.index}
     unclaimed: list[tuple[str, int, int]] = []
     for s, (overall, wk) in counts.items():
@@ -104,11 +108,35 @@ def render(df):
     rows = []
     for idx, r in master.iterrows():
         o, w = tally[idx]
-        rows.append({"Source": r.get("source") or r.get("id"), "Overall": o, wk_col: w})
+        is_alert = str(r.get("source_type", "")).strip() == "google_alert"
+        link = "Google Alert" if is_alert else str(r.get("url", "")).strip()
+        rows.append({
+            "Source": r.get("source") or r.get("id"),
+            "Link": link,
+            "Overall": o,
+            wk_col: w,
+        })
     for s, overall, wk in unclaimed:
-        rows.append({"Source": SOURCE_LABELS.get(s, s), "Overall": overall, wk_col: wk})
+        link = f"https://{s}" if ("." in s and " " not in s) else ""
+        rows.append({"Source": SOURCE_LABELS.get(s, s), "Link": link, "Overall": overall, wk_col: wk})
 
-    table = pd.DataFrame(rows).sort_values(
+    # De-duplicate: a publisher that has both a direct source and a
+    # "(Google Alert)" twin (e.g. Rebecca Eynon) shouldn't appear twice. Group by
+    # the base name and keep the better row — higher article count, and on a tie
+    # the non-"Google Alert" one.
+    def _key(name: str) -> str:
+        return str(name).lower().replace("(google alert)", "").strip()
+
+    best: dict[str, dict] = {}
+    for row in rows:
+        k = _key(row["Source"])
+        cur = best.get(k)
+        rank = (row["Overall"], row["Link"] != "Google Alert")
+        if cur is None or rank > (cur["Overall"], cur["Link"] != "Google Alert"):
+            best[k] = row
+    rows = list(best.values())
+
+    table = pd.DataFrame(rows, columns=["Source", "Link", "Overall", wk_col]).sort_values(
         ["Overall", wk_col], ascending=False
     ).reset_index(drop=True)
 
