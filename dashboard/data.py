@@ -94,10 +94,16 @@ def get_week_boundary() -> str | None:
     never reset. Decisions made before this are archived and hidden from the
     Categorise + Draft pages (see get_kept_articles / get_accepted_articles)."""
     client = get_client()
-    resp = (
-        client.table("curator_resets")
-        .select("reset_at").order("reset_at", desc=True).limit(1).execute()
-    )
+    try:
+        resp = (
+            client.table("curator_resets")
+            .select("reset_at").order("reset_at", desc=True).limit(1).execute()
+        )
+    except Exception:
+        # Table not created yet (migration 015 not run) — treat as "no boundary
+        # set" so Categorise/Draft show everything instead of crashing. Once the
+        # migration is applied this path stops being hit.
+        return None
     rows = resp.data or []
     return rows[0]["reset_at"] if rows else None
 

@@ -31,6 +31,38 @@ from src.inference.summarise import summarise_article, tag_article
 # extraction); don't pay to retry them every week.
 LOOKBACK_DAYS = 30
 
+# Body-length thresholds for choosing what text to summarise from.
+MIN_BODY_CHARS = 200      # text this long is treated as a real article body
+MIN_SNIPPET_CHARS = 40    # text_clean (title + standfirst) usable as a fallback
+
+PLACEHOLDER = "Summary unavailable"
+
+
+def _best_text(row: dict) -> str:
+    """Best available text to summarise from. Prefer the real body; fall back
+    to text_clean (title + standfirst) for sources whose body is blocked
+    (e.g. Belfast Telegraph 403s). Returns '' when nothing usable exists — so
+    genuinely empty rows aren't retried (and billed) on every weekly sweep."""
+    text = (row.get("text") or "").strip()
+    if len(text) >= MIN_BODY_CHARS:
+        return text
+    snippet = (row.get("text_clean") or "").strip()
+    if len(snippet) >= MIN_SNIPPET_CHARS:
+        return snippet
+    if len(text) >= MIN_SNIPPET_CHARS:
+        return text
+    return ""
+
+
+def _needs_summary(row: dict) -> bool:
+    """A row needs a summary if it has none OR carries the 'Summary unavailable'
+    placeholder (retryable — finding 8), AND we actually have text to work with.
+    Without the usable-text guard the placeholder rows would be retried forever."""
+    s = (row.get("summary") or "").strip()
+    if s and s != PLACEHOLDER:
+        return False
+    return bool(_best_text(row))
+
 
 def main() -> int:
     load_dotenv()
@@ -59,7 +91,7 @@ def main() -> int:
     while True:
         r = (
             client.table("articles")
-            .select("id, url, title, text, summary, topic_tags, geographic_focus, scraped_at")
+            .select("id, url, title, text, text_clean, summary, topic_tags, geographic_focus, scraped_at")
             .gte("scraped_at", cutoff_iso)
             .range(off, off + 999)
             .execute()
@@ -70,7 +102,7 @@ def main() -> int:
             break
         off += 1000
 
-    needing_summary = [r for r in rows if not r.get("summary")]
+    needing_summary = [r for r in rows if _needs_summary(r)]
     needing_tags = [r for r in rows if not r.get("topic_tags") and not r.get("geographic_focus")]
     print(f"Rows scanned (last {LOOKBACK_DAYS} days): {len(rows)}")
     print(f"  needing summary: {len(needing_summary)}")
@@ -92,7 +124,7 @@ def main() -> int:
 
     for row in to_process:
         title = row.get("title") or ""
-        text = row.get("text") or ""
+        text = _best_text(row)   # real body, else text_clean fallback
         update: dict = {}
 
         if row["id"] in sum_ids:
