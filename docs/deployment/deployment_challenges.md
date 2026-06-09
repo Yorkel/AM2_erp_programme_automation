@@ -49,6 +49,10 @@ order they were diagnosed (A–C in the morning; D–H through the day).
 - **URL de-duplication** — normalise at ingest (strip `?_locale=`, `utm_*`,
   trailing slash) so the same article isn't stored twice; cleaned the 1 existing
   duplicate (NEU).
+- New **Sources tab** — every source feeding the dashboard with overall +
+  last-week counts and a Google-Alert-aware Link column (see Issue K).
+- **Removed the manual "Start a new week" button** — resets now run only via the
+  Monday GitHub Action, removing an accidental-reset trap (see Issue L).
 - **Reset the dashboard clean** for the curators' new week (archive + boundary).
 
 ### Issue A — Triage page white-screens with `KeyError: '_article_date'`
@@ -245,6 +249,70 @@ it's an orphaned deploy target firing on every push.
 evidence (Docker / IaC story); optionally set `autoDeploy: false` as belt-and-
 braces. **Lesson:** when migrating off a platform, retire the connected service,
 not just the code path — an orphaned auto-deploy keeps firing (and emailing).
+
+### Issue J — Topic-sentence reliability (verbatim guard + title fallback)
+
+**Symptom.** The first cut of the extractive topic sentence produced sentences
+the curator **couldn't find in the article** ("that sentence doesn't exist"),
+often pulled the **first/preamble sentence** (e.g. "I have been thinking…"),
+and showed bare "Summary unavailable" for blocked sources.
+
+**Root causes.** (1) It summarised from `text_clean` (scraped metadata), which
+isn't the article body, so the "quote" wasn't in the article. (2) A prompt rule
+to "skip the opening sentence" over-corrected — the curator pointed out
+**preambles are sometimes the best line**. (3) No fallback when there was no
+real body.
+
+**Fix (iterated with the curator).**
+- Extract from the **real body only**, and add a **verbatim guard** — the
+  returned sentence must actually appear in the body (normalised match), else
+  it's rejected.
+- **Fall back to the article title** when there's no body / no clean sentence —
+  so it never fabricates and never shows "Summary unavailable" on Triage.
+- Prompt made **neutral on preambles** (pick the most representative sentence,
+  opening or not).
+- Regenerated all **821** topic sentences (cleared the column + re-swept) so the
+  fix applied to existing rows, not just new scrapes.
+
+**Lesson.** "Extractive" only means *trustworthy* if you (a) extract from the
+real text and (b) verify the output is verbatim. An LLM told to "pick a
+sentence" will paraphrase and favour the lead unless constrained + checked.
+
+### Issue K — Sources coverage page (+ a gitignored-roster deploy bug)
+
+**Goal (curator ask).** A page listing every source feeding the dashboard with
+article counts — overall and for the last completed week — so coverage gaps are
+visible at a glance.
+
+**Design decisions.**
+- Counts are **empirical** (grouped from the `articles` table) joined to the
+  **live roster** (`data/sources_master.csv`), so approved-but-silent sources
+  still appear with 0.
+- **Newsletter sources excluded** — they arrive by email (Power Automate), not
+  the web scraper, so they're not in `articles` (this is *why* only ~44 of 121
+  "live" sources had data; the rest are newsletters, low-volume, or alerts
+  stored under publisher domains).
+- **Google-Alert entries de-duplicated** — an alert is an ingestion mechanism,
+  not a publisher; its content is stored under the real domain, so the alert
+  row (e.g. "Rebecca Eynon (Google Alert)") otherwise duplicated the publisher
+  with 0 counts. De-duped by base name, keeping the row with articles.
+- Week = the **Tue→Mon scrape week** (matches Triage), labelled with dates.
+
+**Deploy bug found + fixed.** On Streamlit Cloud the page first showed only the
+~44 producing sources, not the full roster. Cause: `data/` is **gitignored**, so
+`sources_master.csv` was never pushed — the runtime read failed and silently
+fell back. Fix: a `.gitignore` exception (`data/*` + `!data/sources_master.csv`)
+so the roster file deploys. **Lesson:** any data file a deployed app reads at
+runtime must be tracked, or the app must degrade visibly (not silently).
+
+### Issue L — Manual "Start a new week" button removed (now fully automated)
+
+Originally shipped both a manual reset button *and* a Monday GitHub Action
+(`weekly_reset.py` / `weekly_reset.yml`). Removed the **button** before handover:
+it was redundant with the Action and, worse, a curator could click it
+**mid-week and reset their own work**. Resets now happen only via the scheduled
+Action (Mon 06:17 UTC). **Lesson:** don't leave a destructive manual control in
+the UI when the same action is automated — it's an accidental-data-loss trap.
 
 ### Curator feedback captured (Gemma, 2026-06-01, from `curator_feedback`)
 - "The summary just says **nan**" → **fixed** (Issue B).
