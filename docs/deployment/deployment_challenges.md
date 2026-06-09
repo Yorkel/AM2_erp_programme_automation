@@ -35,6 +35,21 @@ order they were diagnosed (A–C in the morning; D–H through the day).
   "find a topic sentence ... not write its own" feedback.
 - Identified the **leftover Render service** as the source of recurring deploy-
   failure emails (see Issue I).
+- **Excel export = EXACT MS-Form format** (14 columns, same order as
+  `ERPNewsletterSubmissions.xlsx`) so the download cut-and-pastes straight into
+  the form sheet; empty auto-fields are fine. **Submitter column defaults to
+  "Dashboard"** so dashboard-found rows are distinguishable from real form
+  submissions (Gemma, 2026-06-09).
+- **Topic-sentence reliability pass** — verbatim guard (must appear in the body)
+  + **title fallback** when there's no clean sentence / no body, so it never
+  fabricates or shows "Summary unavailable"; neutral on preambles. Regenerated
+  all 821 (verified verbatim-or-title).
+- **Status badge** (Pending / Kept / Rejected / Categorised) on Triage cards +
+  an all-weeks **search box** with a **Clear** button.
+- **URL de-duplication** — normalise at ingest (strip `?_locale=`, `utm_*`,
+  trailing slash) so the same article isn't stored twice; cleaned the 1 existing
+  duplicate (NEU).
+- **Reset the dashboard clean** for the curators' new week (archive + boundary).
 
 ### Issue A — Triage page white-screens with `KeyError: '_article_date'`
 
