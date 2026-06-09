@@ -182,8 +182,10 @@ def _render_article(art: dict, idx_in_cluster: int):
                 choice = st.session_state.get(f"cat_man_choice_{_url}")
                 if choice and choice != MANUAL_PLACEHOLDER:
                     record_decision(_url, "manual", choice)
-                    # Reset placeholder so next picks fire
-                    st.session_state[f"cat_man_choice_{_url}"] = MANUAL_PLACEHOLDER
+                    # Do NOT reset to the "Other" placeholder — leaving the chosen
+                    # category shown is what makes it visibly "stick" (Gemma's
+                    # "Other didn't stick" feedback). record_decision clears the
+                    # decisions cache, so the badge updates to Categorised on rerun.
 
             # If curator has already chosen a manual category, show that
             # as the displayed value; else show the placeholder.
