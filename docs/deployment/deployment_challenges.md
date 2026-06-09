@@ -5,10 +5,24 @@ Cloud) and the scrape pipeline, with root cause and fix. Newest first.
 
 ---
 
-## 2026-06-09 — Triage page crash + "nan" everywhere + missing summaries
+## 2026-06-09 — Dashboard stabilisation day (crashes, summaries, body extraction, weekly reset, source filtering)
 
-Three issues surfaced together on the live dashboard. They had **separate**
-root causes.
+A long firefighting + hardening session. Multiple issues surfaced together on
+the live dashboard, several with **separate** root causes. Captured here in the
+order they were diagnosed (A–C in the morning; D–H through the day).
+
+**Changes shipped (summary for write-up):**
+- Fixed two dashboard crashes (empty-week `KeyError`; missing-table `APIError`).
+- Killed literal "nan" rendering across the UI (shared `clean_text` helper).
+- Diagnosed missing summaries as a **body-extraction** problem, not a summariser
+  one; replaced the body extractor with **trafilatura** (UCL 61→5,595 chars;
+  Schools Week 0→4,146 chars).
+- Hardened the summary sweep: retries `"Summary unavailable"` placeholders +
+  falls back to `text_clean`.
+- Built a **weekly reset** (manual dashboard button *and* a Monday GitHub
+  Action) using a non-destructive "week boundary" model.
+- Added DfE regulatory-notice **title filtering** ("notice to improve",
+  "warning notice") and removed 15 existing such articles from the corpus.
 
 ### Issue A — Triage page white-screens with `KeyError: '_article_date'`
 
@@ -91,17 +105,121 @@ editing the same file. Codex's edits never landed (they stayed in its review
 panel); the working tree stayed coherent. Worth flagging that two agents on one
 file is a footgun in its own right.
 
+### Issue D — "Fixed" crash still live: stale Streamlit process + repo-rename red herring
+
+**Symptom.** After committing/pushing the Issue A fix, the live app *still*
+crashed at the old line. The traceback showed `sort_values` failing at a line
+number that, in the fixed code, was the selectbox `help=` text — i.e. the
+running process was executing **older bytecode** than the deployed source.
+
+**Root cause.** Streamlit Cloud had not redeployed — it was serving a stale
+process from a previous commit. A separate scare: the Streamlit path was
+`am2_erp_programme_automation` while local `origin` was
+`AM2_erp_programme_automataion` (a typo). This looked like a two-repo split, but
+the repo had simply been **renamed** (the Codespace predated the rename) and
+GitHub redirects the old URL — it is one repo.
+
+**Fix / lesson.** A **manual reboot** (Manage app → Reboot) forces Streamlit to
+pull the latest commit. Lesson: a committed-and-pushed fix is not a *deployed*
+fix; confirm the running process actually restarted. Don't infer "wrong repo"
+from a path-name mismatch — check for a rename/redirect first.
+
+### Issue E — Missing summaries: the API key was a false lead; body extraction was the real cause
+
+**Symptom.** "All summaries missing" on recent articles.
+
+**Investigation.** The old note blamed a missing `ANTHROPIC_API_KEY` Actions
+secret. Verified the key is **valid** (live test call) and **is** wired into the
+workflow — that note was stale. Counts: of 836 articles (last 30 days), only ~62
+were NULL and ~40 were the `"Summary unavailable"` placeholder; the bulk were
+fine. The sweep recovered the NULLs, but ~52 stayed as placeholders.
+
+**Root cause.** For those, there was **nothing summarisable**: Belfast Telegraph
+(`text=0`, 403-blocked), UCL IOE (extractor grabbed the **nav menu**), Schools
+Week (extractor grabbed a single-paragraph **fragment** / Google-Alert snippet),
+DfE gov.uk (body is page **metadata**; real content in a linked PDF). A
+`text_clean` fallback in the sweep recovered only ~3 — confirming the problem
+was upstream **body extraction**, not the summariser.
+
+**Lesson.** "Summaries missing" is usually a *scraping* symptom. Diagnose by
+inspecting the stored `text`, not by re-running the LLM. Stale ops notes (the
+key) cost time — verify before trusting.
+
+### Issue F — Body extraction rewritten on trafilatura
+
+**Root cause.** `common.extract_body_text` used a BeautifulSoup heuristic
+(`<article>`/`<main>`/`<body>` → `<p>` tags). When the article wasn't in those
+containers it fell back to the whole body and scooped up nav/boilerplate (UCL),
+or found no usable `<p>` (Schools Week).
+
+**Fix.** Made `trafilatura.extract(str(soup), ...)` the primary path, keeping the
+old heuristic as a fallback (no regression for sources that already worked).
+Verified end-to-end via the real `soup_of → extract_body_text` path: UCL
+61→**5,595** chars, Schools Week 0→**4,146** chars. Forward-looking only —
+existing rows need a body-backfill (`backfill_bodies.py`) then a re-sweep.
+
+**Lesson.** A purpose-built extractor beats hand-rolled container heuristics for
+the long tail of site layouts; gate it behind a length check + heuristic
+fallback so a bad parse can't regress a working source.
+
+### Issue G — Weekly reset feature + a self-inflicted crash
+
+**Goal.** Curator asked for last week's kept/categorised items to clear each
+Monday. Implemented as a **non-destructive "week boundary"**: a `curator_resets`
+row marks "new week started"; Categorise/Draft only show decisions at/after it.
+Kept/rejected articles keep their status (don't reappear in Review); pending are
+untouched. A snapshot is archived to `curator_decisions_archive` first.
+Delivered as both a manual dashboard button and a Monday GitHub Action
+(`weekly_reset.py` + `weekly_reset.yml`).
+
+**Self-inflicted crash.** Shipping `get_week_boundary()` before its
+`curator_resets` table existed (migration committed but **not run** in Supabase)
+took down Categorise + Draft with a PostgREST `APIError`, because the function
+runs on every page load. Fixed by wrapping it in try/except → returns "no
+boundary" if the table is absent.
+
+**Lessons.** (1) Committing a migration `.sql` file does **not** create the
+table — it must be run in Supabase; ship code that degrades gracefully until it
+is. (2) The reset button was also hidden by an early `return` when the draft was
+empty — reset controls should render regardless of page state.
+
+### Issue H — DfE regulatory-notice noise
+
+**Symptom.** Routine DfE "Notice to improve:" / "warning notice" items cluttered
+the corpus and are not newsletter content.
+
+**Fix.** Added both phrases to the title-keyword blocklist (`relevance.py`,
+word-boundary match) so they're dropped at scrape time, and removed the 15
+existing matches from the corpus (all DfE).
+
+### Curator feedback captured (Gemma, 2026-06-01, from `curator_feedback`)
+- "The summary just says **nan**" → fixed (Issue B).
+- Picked up **press commentary** on the Milburn review, not the review itself;
+  curator's own list was longer → recall/coverage gap.
+- Could **not change category** beyond the two AI suggestions; **"Other" didn't
+  stick** → known UX gap.
+- "Checking the summary is what takes time. Can the AI **find a topic sentence**
+  rather than write its own?" → a concrete summariser-design suggestion.
+
 ---
 
 ## Open / recurring deployment risks
 
-- **Body extraction broken** for Belfast Telegraph (403), UCL IOE News,
-  edtech.oii.ox.ac.uk, Schools Week (partial). Produces blank summaries.
-- **GitHub Actions free-tier cron is unreliable** at peak; overnight off-peak
-  slots fire more reliably.
+- **Body extraction** — UCL IOE + Schools Week now **fixed** (trafilatura,
+  Issue F). Still hard: **Belfast Telegraph** (403-blocked, headline only) and
+  **DfE gov.uk** (content lives in linked PDFs). edtech.oii.ox.ac.uk unverified.
+  Existing rows for the fixed sources still need a body-backfill + re-sweep.
+- **GitHub Actions free-tier cron is unreliable** at peak; overnight/off-peak
+  slots fire more reliably. (Scrape now runs weekdays 02:23 UTC; reset Mondays
+  06:17 UTC.)
 - **`classify_newsletter` schema instability** — the dashboard now guards a
   missing `article_date`, but the underlying schema should be pinned.
-- **Deployed repo name** in the Streamlit path is `am2_erp_programme_automation`
-  while the local/origin repo is `AM2_erp_programme_automataion` (typo
-  spelling). Confirm which repo Streamlit Cloud actually deploys from before
-  assuming a pushed fix is live.
+- **Migrations are applied by hand in Supabase** — committing the `.sql` does
+  not run it. New tables must be created before the code that reads them ships,
+  or the code must degrade gracefully (see Issue G).
+- **Deploy ≠ push** — Streamlit Cloud can serve a stale process after a push;
+  reboot to force a redeploy (Issue D). The repo-rename "two repos" worry is
+  **resolved** (one repo, GitHub redirects the old name).
+- **Summariser quality (curator feedback)** — generated summaries are slow to
+  verify; consider an extractive "topic sentence" option. Recall gap: press
+  commentary surfaced instead of the primary source (e.g. Milburn review).
