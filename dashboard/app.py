@@ -16,7 +16,7 @@ import pandas as pd
 from dashboard.config import NAVY, TEAL
 from dashboard.styles import get_css
 from dashboard.data import load_classified_articles, init_session_state, record_feedback
-from dashboard.pages import triage, select_categories, draft
+from dashboard.pages import triage, select_categories, draft, sources
 
 
 def main():
@@ -56,12 +56,13 @@ def main():
 
     # Internal page keys (drive dispatch below) → curator-facing step labels.
     NAV = [
-        "Triage", "Select Categories", "Newsletter Draft",
+        "Triage", "Select Categories", "Newsletter Draft", "Sources",
     ]
     NAV_LABELS = {
         "Triage": "Step 1: Triage",
         "Select Categories": "Step 2: Categorise",
         "Newsletter Draft": "Step 3: Draft Newsletter",
+        "Sources": "Sources",
     }
 
     if "current_page" not in st.session_state:
@@ -142,6 +143,8 @@ def main():
         select_categories.render(df)
     elif page == "Newsletter Draft":
         draft.render(df)
+    elif page == "Sources":
+        sources.render(df)
 
     # ── Feedback on dashboard (every page) ──────────────────────────────────
     auth = bool(st.session_state.get("authenticated"))

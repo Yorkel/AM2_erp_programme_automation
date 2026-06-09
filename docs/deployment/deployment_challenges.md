@@ -259,6 +259,24 @@ not just the code path — an orphaned auto-deploy keeps firing (and emailing).
   rather than write its own?" → **built** (extractive topic sentence on Triage;
   migration 016).
 
+### Curator feedback captured (Gemma, 2026-06-09, by email — last week's trial)
+- **Summary on the include/exclude (Triage) page** was clutter for quick
+  keep/reject → **addressed**: Triage now shows the short topic sentence; the
+  full summary lives on the Draft page.
+- **Excel download didn't match the submission form** → **fixed**: export now
+  mirrors `ERPNewsletterSubmissions.xlsx` headings/order exactly. Gemma's reason:
+  *"so it's easier to cut and paste — doesn't matter if some cells aren't
+  filled."*
+- **"Could we use the Submitter column to put Dashboard in?"** → **done**:
+  dashboard rows are tagged "Dashboard" in Submitter (distinguishes them from
+  real form submissions).
+- Topic sentences that **"didn't exist in the article"** / first-sentence /
+  preamble issues → **fixed** with a verbatim guard + title fallback + neutral
+  prompt; all regenerated.
+- Correction logged: Gemma did **not** ask to remove the Submitter/Question
+  columns (see [[project-gemma-feedback-2026-05-27]]) — the real ask was the
+  exact-format match above.
+
 ---
 
 ## Open / recurring deployment risks
