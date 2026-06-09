@@ -85,7 +85,11 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
                 "Short description": summary,
                 "Which section of the newsletter is this for?": CATEGORY_LABELS.get(cat_key, cat_key),
                 "Any other comments?": st.session_state.get(f"notes_{url}", "") or "",
-                "Submitter": st.session_state.get(f"submitter_{url}", "") or "",
+                # Mark dashboard-found rows as "Dashboard" in the Submitter
+                # column (Gemma's ask) so they're distinguishable from real form
+                # submissions when pasted into the form spreadsheet. Curator can
+                # override with a name via the dropdown.
+                "Submitter": st.session_state.get(f"submitter_{url}") or "Dashboard",
                 "Question?": "",
             })
             row_id += 1
@@ -361,9 +365,11 @@ def render(df):
                 with col_submitter:
                     st.selectbox(
                         "Submitter",
-                        options=["", "GM", "RF", "NC"],
+                        options=["Dashboard", "GM", "RF", "NC"],
                         key=f"submitter_{art_url}",
                         disabled=not auth,
+                        help="Defaults to 'Dashboard' (marks it as dashboard-found); "
+                             "change to a curator's initials if you prefer.",
                     )
 
     # ── Download Excel ──────────────────────────────────────────────────────

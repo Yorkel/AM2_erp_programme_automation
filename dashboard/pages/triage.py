@@ -290,10 +290,17 @@ def _render_triage_card(row: dict):
         if badges:
             st.markdown(badges, unsafe_allow_html=True)
 
-        # Source · Date
+        # Status badge + Source · Date. The badge shows the article's current
+        # state (Pending / Kept / Rejected / Categorised) — useful everywhere,
+        # but especially in all-weeks search results where statuses are mixed.
+        status_badge = (
+            f"<span style='background:{colour};color:white;padding:1px 8px;"
+            f"border-radius:8px;font-size:11px;font-weight:600;'>{status}</span>"
+        )
         st.markdown(
             f"<p style='color:#666;font-size:14px;margin:2px 0;'>"
-            f"<b>Source:</b> {source_name} &nbsp;&nbsp; <b>Date:</b> {article_date}</p>",
+            f"{status_badge} &nbsp; <b>Source:</b> {source_name} "
+            f"&nbsp;&nbsp; <b>Date:</b> {article_date}</p>",
             unsafe_allow_html=True,
         )
 
