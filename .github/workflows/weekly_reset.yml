@@ -1,0 +1,36 @@
+name: Weekly curator reset
+
+on:
+  schedule:
+    # GitHub Actions cron is UTC. Monday 06:17 UTC = 07:17 UK (BST) / 06:17 (GMT).
+    # Off-peak-ish morning, odd minute to dodge the top-of-hour stampede that the
+    # free tier deprioritises hardest. Archives the previous week + starts fresh
+    # before the curator begins the new week.
+    - cron: '17 6 * * 1'   # Every Monday 06:17 UTC
+  workflow_dispatch:        # manual "reset now" from the Actions tab
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Archive previous week + start new week
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m src.scraping.weekly_reset
