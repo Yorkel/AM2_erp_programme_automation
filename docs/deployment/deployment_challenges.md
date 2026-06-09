@@ -223,3 +223,9 @@ existing matches from the corpus (all DfE).
 - **Summariser quality (curator feedback)** — generated summaries are slow to
   verify; consider an extractive "topic sentence" option. Recall gap: press
   commentary surfaced instead of the primary source (e.g. Milburn review).
+- **Cross-department source gap (noted, not yet actioned)** — the Milburn
+  "Young people and work" report was missed because it's published by **DWP**,
+  not an education source on the monitored list. Education-relevant reports from
+  non-education departments (DWP, HM Treasury, etc.) currently slip through.
+  Possible fix later: a targeted DWP/Treasury alert filtered to NEET / young
+  people / education so we don't pull in unrelated benefits/pensions content.

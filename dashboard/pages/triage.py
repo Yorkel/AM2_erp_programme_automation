@@ -182,6 +182,34 @@ def render(df):
     else:
         df["_article_date"] = pd.Series([pd.NaT] * len(df), index=df.index)
 
+    # ── Search (all weeks) ──────────────────────────────────────────────────
+    # When the curator types here, search EVERY article (all weeks, any status)
+    # by title/summary — for checking coverage ("did we cover X?") or finding a
+    # past item. Empty box = normal current-week view below.
+    query = st.text_input(
+        "🔍 Search all articles",
+        placeholder="Search every week by title or summary…",
+    ).strip()
+    if query:
+        q = query.lower()
+        SEARCH_CAP = 50
+
+        def _hit(row):
+            hay = f"{_clean(row.get('title'))} {_clean(row.get('summary'))}".lower()
+            return q in hay
+
+        matches = df[df.apply(_hit, axis=1)].copy()
+        matches = matches.sort_values(
+            "_article_date", ascending=False, na_position="last"
+        )
+        total = len(matches)
+        shown = matches.head(SEARCH_CAP)
+        note = f" (showing newest {SEARCH_CAP})" if total > SEARCH_CAP else ""
+        st.info(f"{total} article(s) matching “{query}” across all weeks{note}")
+        for _, row in shown.iterrows():
+            _render_triage_card(row.to_dict())
+        return
+
     # ── Week selector ───────────────────────────────────────────────────────
     weeks = _week_options(df)
     if not weeks:
