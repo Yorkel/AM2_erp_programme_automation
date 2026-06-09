@@ -169,6 +169,21 @@ def extract_body_text(soup: BeautifulSoup, max_paragraphs: int = 20) -> str:
     sites (e.g. ASCL on ASP.NET) wrap the entire page in <form>, so a top-level
     decompose would delete the article along with the nav.
     """
+    # 0. Try trafilatura first — purpose-built main-content extraction that
+    #    ignores nav/header/footer/boilerplate. Fixes sites where the article
+    #    isn't in <article>/<main> and the heuristic below grabs the nav menu
+    #    (e.g. UCL IOE) or finds no usable <p> (e.g. Schools Week). Falls back
+    #    to the heuristic if trafilatura isn't installed or returns too little.
+    try:
+        import trafilatura
+        extracted = trafilatura.extract(
+            str(soup), include_comments=False, include_tables=False,
+        )
+        if extracted and len(extracted.strip()) >= 200:
+            return extracted.strip()
+    except Exception:
+        pass
+
     # 1. Find the article container first.
     container = (
         soup.find("article")
