@@ -5,7 +5,12 @@ on:
     # GitHub Actions cron uses UTC. Off-peak overnight slot to maximise the
     # chance scheduled runs actually fire on the free tier (peak skips runs).
     # During BST (Mar–Oct) this is 03:23 UK; during GMT (Nov–Feb) it's 02:23 UK.
-    - cron: '23 2 * * 2'  # Tuesday 02:23 UTC = 03:23 UK (BST)
+    # Runs every weekday (Mon–Fri). The downstream chain (classify → drift →
+    # fairness) follows automatically via workflow_run, so this is the only
+    # schedule to change. The scraper is --since-last-run incremental, so daily
+    # runs just ingest smaller deltas; no duplicate work. The :23 minute avoids
+    # the top-of-hour stampede that GitHub deprioritises hardest.
+    - cron: '23 2 * * 1-5'  # Every weekday 02:23 UTC = 03:23 UK (BST)
   workflow_dispatch:        # also allow manual triggering from the Actions tab
 
 jobs:
