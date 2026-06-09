@@ -24,6 +24,20 @@ from dashboard.data import (
 from src.inference.summarise import summarise_article
 
 
+def _clean(v):
+    """Coerce pandas nulls to ''. A pandas NaN is a *truthy* float, so the
+    usual `x or ''` guard lets it slip through and renders the literal string
+    'nan' in the UI. Lists/tuples (e.g. topic_tags) are returned as-is."""
+    if isinstance(v, (list, tuple)):
+        return v
+    if v is None:
+        return ""
+    if isinstance(v, float) and pd.isna(v):
+        return ""
+    s = str(v).strip()
+    return "" if s.lower() == "nan" else s
+
+
 def _tuesday_on_or_before(d: date) -> date:
     """Most recent Tuesday on or before `d` — anchors a scrape-week (Tue→Mon)."""
     return d - timedelta(days=(d.weekday() - 1) % 7)
@@ -110,10 +124,14 @@ def _badges_html(geo: str | None, topics: list[str] | None) -> str:
     up to 3 topic_tags. All badges share one neutral style (country isn't
     coloured differently from topics). Empty string if nothing to render."""
     parts = []
+    geo = _clean(geo)
     if geo:
         parts.append(f"<span style='{_TAG_STYLE}'>{geo}</span>")
-    for t in (topics or [])[:3]:
-        parts.append(f"<span style='{_TAG_STYLE}'>{t}</span>")
+    topics = topics if isinstance(topics, (list, tuple)) else []
+    for t in topics[:3]:
+        t = _clean(t)
+        if t:
+            parts.append(f"<span style='{_TAG_STYLE}'>{t}</span>")
     if not parts:
         return ""
     return (
@@ -186,9 +204,14 @@ def render(df):
     # and sort selectboxes used to live here but Gemma asked them removed —
     # in practice she always used the defaults anyway.
     decisions = load_decisions()
+    # .astype(bool) is load-bearing: when the selected week has no rows, apply()
+    # returns an empty object/str Series, which pandas would treat as a list of
+    # COLUMN labels (selecting zero columns and dropping _article_date) rather
+    # than a boolean row mask — making the sort below KeyError. astype(bool)
+    # keeps it a boolean mask even when empty.
     filtered = filtered[filtered["url"].apply(
         lambda u: _status_for(u, decisions) == "Pending"
-    )].copy()
+    ).astype(bool)].copy()
     filtered = filtered.sort_values("_article_date", ascending=False, na_position="last")
 
     st.info(f"{len(filtered)} pending article(s)")
@@ -205,15 +228,15 @@ def _render_triage_card(row: dict):
     the whole 100-card list. Fetches own decisions for fresh state."""
     decisions = load_decisions()
     auth = is_authenticated()
-    url = row.get("url") or ""
-    title = row.get("title", "No title") or "No title"
-    source_name = SOURCE_LABELS.get(row.get("source", ""), row.get("source", "") or "")
-    article_date = row.get("article_date", "") or ""
+    url = _clean(row.get("url"))
+    title = _clean(row.get("title")) or "No title"
+    source_raw = _clean(row.get("source"))
+    source_name = SOURCE_LABELS.get(source_raw, source_raw)
+    article_date = _clean(row.get("article_date"))
     status = _status_for(url, decisions)
     current_summary = (
-        (decisions.get(url) or {}).get("summary")
-        or row.get("summary")
-        or ""
+        _clean((decisions.get(url) or {}).get("summary"))
+        or _clean(row.get("summary"))
     )
 
     st.markdown(
