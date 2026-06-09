@@ -315,8 +315,9 @@ BLOCKED_TITLE_KEYWORDS: tuple[str, ...] = (
     "immigration",
     "transparency data",
     # Routine DfE/gov.uk regulatory notices — not newsletter content.
-    # Curator ask 2026-06-09: drop "Notice to improve:" items.
+    # Curator ask 2026-06-09: drop "Notice to improve:" + "warning notice" items.
     "notice to improve",
+    "warning notice",
 )
 
 
