@@ -19,9 +19,9 @@ import pandas as pd
 from dashboard.config import SOURCE_LABELS
 from dashboard.data import (
     fetch_article_text, is_authenticated, load_decisions,
-    record_decision, record_summary,
+    record_decision, record_topic_sentence,
 )
-from src.inference.summarise import summarise_article, extract_topic_sentence
+from src.inference.summarise import extract_topic_sentence
 
 
 def _clean(v):
@@ -262,10 +262,6 @@ def _render_triage_card(row: dict):
     source_name = SOURCE_LABELS.get(source_raw, source_raw)
     article_date = _clean(row.get("article_date"))
     status = _status_for(url, decisions)
-    current_summary = (
-        _clean((decisions.get(url) or {}).get("summary"))
-        or _clean(row.get("summary"))
-    )
 
     st.markdown(
         "<div style='border-top:3px solid #1d3461;margin:20px 0;'></div>",
@@ -298,58 +294,36 @@ def _render_triage_card(row: dict):
                 unsafe_allow_html=True,
             )
 
-        with st.expander("📋 Show summary", expanded=False):
-            if current_summary:
+        # Triage shows the EXTRACTIVE topic sentence (verbatim from the article)
+        # — quicker for the curator to trust during keep/reject. The polished
+        # AI summary lives on the Draft page. Both are stored separately.
+        topic_sentence = _clean(row.get("topic_sentence"))
+        with st.expander("📌 Topic sentence", expanded=False):
+            if topic_sentence:
                 st.markdown(
-                    f"<div style='background:#f8f4ea;border-left:3px solid #f39c12;"
-                    f"padding:8px 12px;'>{current_summary}</div>",
+                    f"<div style='background:#eef6ee;border-left:3px solid #2ecc71;"
+                    f"padding:8px 12px;'>{topic_sentence}</div>",
                     unsafe_allow_html=True,
                 )
             else:
                 st.markdown(
                     "<div style='background:#f5f5f5;border-left:3px solid #aaa;"
                     "padding:8px 12px;color:#666;font-style:italic;'>"
-                    "Summary unavailable</div>",
+                    "No topic sentence yet</div>",
                     unsafe_allow_html=True,
                 )
-
-            # Two ways to (re)build the summary, available whether or not one
-            # exists so the curator can swap an AI-written summary for a verbatim
-            # sentence (Gemma's ask: faster to trust — the article's own words).
             if auth:
-                col_gen, col_sent = st.columns(2)
-                with col_gen:
-                    if st.button(
-                        "✎ Generate summary", key=f"gen_{url}",
-                        use_container_width=True,
-                        help="AI writes a short summary of the article.",
-                    ):
-                        with st.spinner("Summarising via Claude…"):
-                            # Fetch full body from articles.text. NEVER fall back
-                            # to text_clean — its first-80-words truncation often
-                            # contains nav cruft ("HOME > Blog >") which produces
-                            # bad summaries. If text is empty, summarise_article
-                            # honestly returns "Summary unavailable".
-                            body = fetch_article_text(url)
-                            new_summary = summarise_article(
-                                title=title, text=body, category=row.get("top1"),
-                            )
-                        record_summary(url, new_summary)
-                        st.rerun()
-                with col_sent:
-                    if st.button(
-                        "📌 Topic sentence", key=f"topic_{url}",
-                        use_container_width=True,
-                        help="Pull a key sentence verbatim from the article "
-                             "(its own words — quicker to check).",
-                    ):
-                        with st.spinner("Finding a key sentence…"):
-                            body = fetch_article_text(url)
-                            new_summary = extract_topic_sentence(
-                                title=title, text=body,
-                            )
-                        record_summary(url, new_summary)
-                        st.rerun()
+                if st.button(
+                    "📌 Regenerate topic sentence", key=f"topic_{url}",
+                    use_container_width=True,
+                    help="Pull a key sentence verbatim from the article "
+                         "(its own words — quick to check).",
+                ):
+                    with st.spinner("Finding a key sentence…"):
+                        body = fetch_article_text(url)
+                        new_ts = extract_topic_sentence(title=title, text=body)
+                    record_topic_sentence(url, new_ts)
+                    st.rerun()
 
         col_keep, col_reject = st.columns(2)
         with col_keep:

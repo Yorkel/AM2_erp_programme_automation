@@ -23,6 +23,7 @@ from dashboard.data import (
     record_summary,
 )
 from src.inference.summarise import summarise_article
+from src.inference.summarise import summarise_article
 
 
 def _category_of(art: dict) -> str | None:
@@ -273,10 +274,10 @@ def render(df):
                         record_decision(art_url, "reject", "")
                         st.rerun()
 
-                # Summary text area + Save inline on the right (no Generate
-                # button — summaries are pre-generated at scrape time).
+                # The newsletter copy = the AI-generated 1-2 sentence summary,
+                # editable here. Generate (re)builds it from the article body.
                 st.markdown("**SUMMARY:**")
-                col_summary, col_save = st.columns([6, 1])
+                col_summary, col_save, col_gen = st.columns([6, 1, 1])
                 with col_summary:
                     edited_desc = st.text_area(
                         "summary",
@@ -295,6 +296,26 @@ def render(df):
                     ):
                         record_summary(art_url, edited_desc)
                         st.toast("Saved.")
+                with col_gen:
+                    st.markdown(
+                        "<div style='height:28px'></div>", unsafe_allow_html=True
+                    )
+                    if st.button(
+                        "✎ Generate", key=f"gen_{art_url}", disabled=not auth,
+                        help="AI writes a 1-2 sentence summary from the article.",
+                    ):
+                        with st.spinner("Summarising via Claude…"):
+                            body = fetch_article_text(art_url)
+                            new_summary = summarise_article(
+                                title=title, text=body,
+                                category=art.get("curator_label") or art.get("top1"),
+                            )
+                        record_summary(art_url, new_summary)
+                        # Drop the cached text_area value so it re-seeds from the
+                        # freshly-written summary on rerun.
+                        if session_key in st.session_state:
+                            del st.session_state[session_key]
+                        st.rerun()
 
                 # Per-article fillable fields — BELOW the summary
                 col_section, col_notes, col_submitter = st.columns(3)

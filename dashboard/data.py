@@ -305,6 +305,23 @@ def record_summary(url: str, summary: str) -> None:
     load_decisions.clear()
 
 
+def record_topic_sentence(url: str, sentence: str) -> None:
+    """Persist an extractive topic sentence onto the article (articles.topic_sentence).
+
+    Unlike record_summary (a curator override stored in curator_decisions), the
+    topic sentence is article-level enrichment shown on the Triage page, so it's
+    written straight to `articles` — same place the scrape/sweep populate it.
+    """
+    client = get_client()
+    client.table("articles").update(
+        {
+            "topic_sentence": sentence,
+            "topic_sentence_generated_at": "now()",
+        }
+    ).eq("url", url).execute()
+    load_classified_articles.clear()
+
+
 # ── Helpers used by pages ─────────────────────────────────────────────────────
 
 def init_session_state() -> None:

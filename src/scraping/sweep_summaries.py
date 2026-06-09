@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from supabase import create_client
 
-from src.inference.summarise import summarise_article, tag_article
+from src.inference.summarise import summarise_article, tag_article, extract_topic_sentence
 
 
 # Only sweep the last N days. Older NULLs are stale (likely failed body
@@ -91,7 +91,7 @@ def main() -> int:
     while True:
         r = (
             client.table("articles")
-            .select("id, url, title, text, text_clean, summary, topic_tags, geographic_focus, scraped_at")
+            .select("id, url, title, text, text_clean, summary, topic_sentence, topic_tags, geographic_focus, scraped_at")
             .gte("scraped_at", cutoff_iso)
             .range(off, off + 999)
             .execute()
@@ -102,13 +102,18 @@ def main() -> int:
             break
         off += 1000
 
+    def _needs_topic(r):
+        return not (r.get("topic_sentence") or "").strip() and bool(_best_text(r))
+
     needing_summary = [r for r in rows if _needs_summary(r)]
     needing_tags = [r for r in rows if not r.get("topic_tags") and not r.get("geographic_focus")]
+    needing_topic = [r for r in rows if _needs_topic(r)]
     print(f"Rows scanned (last {LOOKBACK_DAYS} days): {len(rows)}")
-    print(f"  needing summary: {len(needing_summary)}")
-    print(f"  needing tags:    {len(needing_tags)}")
+    print(f"  needing summary:        {len(needing_summary)}")
+    print(f"  needing tags:           {len(needing_tags)}")
+    print(f"  needing topic sentence: {len(needing_topic)}")
 
-    if not needing_summary and not needing_tags:
+    if not needing_summary and not needing_tags and not needing_topic:
         print("Nothing to sweep — exiting clean.")
         return 0
 
@@ -116,11 +121,14 @@ def main() -> int:
     n_sum_fail = 0
     n_tag_ok = 0
     n_tag_fail = 0
+    n_topic_ok = 0
+    n_topic_fail = 0
 
     # Build a set of ids needing each, so we don't double-iterate.
     sum_ids = {r["id"] for r in needing_summary}
     tag_ids = {r["id"] for r in needing_tags}
-    to_process = [r for r in rows if r["id"] in (sum_ids | tag_ids)]
+    topic_ids = {r["id"] for r in needing_topic}
+    to_process = [r for r in rows if r["id"] in (sum_ids | tag_ids | topic_ids)]
 
     for row in to_process:
         title = row.get("title") or ""
@@ -148,17 +156,31 @@ def main() -> int:
             else:
                 n_tag_fail += 1
 
+        if row["id"] in topic_ids:
+            try:
+                ts = extract_topic_sentence(title=title, text=text, client=ant_client)
+                update["topic_sentence"] = ts
+                update["topic_sentence_generated_at"] = datetime.utcnow().isoformat()
+                n_topic_ok += 1
+            except Exception as e:
+                n_topic_fail += 1
+                print(f"  topic sentence failed for {row.get('url')}: {type(e).__name__}: {e}", file=sys.stderr)
+
         if update:
             try:
                 client.table("articles").update(update).eq("id", row["id"]).execute()
             except Exception as e:
                 print(f"  upsert failed for {row.get('url')}: {type(e).__name__}: {e}", file=sys.stderr)
 
-    print(f"Sweep done: summaries {n_sum_ok} ok / {n_sum_fail} fail; tags {n_tag_ok} ok / {n_tag_fail} fail")
+    print(
+        f"Sweep done: summaries {n_sum_ok} ok / {n_sum_fail} fail; "
+        f"tags {n_tag_ok} ok / {n_tag_fail} fail; "
+        f"topic sentences {n_topic_ok} ok / {n_topic_fail} fail"
+    )
     # Non-zero exit if the sweep made no progress despite having work to do.
     # That signals a real problem (e.g. Anthropic down) → GitHub emails us.
-    had_work = bool(needing_summary or needing_tags)
-    made_progress = (n_sum_ok > 0) or (n_tag_ok > 0)
+    had_work = bool(needing_summary or needing_tags or needing_topic)
+    made_progress = (n_sum_ok > 0) or (n_tag_ok > 0) or (n_topic_ok > 0)
     if had_work and not made_progress:
         print("ERROR: sweep had work but made no progress — Claude likely unreachable", file=sys.stderr)
         return 1
