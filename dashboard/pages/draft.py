@@ -18,8 +18,9 @@ import pandas as pd
 
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
 from dashboard.data import (
-    fetch_article_text, get_accepted_articles, is_authenticated, load_decisions,
-    record_decision, record_feedback, record_summary,
+    archive_and_reset_week, fetch_article_text, get_accepted_articles,
+    is_authenticated, load_decisions, record_decision, record_feedback,
+    record_summary,
 )
 from src.inference.summarise import summarise_article
 
@@ -306,5 +307,39 @@ def render(df):
         "Tip: hit **Save** on any edited summary before downloading — "
         "unsaved edits will still appear in the Excel, but won't persist if you reload."
     )
+
+    # ── Start a new week (archive + reset) ────────────────────────────────────
+    # Non-destructive: archives this week's kept/categorised decisions to the
+    # database, then sets a week boundary so they drop out of Categorise + Draft.
+    # Kept/rejected articles keep their status (won't reappear in Review);
+    # pending articles are untouched. Login-gated + checkbox-confirmed so it
+    # can't be triggered by accident.
+    if is_authenticated():
+        st.markdown("---")
+        st.markdown("### 🗓️ Start a new week")
+        st.caption(
+            "Archives this week's articles (a copy is saved to the database) and "
+            "clears them from Categorise + Draft so next week starts fresh. "
+            "Kept/rejected articles will NOT reappear in Review; un-actioned "
+            "(pending) articles are untouched. **Download the Excel above first** "
+            "as your own copy."
+        )
+        confirm = st.checkbox(
+            "I've downloaded the Excel and want to start a new week",
+            key="_reset_confirm",
+        )
+        if st.button(
+            "Archive & start new week", disabled=not confirm,
+            use_container_width=True, key="_reset_week_btn",
+        ):
+            week_label = f"week up to {today.strftime('%a %d %b %Y')}"
+            with st.spinner("Archiving and resetting…"):
+                result = archive_and_reset_week(week_label)
+            st.session_state["_reset_confirm"] = False
+            st.success(
+                f"Archived {result['archived']} article(s) as '{week_label}'. "
+                "New week started — Categorise and Draft are now clear."
+            )
+            st.rerun()
 
     # Feedback box has been moved to app.py (renders at the bottom of every page).

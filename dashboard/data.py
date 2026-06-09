@@ -87,6 +87,58 @@ def load_decisions() -> dict[str, dict]:
     return {row["url"]: row for row in (resp.data or [])}
 
 
+# ── Weekly reset (archive + week boundary) ────────────────────────────────────
+@st.cache_data(ttl=60)
+def get_week_boundary() -> str | None:
+    """ISO timestamp of the most recent 'Start a new week' reset, or None if
+    never reset. Decisions made before this are archived and hidden from the
+    Categorise + Draft pages (see get_kept_articles / get_accepted_articles)."""
+    client = get_client()
+    resp = (
+        client.table("curator_resets")
+        .select("reset_at").order("reset_at", desc=True).limit(1).execute()
+    )
+    rows = resp.data or []
+    return rows[0]["reset_at"] if rows else None
+
+
+def _before_boundary(decided_at, boundary) -> bool:
+    """True if a decision's decided_at falls strictly before the week boundary
+    (so it belongs to a previous, archived week). Parses both to UTC datetimes
+    rather than comparing ISO strings, which is fragile across tz/microsecond
+    formatting. A row with no parseable decided_at is treated as current."""
+    if not boundary:
+        return False
+    b = pd.to_datetime(boundary, utc=True, errors="coerce")
+    d = pd.to_datetime(decided_at, utc=True, errors="coerce")
+    return bool(pd.notna(b) and pd.notna(d) and d < b)
+
+
+def archive_and_reset_week(week_label: str) -> dict:
+    """Snapshot this week's curator decisions into curator_decisions_archive,
+    then record a new week boundary. NON-DESTRUCTIVE: curator_decisions is left
+    intact, so kept/rejected articles keep their status (they won't reappear in
+    Review) and pending articles are untouched. The new boundary just hides this
+    week's work from Categorise + Draft. Returns {'archived': n}."""
+    client = get_client()
+    boundary = get_week_boundary()
+    q = client.table("curator_decisions").select("*")
+    if boundary:
+        q = q.gte("decided_at", boundary)
+    rows = q.execute().data or []
+    if rows:
+        client.table("curator_decisions_archive").insert(
+            [{"week_label": week_label, "url": r.get("url"), "decision": r} for r in rows]
+        ).execute()
+    client.table("curator_resets").insert(
+        {"week_label": week_label, "n_archived": len(rows)}
+    ).execute()
+    # Bust caches so the pages reflect the new boundary immediately.
+    load_decisions.clear()
+    get_week_boundary.clear()
+    return {"archived": len(rows)}
+
+
 # ── Writes ───────────────────────────────────────────────────────────────────
 
 def record_decision(url: str, action: str, label: str) -> None:
@@ -274,11 +326,14 @@ def get_kept_articles(df: pd.DataFrame) -> list[dict]:
     correct status badge.
     """
     decisions = load_decisions()
+    boundary = get_week_boundary()
     KEPT_ACTIONS = {"keep", "accept_top1", "accept_top2", "manual"}
     out: list[dict] = []
     for url, dec in decisions.items():
         if dec.get("action") not in KEPT_ACTIONS:
             continue
+        if _before_boundary(dec.get("decided_at"), boundary):
+            continue  # archived in a previous week
         match = df[df["url"] == url] if (not df.empty and "url" in df.columns) else pd.DataFrame()
         row = match.iloc[0].to_dict() if len(match) else {"url": url, "title": "Unknown"}
         row["action"] = dec.get("action")
@@ -300,12 +355,15 @@ def get_accepted_articles(df: pd.DataFrame) -> list[dict]:
     Curator-added rows (session-only for now) are appended on top.
     """
     decisions = load_decisions()
+    boundary = get_week_boundary()
     accepted: list[dict] = []
 
     ACCEPT_ACTIONS = {"accept_top1", "accept_top2", "manual"}
     for url, dec in decisions.items():
         if dec.get("action") not in ACCEPT_ACTIONS:
             continue
+        if _before_boundary(dec.get("decided_at"), boundary):
+            continue  # archived in a previous week
         match = df[df["url"] == url] if (not df.empty and "url" in df.columns) else pd.DataFrame()
         row = match.iloc[0].to_dict() if len(match) else {"url": url, "title": "Unknown"}
         row["curator_label"] = dec.get("label") or row.get("top1")
