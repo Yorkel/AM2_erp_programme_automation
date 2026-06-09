@@ -47,7 +47,7 @@ def render(df):
         })
 
     table = pd.DataFrame(rows).sort_values(
-        ["This week", "Overall"], ascending=False
+        ["Overall", "This week"], ascending=False
     ).reset_index(drop=True)
 
     c1, c2, c3 = st.columns(3)

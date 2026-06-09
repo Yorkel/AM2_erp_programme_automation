@@ -149,12 +149,19 @@ def main():
     # ── Feedback on dashboard (every page) ──────────────────────────────────
     auth = bool(st.session_state.get("authenticated"))
     st.markdown("---")
-    st.markdown("### 💬 Feedback on dashboard design & functionality")
+    if page == "Sources":
+        st.markdown("### 💬 Feedback on sources")
+        _feedback_placeholder = ("e.g. \"We're missing source X\" / \"Source Y has "
+                                 "stopped appearing\" / \"Can we add Z?\"")
+    else:
+        st.markdown("### 💬 Feedback on dashboard design & functionality")
+        _feedback_placeholder = ("e.g. \"The Triage page is too slow\" / \"I can't "
+                                 "find X\" / \"Why does the source filter not include Y?\"")
     feedback_text = st.text_area(
         "Feedback",
         key="_feedback_box",
         height=110,
-        placeholder="e.g. \"The Triage page is too slow\" / \"I can't find X\" / \"Why does the source filter not include Y?\"",
+        placeholder=_feedback_placeholder,
         label_visibility="collapsed",
         disabled=not auth,
     )
