@@ -23,6 +23,11 @@ order they were diagnosed (A–C in the morning; D–H through the day).
   Action) using a non-destructive "week boundary" model.
 - Added DfE regulatory-notice **title filtering** ("notice to improve",
   "warning notice") and removed 15 existing such articles from the corpus.
+- Added an all-weeks **search box** to Triage (find/coverage-check any article).
+- Fixed the **"Other didn't stick"** category bug (Categorise dropdown snapped
+  back to the placeholder after a manual pick — the choice was saved but looked
+  lost).
+- Ingested **newsletter issue #114** (19 items) into the dataset.
 
 ### Issue A — Triage page white-screens with `KeyError: '_article_date'`
 
@@ -158,6 +163,16 @@ Verified end-to-end via the real `soup_of → extract_body_text` path: UCL
 61→**5,595** chars, Schools Week 0→**4,146** chars. Forward-looking only —
 existing rows need a body-backfill (`backfill_bodies.py`) then a re-sweep.
 
+**Backfill scope (dry-run, 2026-06-09).** Of 83 headline-short articles
+(text < 200 chars): **15 are now recoverable** via trafilatura (Schools Week ×6,
+UCL ×2, Teacher Tapp, ADES ×4, gov.scot, education-ni) and **68 are unreachable**
+— almost entirely **Belfast Telegraph (HTTP 403 at scale)** plus a couple of
+`parliament.uk` 403s. This quantifies the hard limit: Belfast Telegraph blocks
+automated fetches outright, so those items will keep showing "Summary
+unavailable" until a different acquisition route is found (or the source is
+dropped). The 15 recoverable rows are fixed by running `backfill_bodies` for
+real (it re-summarises in the same pass).
+
 **Lesson.** A purpose-built extractor beats hand-rolled container heuristics for
 the long tail of site layouts; gate it behind a length check + heuristic
 fallback so a bad parse can't regress a working source.
@@ -206,9 +221,11 @@ existing matches from the corpus (all DfE).
 ## Open / recurring deployment risks
 
 - **Body extraction** — UCL IOE + Schools Week now **fixed** (trafilatura,
-  Issue F). Still hard: **Belfast Telegraph** (403-blocked, headline only) and
-  **DfE gov.uk** (content lives in linked PDFs). edtech.oii.ox.ac.uk unverified.
-  Existing rows for the fixed sources still need a body-backfill + re-sweep.
+  Issue F). Still hard: **Belfast Telegraph** (HTTP 403 at scale — ~68 articles
+  unreachable in the 2026-06-09 backfill dry-run, headline only) and **DfE
+  gov.uk** (content in linked PDFs). edtech.oii.ox.ac.uk unverified. The 15
+  recoverable rows are fixed by running `backfill_bodies`; the Belfast Telegraph
+  block needs a different acquisition route or the source dropped.
 - **GitHub Actions free-tier cron is unreliable** at peak; overnight/off-peak
   slots fire more reliably. (Scrape now runs weekdays 02:23 UTC; reset Mondays
   06:17 UTC.)

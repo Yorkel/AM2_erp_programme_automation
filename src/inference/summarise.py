@@ -236,6 +236,51 @@ def summarise_article(*, title: str, text: str, category: str | None = None,
     return result
 
 
+_TOPIC_SENTENCE_SYSTEM = (
+    "You select ONE sentence from a news/research article for an education "
+    "newsletter. Return the single sentence, copied VERBATIM from the article "
+    "text, that best captures its main point (usually the lead/topic sentence).\n"
+    "Rules:\n"
+    "- Copy an existing sentence EXACTLY. Do not write, paraphrase, shorten, or "
+    "combine sentences.\n"
+    "- Pick a sentence that stands on its own — avoid pull-quotes, fragments, "
+    "datelines, or navigation text.\n"
+    "- If there is no usable sentence, output exactly: Summary unavailable\n"
+    "- Output only the sentence itself, nothing else."
+)
+
+
+def extract_topic_sentence(*, title: str, text: str,
+                           model: str = DEFAULT_MODEL, client=None) -> str:
+    """Return the single most representative sentence, copied VERBATIM from the
+    article (extractive). Faster for curators to trust than an abstractive
+    summary — it's the author's own words, so nothing is fabricated. Returns
+    'Summary unavailable' when there is no usable text. Curator feedback
+    (Gemma, 2026-06-01): "find a topic sentence ... not write its own"."""
+    body = (text or "").strip()
+    if len(body) < 40:
+        return "Summary unavailable"
+    if client is None:
+        from anthropic import Anthropic
+        client = Anthropic(max_retries=5)   # picks up ANTHROPIC_API_KEY from env
+
+    user = (
+        f"TITLE: {title}\n\nARTICLE:\n{body[:6000]}\n\n"
+        "Return the single best sentence, verbatim."
+    )
+    resp = client.messages.create(
+        model=model,
+        max_tokens=200,
+        temperature=0,   # deterministic extraction
+        system=_TOPIC_SENTENCE_SYSTEM,
+        messages=[{"role": "user", "content": user}],
+    )
+    result = resp.content[0].text.strip()
+    if not result or _looks_like_refusal(result):
+        return "Summary unavailable"
+    return result
+
+
 def _looks_like_refusal(s: str) -> bool:
     """True if the model returned a meta/refusal response rather than a summary."""
     if not s:

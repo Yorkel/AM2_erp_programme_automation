@@ -21,7 +21,7 @@ from dashboard.data import (
     fetch_article_text, is_authenticated, load_decisions,
     record_decision, record_summary,
 )
-from src.inference.summarise import summarise_article
+from src.inference.summarise import summarise_article, extract_topic_sentence
 
 
 def _clean(v):
@@ -312,22 +312,44 @@ def _render_triage_card(row: dict):
                     "Summary unavailable</div>",
                     unsafe_allow_html=True,
                 )
-                if st.button(
-                    "✎ Generate summary", key=f"gen_{url}",
-                    type="primary", use_container_width=True, disabled=not auth,
-                ):
-                    with st.spinner("Summarising via Claude…"):
-                        # Fetch full body from articles.text. NEVER fall back
-                        # to text_clean — its first-80-words truncation often
-                        # contains nav cruft ("HOME > Blog >") which produces
-                        # bad summaries. If text is empty, summarise_article
-                        # honestly returns "Summary unavailable".
-                        body = fetch_article_text(url)
-                        new_summary = summarise_article(
-                            title=title, text=body, category=row.get("top1"),
-                        )
-                    record_summary(url, new_summary)
-                    st.rerun()
+
+            # Two ways to (re)build the summary, available whether or not one
+            # exists so the curator can swap an AI-written summary for a verbatim
+            # sentence (Gemma's ask: faster to trust — the article's own words).
+            if auth:
+                col_gen, col_sent = st.columns(2)
+                with col_gen:
+                    if st.button(
+                        "✎ Generate summary", key=f"gen_{url}",
+                        use_container_width=True,
+                        help="AI writes a short summary of the article.",
+                    ):
+                        with st.spinner("Summarising via Claude…"):
+                            # Fetch full body from articles.text. NEVER fall back
+                            # to text_clean — its first-80-words truncation often
+                            # contains nav cruft ("HOME > Blog >") which produces
+                            # bad summaries. If text is empty, summarise_article
+                            # honestly returns "Summary unavailable".
+                            body = fetch_article_text(url)
+                            new_summary = summarise_article(
+                                title=title, text=body, category=row.get("top1"),
+                            )
+                        record_summary(url, new_summary)
+                        st.rerun()
+                with col_sent:
+                    if st.button(
+                        "📌 Topic sentence", key=f"topic_{url}",
+                        use_container_width=True,
+                        help="Pull a key sentence verbatim from the article "
+                             "(its own words — quicker to check).",
+                    ):
+                        with st.spinner("Finding a key sentence…"):
+                            body = fetch_article_text(url)
+                            new_summary = extract_topic_sentence(
+                                title=title, text=body,
+                            )
+                        record_summary(url, new_summary)
+                        st.rerun()
 
         col_keep, col_reject = st.columns(2)
         with col_keep:
