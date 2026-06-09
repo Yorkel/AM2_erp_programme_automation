@@ -186,10 +186,21 @@ def render(df):
     # When the curator types here, search EVERY article (all weeks, any status)
     # by title/summary — for checking coverage ("did we cover X?") or finding a
     # past item. Empty box = normal current-week view below.
-    query = st.text_input(
-        "🔍 Search all articles",
-        placeholder="Search every week by title or summary…",
-    ).strip()
+    col_search, col_clear = st.columns([8, 1])
+    with col_search:
+        query = st.text_input(
+            "🔍 Search all articles",
+            placeholder="Search every week by title or summary…",
+            key="_triage_search",
+        ).strip()
+    with col_clear:
+        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)  # align
+        st.button(
+            "✕ Clear", use_container_width=True,
+            disabled=not query,
+            on_click=lambda: st.session_state.update({"_triage_search": ""}),
+            help="Clear the search and return to the current-week view.",
+        )
     if query:
         q = query.lower()
         SEARCH_CAP = 50
