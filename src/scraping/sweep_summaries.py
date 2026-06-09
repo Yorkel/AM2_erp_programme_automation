@@ -141,7 +141,7 @@ def main() -> int:
                     title=title, text=text, category=None, client=ant_client,
                 )
                 update["summary"] = summary
-                update["summary_generated_at"] = datetime.utcnow().isoformat()
+                update["summary_generated_at"] = datetime.now(timezone.utc).isoformat()
                 n_sum_ok += 1
             except Exception as e:
                 n_sum_fail += 1
@@ -160,7 +160,7 @@ def main() -> int:
             try:
                 ts = extract_topic_sentence(title=title, text=text, client=ant_client)
                 update["topic_sentence"] = ts
-                update["topic_sentence_generated_at"] = datetime.utcnow().isoformat()
+                update["topic_sentence_generated_at"] = datetime.now(timezone.utc).isoformat()
                 n_topic_ok += 1
             except Exception as e:
                 n_topic_fail += 1
