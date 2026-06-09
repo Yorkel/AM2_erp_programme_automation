@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import os
 import random
+import re
 import sys
 from pathlib import Path
 
@@ -237,36 +238,48 @@ def summarise_article(*, title: str, text: str, category: str | None = None,
 
 
 _TOPIC_SENTENCE_SYSTEM = (
-    "You select ONE sentence from a news/research article for an education "
-    "newsletter. Return the single sentence, copied VERBATIM from the article "
-    "text, that best captures its main point (usually the lead/topic sentence).\n"
+    "You pick ONE sentence from a news/research article for an education "
+    "newsletter — the sentence that best captures the article's MAIN POINT or "
+    "key finding (what actually happened / what the research shows).\n"
     "Rules:\n"
-    "- Copy an existing sentence EXACTLY. Do not write, paraphrase, shorten, or "
-    "combine sentences.\n"
-    "- Pick a sentence that stands on its own — avoid pull-quotes, fragments, "
-    "datelines, or navigation text.\n"
-    "- If there is no usable sentence, output exactly: Summary unavailable\n"
-    "- Output only the sentence itself, nothing else."
+    "- Copy an existing sentence EXACTLY (verbatim). Do NOT write, paraphrase, "
+    "shorten, or combine sentences.\n"
+    "- It is usually NOT the opening sentence. Skip throat-clearing intros, "
+    "first-person preambles (e.g. 'I have been thinking...'), scene-setting, "
+    "datelines and navigation. Choose the sentence a reader would quote to "
+    "explain what the article is about.\n"
+    "- The sentence must stand on its own and be a real, full sentence.\n"
+    "- If no single sentence does this well, reply with exactly: NONE\n"
+    "- Output only the sentence (or NONE), nothing else."
 )
+
+
+def _normalise_for_match(s: str) -> str:
+    """Lowercase + strip punctuation + collapse whitespace, for checking whether
+    an extracted sentence really appears in the body (tolerates quote/spacing
+    differences from HTML extraction)."""
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]+", " ", (s or "").lower())).strip()
 
 
 def extract_topic_sentence(*, title: str, text: str,
                            model: str = DEFAULT_MODEL, client=None) -> str:
-    """Return the single most representative sentence, copied VERBATIM from the
-    article (extractive). Faster for curators to trust than an abstractive
-    summary — it's the author's own words, so nothing is fabricated. Returns
-    'Summary unavailable' when there is no usable text. Curator feedback
-    (Gemma, 2026-06-01): "find a topic sentence ... not write its own"."""
+    """Best-effort extractive key sentence, copied VERBATIM from the article
+    body. **Falls back to the article TITLE** when there's no real body, when
+    the model can't find a genuine sentence, or when what it returns isn't
+    actually in the text — so the curator never sees a fabricated line or a bare
+    "Summary unavailable". Curator feedback (Gemma, 2026-06): prefer the
+    article's own words; defer to the title when there's nothing to extract."""
+    title_fallback = re.sub(r"\s+", " ", (title or "").strip()) or "Summary unavailable"
     body = (text or "").strip()
-    if len(body) < 40:
-        return "Summary unavailable"
+    if len(body) < 200:        # no real article body to quote — use the title
+        return title_fallback
     if client is None:
         from anthropic import Anthropic
         client = Anthropic(max_retries=5)   # picks up ANTHROPIC_API_KEY from env
 
     user = (
         f"TITLE: {title}\n\nARTICLE:\n{body[:6000]}\n\n"
-        "Return the single best sentence, verbatim."
+        "Return the single best sentence (verbatim), or NONE."
     )
     resp = client.messages.create(
         model=model,
@@ -276,8 +289,12 @@ def extract_topic_sentence(*, title: str, text: str,
         messages=[{"role": "user", "content": user}],
     )
     result = resp.content[0].text.strip()
-    if not result or _looks_like_refusal(result):
-        return "Summary unavailable"
+    if not result or result.strip().upper() == "NONE" or _looks_like_refusal(result):
+        return title_fallback
+    # Verbatim guard: the sentence must actually appear in the body, else the
+    # model paraphrased or invented it — fall back to the real title.
+    if _normalise_for_match(result) not in _normalise_for_match(body):
+        return title_fallback
     return result
 
 

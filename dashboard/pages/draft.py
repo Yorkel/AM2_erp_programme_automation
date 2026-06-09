@@ -18,7 +18,7 @@ import pandas as pd
 
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
 from dashboard.data import (
-    archive_and_reset_week, fetch_article_text, get_accepted_articles,
+    archive_and_reset_week, clean_text, fetch_article_text, get_accepted_articles,
     is_authenticated, load_decisions, record_decision, record_feedback,
     record_summary,
 )
@@ -35,15 +35,18 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
     """Single-sheet Excel matching the curator MS Form export structure, so the
     download can be merged directly with the curator-suggestions spreadsheet.
 
-    Columns match the MS Form column headers exactly (including punctuation):
-      Id, Start time, Organisation, Title, Include,
-      Link (website address / URL), Short description,
+    Columns match the MS Form export (ERPNewsletterSubmissions.xlsx) EXACTLY —
+    same names and order — so the download is the same format and can be pasted
+    straight into the form's spreadsheet:
+      Id, Start time, Completion time, Email, Name, Organisation, Title,
+      Include, Link (website address / URL), Short description,
       Which section of the newsletter is this for?, Any other comments?,
-      Submitter
+      Submitter, Question?
 
-    "Include" defaults to "Yes" (the curator accepted all of these on Page 2).
-    "Submitter" is per-article — curator picks GM/RF/NC on Draft page.
-    "Any other comments?" is left blank for the curator to fill on review.
+    The Form auto-fields (Completion time, Email, Name, Question?) are blank for
+    scraped articles. "Include" defaults to "Yes" (the curator accepted all of
+    these on Page 2). "Submitter" comes from the per-article dropdown on the
+    Draft page.
     """
     rows = []
     row_id = 1
@@ -53,9 +56,10 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
             session_key = f"desc_{url}"
             summary = (
                 st.session_state.get(session_key)
-                or (art.get("summary") or "")
+                or clean_text(art.get("summary"))
                 or "Summary unavailable"
             )
+            src = clean_text(art.get("source"))
             article_date = art.get("article_date") or ""
             # Render article_date as DD/MM/YYYY to match MS Forms convention
             try:
@@ -63,24 +67,33 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
                 date_str = d.strftime("%d/%m/%Y") if not pd.isna(d) else (article_date or "")
             except Exception:
                 date_str = article_date or ""
+            # EXACT column set + order of the live MS Form export
+            # (ERPNewsletterSubmissions.xlsx) so the download is the same format
+            # and can be pasted straight into the form's spreadsheet. The Form
+            # auto-fields (Completion time / Email / Name / Question?) don't
+            # apply to scraped articles, so they're left blank.
             rows.append({
                 "Id": row_id,
                 "Start time": date_str,
-                "Organisation": SOURCE_LABELS.get(art.get("source", ""), art.get("source") or ""),
-                "Title": art.get("title") or "",
+                "Completion time": "",
+                "Email": "",
+                "Name": "",
+                "Organisation": SOURCE_LABELS.get(src, src),
+                "Title": clean_text(art.get("title")),
                 "Include": "Yes",
                 "Link (website address / URL)": url,
                 "Short description": summary,
                 "Which section of the newsletter is this for?": CATEGORY_LABELS.get(cat_key, cat_key),
                 "Any other comments?": st.session_state.get(f"notes_{url}", "") or "",
                 "Submitter": st.session_state.get(f"submitter_{url}", "") or "",
+                "Question?": "",
             })
             row_id += 1
     columns = [
-        "Id", "Start time", "Organisation", "Title", "Include",
-        "Link (website address / URL)", "Short description",
-        "Which section of the newsletter is this for?",
-        "Any other comments?", "Submitter",
+        "Id", "Start time", "Completion time", "Email", "Name",
+        "Organisation", "Title", "Include", "Link (website address / URL)",
+        "Short description", "Which section of the newsletter is this for?",
+        "Any other comments?", "Submitter", "Question?",
     ]
     df = pd.DataFrame(rows, columns=columns)
     buf = BytesIO()
@@ -347,7 +360,7 @@ def render(df):
                     )
                 with col_submitter:
                     st.selectbox(
-                        "Submitted by",
+                        "Submitter",
                         options=["", "GM", "RF", "NC"],
                         key=f"submitter_{art_url}",
                         disabled=not auth,

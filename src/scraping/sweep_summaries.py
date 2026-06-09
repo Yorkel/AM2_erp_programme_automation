@@ -103,7 +103,11 @@ def main() -> int:
         off += 1000
 
     def _needs_topic(r):
-        return not (r.get("topic_sentence") or "").strip() and bool(_best_text(r))
+        # Blank OR the old "Summary unavailable" placeholder → (re)generate.
+        # extract_topic_sentence falls back to the title, so every article can
+        # get one regardless of body.
+        t = (r.get("topic_sentence") or "").strip()
+        return t == "" or t == PLACEHOLDER
 
     needing_summary = [r for r in rows if _needs_summary(r)]
     needing_tags = [r for r in rows if not r.get("topic_tags") and not r.get("geographic_focus")]
@@ -158,7 +162,12 @@ def main() -> int:
 
         if row["id"] in topic_ids:
             try:
-                ts = extract_topic_sentence(title=title, text=text, client=ant_client)
+                # Topic sentence must come from the REAL body (not the text_clean
+                # fallback), else it can quote scraped metadata that isn't in the
+                # article. extract_topic_sentence falls back to the title.
+                ts = extract_topic_sentence(
+                    title=title, text=row.get("text") or "", client=ant_client,
+                )
                 update["topic_sentence"] = ts
                 update["topic_sentence_generated_at"] = datetime.now(timezone.utc).isoformat()
                 n_topic_ok += 1
