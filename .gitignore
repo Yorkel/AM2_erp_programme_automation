@@ -211,8 +211,12 @@ __marimo__/
 # Custom: EduAtlas Project
 # -----------------------------
 
-# All data folders (too large for git — outputs of scrapers)
-data/
+# All data folders (too large for git — outputs of scrapers).
+# Use data/* (not data/) so the negation below can re-include one file.
+data/*
+# ...but DO track the source roster — the dashboard's Sources page reads it at
+# runtime, so it must be deployed (Streamlit Cloud / etc.).
+!data/sources_master.csv
 
 
 # Local-only docs (not for repo)
