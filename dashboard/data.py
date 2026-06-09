@@ -20,6 +20,26 @@ import pandas as pd
 from supabase import create_client
 
 
+# ── Null-safe text cleaning ──────────────────────────────────────────────────
+def clean_text(v):
+    """Coerce a possibly-null value to a clean display string.
+
+    pandas NaN is a *truthy* float, so the usual `x or ''` guard lets it slip
+    through and renders the literal string 'nan' in the UI / Excel. This is the
+    single shared cleaner for the whole dashboard (Triage, Categorise, Draft,
+    export). Returns '' for None / NaN / NaT / the strings 'nan'/'none'/'nat'.
+    Lists/tuples (e.g. topic_tags) are returned unchanged so callers can iterate.
+    """
+    if isinstance(v, (list, tuple)):
+        return v
+    if v is None:
+        return ""
+    if isinstance(v, float) and pd.isna(v):
+        return ""
+    s = str(v).strip()
+    return "" if s.lower() in {"nan", "none", "nat"} else s
+
+
 # ── Client ────────────────────────────────────────────────────────────────────
 
 @st.cache_resource
@@ -259,7 +279,7 @@ def get_kept_articles(df: pd.DataFrame) -> list[dict]:
     for url, dec in decisions.items():
         if dec.get("action") not in KEPT_ACTIONS:
             continue
-        match = df[df["url"] == url] if not df.empty else pd.DataFrame()
+        match = df[df["url"] == url] if (not df.empty and "url" in df.columns) else pd.DataFrame()
         row = match.iloc[0].to_dict() if len(match) else {"url": url, "title": "Unknown"}
         row["action"] = dec.get("action")
         row["curator_label"] = dec.get("label") or None
@@ -286,7 +306,7 @@ def get_accepted_articles(df: pd.DataFrame) -> list[dict]:
     for url, dec in decisions.items():
         if dec.get("action") not in ACCEPT_ACTIONS:
             continue
-        match = df[df["url"] == url] if not df.empty else pd.DataFrame()
+        match = df[df["url"] == url] if (not df.empty and "url" in df.columns) else pd.DataFrame()
         row = match.iloc[0].to_dict() if len(match) else {"url": url, "title": "Unknown"}
         row["curator_label"] = dec.get("label") or row.get("top1")
         if url in st.session_state.get("category_overrides", {}):
