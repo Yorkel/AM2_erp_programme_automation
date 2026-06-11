@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 # CONFIG
 # -----------------------------
 DATA_DIR = Path("data/modelling")
-COUNTRY = "eng"
+UK_NATIONS = ("eng", "sco", "wal", "nir", "uk")  # all UK nations (was England-only)
 DATASET_TYPE = "inference"
 
 
@@ -44,7 +44,7 @@ def main():
     q = (
         client.table("articles")
         .select("url, title, article_date, source, text_clean, week_number")
-        .eq("country", COUNTRY)
+        .in_("country", UK_NATIONS)
         .eq("dataset_type", DATASET_TYPE)
     )
     if since:
@@ -56,7 +56,7 @@ def main():
     df = pd.DataFrame(response.data)
     window = f" [{since or '...'} → {until or '...'}]" if (since or until) else ""
     print(f"  Pulled {len(df)} articles from Supabase{window}")
-    print(f"  Country: {COUNTRY}")
+    print(f"  Countries: {', '.join(UK_NATIONS)}")
     if len(df):
         print(f"  Weeks: {df['week_number'].min()} to {df['week_number'].max()}")
         print(f"  Date range: {df['article_date'].min()} to {df['article_date'].max()}")

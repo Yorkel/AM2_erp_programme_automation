@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 
 DATA_DIR = Path("data/modelling")
 OUTPUT = DATA_DIR / "classified_articles.csv"
-COUNTRY = "eng"
+UK_NATIONS = ("eng", "sco", "wal", "nir", "uk")  # all UK nations (was England-only)
 
 
 def main() -> int:
@@ -44,7 +44,7 @@ def main() -> int:
             "url, title, source, country, article_date, week_number, "
             "text_clean, top1, top1_confidence, top2, top2_confidence"
         )
-        .eq("country", COUNTRY)
+        .in_("country", UK_NATIONS)
         .execute()
     )
 

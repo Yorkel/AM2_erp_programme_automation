@@ -36,7 +36,7 @@ def main() -> int:
     weeks_resp = (
         client.table("articles")
         .select("week_number")
-        .eq("country", "eng")
+        .in_("country", ("eng", "sco", "wal", "nir", "uk"))
         .eq("dataset_type", "inference")
         .execute()
     )
@@ -52,7 +52,7 @@ def main() -> int:
         resp = (
             client.table("articles")
             .select("url, title, article_date, source, text_clean, week_number")
-            .eq("country", "eng")
+            .in_("country", ("eng", "sco", "wal", "nir", "uk"))
             .eq("dataset_type", "inference")
             .eq("week_number", w)
             .execute()
