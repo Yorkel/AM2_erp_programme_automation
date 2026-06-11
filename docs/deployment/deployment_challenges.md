@@ -5,6 +5,39 @@ Cloud) and the scrape pipeline, with root cause and fix. Newest first.
 
 ---
 
+## 2026-06-11 — Silent `drift_log` failure: monitor ran "green" but never wrote
+
+**Symptom.** The `drift_log` Supabase table was **completely empty**, despite the
+weekly drift workflow running "successfully" for weeks. Found while building the
+notebook-12 monitoring review surface — questioned why a table that should have one
+row per run had zero. (`fairness_log` was populated and current, which made the gap
+stand out.)
+
+**Root cause.** A **missing `env:` block**. In `.github/workflows/drift.yml` the
+"Pull predictions" step passed `SUPABASE_URL`/`SUPABASE_SERVICE_KEY`, but the
+"Run drift monitor" step did **not**. GitHub Actions does **not** inject secrets into
+`run:` steps automatically — each step must map them explicitly. So `s09_monitor`
+ran without credentials, `_push_drift_log` hit `os.getenv("SUPABASE_URL") -> None`,
+printed "skipping drift_log push", and **returned normally (exit 0)**. The workflow
+went green every time; nobody noticed. `fairness.yml` worked precisely because *its*
+step has the block.
+
+**Fix.**
+- Added the `env:` block to the "Run drift monitor" step in `drift.yml`.
+- Added `load_dotenv()` to `s09_monitor.main()` (local-run robustness).
+- **Hardened** `_push_drift_log` to **raise** when creds are missing under
+  `GITHUB_ACTIONS`/`CI` (was print-and-skip), so a regression fails **red** instead
+  of silently. Local runs still skip with a message.
+- Backfilled 24 weekly rows via `src/inference/backfill_drift_log.py` so the review
+  surface has history.
+
+**Lesson.** The worst monitoring failures are **silent**: a job that skips its own
+write on a missing precondition but still exits 0 is a blind spot — the dashboard is
+green while the data never lands. Detect by **reconciliation / invariant checks**
+("if the job ran, a row should exist; the latest row should be recent"), not by
+trusting the green check. Never `print-and-return` on a missing precondition in a job
+whose entire purpose is that write — raise.
+
 ## 2026-06-09 — Dashboard stabilisation day (crashes, summaries, body extraction, weekly reset, source filtering)
 
 A long firefighting + hardening session. Multiple issues surfaced together on

@@ -15,6 +15,8 @@ from typing import Iterable
 import requests
 from bs4 import BeautifulSoup
 
+from .nations import nation_for_source
+
 # -----------------------------------------------------------------------
 # Article row shape
 # -----------------------------------------------------------------------
@@ -51,6 +53,7 @@ class Article:
             "article_date": self.article_date.isoformat() if self.article_date else None,
             "source": self.source,
             "source_type": self.source_type,
+            "country": nation_for_source(self.source),
             "text": self.text,
             "text_clean": self.text_clean,
             "week_number": self.week_number,

@@ -17,6 +17,8 @@ Output: data/modelling/monitoring_log.csv + drift_log row in Supabase
 import json
 import os
 
+from dotenv import load_dotenv
+
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -85,6 +87,7 @@ def check_drift(texts, centroid_matrix, label_names, model):
 
 def main():
     """Run full monitoring report."""
+    load_dotenv()
     # Load
     classified_path = DATA_DIR / "classified_articles.csv"
     if not classified_path.exists():
@@ -179,7 +182,10 @@ def _push_drift_log(conf, drift, real_dist, label_names, classified_df, dist_ale
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_KEY")
     if not url or not key:
-        print("  SUPABASE_URL/SUPABASE_SERVICE_KEY not set — skipping drift_log push.")
+        msg = "SUPABASE_URL/SUPABASE_SERVICE_KEY not set — cannot push drift_log."
+        if os.getenv("GITHUB_ACTIONS") or os.getenv("CI"):
+            raise RuntimeError(msg + " Refusing to exit 0 in CI — add the env block to the workflow step.")
+        print("  " + msg + " Skipping (local run).")
         return
     from supabase import create_client
     row = {

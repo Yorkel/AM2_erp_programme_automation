@@ -44,6 +44,9 @@ jobs:
         run: python -m src.inference.pull_predictions
 
       - name: Run drift monitor
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -m src.inference.s09_monitor | tee drift_output.txt
 
       - name: Summary
