@@ -18,7 +18,7 @@ import pandas as pd
 
 from dashboard.config import SOURCE_LABELS
 from dashboard.data import (
-    fetch_article_text, is_authenticated, load_decisions,
+    delete_decision, fetch_article_text, is_authenticated, load_decisions,
     record_decision, record_topic_sentence,
 )
 from src.inference.summarise import extract_topic_sentence
@@ -341,21 +341,40 @@ def _render_triage_card(row: dict):
                         body = fetch_article_text(url)
                         new_ts = extract_topic_sentence(title=title, text=body)
                     record_topic_sentence(url, new_ts)
-                    st.rerun()
+                    st.rerun(scope="fragment")
 
-        col_keep, col_reject = st.columns(2)
-        with col_keep:
-            st.markdown('<div class="keep-btn-marker"></div>', unsafe_allow_html=True)
+        # Keep/Reject only while Pending. Once decided, the card flips IN PLACE to
+        # its outcome + an Undo, and every click reruns ONLY this fragment
+        # (scope="fragment") so the pending list does NOT reflow under the curator.
+        # Fixes Gemma's 2026-06-09 report: rejecting a card used to shift the list
+        # up and hide the next title, causing accidental rejects of unseen stories.
+        if status == "Pending":
+            col_keep, col_reject = st.columns(2)
+            with col_keep:
+                st.markdown('<div class="keep-btn-marker"></div>', unsafe_allow_html=True)
+                if st.button(
+                    "✓ Keep", key=f"keep_{url}",
+                    type="secondary", use_container_width=True, disabled=not auth,
+                ):
+                    record_decision(url, "keep", "")
+                    st.rerun(scope="fragment")
+            with col_reject:
+                if st.button(
+                    "✕ Reject", key=f"reject_{url}",
+                    type="secondary", use_container_width=True, disabled=not auth,
+                ):
+                    record_decision(url, "reject", "")
+                    st.rerun(scope="fragment")
+        else:
+            st.markdown(
+                f"<p style='font-size:14px;margin:4px 0;'>This article is "
+                f"<b style='color:{colour};'>{status}</b>.</p>",
+                unsafe_allow_html=True,
+            )
             if st.button(
-                "✓ Keep", key=f"keep_{url}",
+                "↩ Undo", key=f"undo_{url}",
                 type="secondary", use_container_width=True, disabled=not auth,
+                help="Put this article back to Pending — recovers an accidental Keep/Reject.",
             ):
-                record_decision(url, "keep", "")
-                st.rerun()
-        with col_reject:
-            if st.button(
-                "✕ Reject", key=f"reject_{url}",
-                type="secondary", use_container_width=True, disabled=not auth,
-            ):
-                record_decision(url, "reject", "")
-                st.rerun()
+                delete_decision(url)
+                st.rerun(scope="fragment")

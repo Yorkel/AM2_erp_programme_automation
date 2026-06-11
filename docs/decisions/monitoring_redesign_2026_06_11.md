@@ -138,6 +138,23 @@ demonstrates the full loop (detect, score, route, review, retrain trigger) rathe
 computing a drift number. The week-20 Google-Alerts leak is a concrete worked example of why
 the review loop matters.
 
+## Update 2026-06-11 (end of session) — items resolved
+
+- **UK-domain rule for alert sources: NOT built (obsolete).** `src/scraping/run.py::_filter_items`
+  already runs a **universal approved-domain allowlist** (`is_approved_domain` — drops anything
+  not on `APPROVED_DOMAINS`) plus a **non-UK content veto** (`is_non_uk_content`), both *before*
+  any opt-in gate. That is stricter than a UK-domain rule (which would have *loosened* the gate by
+  allowing any `.uk`). The week-20 leak predated the allowlist (added 2026-05-18). No change needed.
+- **Alert routing: implemented.** `s09_monitor` now prints `MONITOR STATUS: GREEN/AMBER/RED`
+  (RED if mean conf <0.40, class-mix shift >15%, or OOD >15%; AMBER on class-mix alerts / >70%
+  below-0.5 / OOD >5%). `drift.yml` gained `permissions: issues: write` + an "Open issue on RED"
+  step (built-in `GITHUB_TOKEN`, no new secret). **Email digest = remaining choice** (needs an
+  SMTP/Resend secret) — left to the user to pick a service.
+- **Canonical nation field = `country`.** `country` (deterministic, source-derived via
+  `src/scraping/nations.py`; drives the inference filter + fairness + Four Nations coverage) is
+  canonical. `geographic_focus` stays a *secondary* article-level descriptor (LLM-derived
+  England/Scotland/…/International) — NOT used for filtering or grouping. Do not conflate them.
+
 ## Related
 
 - `notebooks/12_drift_monitoring.ipynb` (the EDA that surfaced these issues)

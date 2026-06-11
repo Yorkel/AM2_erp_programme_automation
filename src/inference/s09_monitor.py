@@ -144,6 +144,31 @@ def main():
         else:
             print(f"    ✓ No drift detected")
 
+    # ── RAG status for alert routing (green=log only, amber=digest, red=action) ──
+    ood_rate = (drift["n_flagged"] / len(classified_df)) if texts and len(classified_df) else 0.0
+    max_delta = max((abs(real_dist.get(c, 0) - val_dist.get(c, 0)) for c in label_names), default=0.0)
+    reasons = []
+    if conf["mean"] < 0.40:
+        reasons.append(f"mean confidence {conf['mean']:.3f} < 0.40 (retrain floor)")
+    if max_delta > 0.15:
+        reasons.append(f"class-mix shift {max_delta:.0%} > 15%")
+    if ood_rate > 0.15:
+        reasons.append(f"out-of-distribution {ood_rate:.0%} > 15%")
+    if reasons:
+        status = "RED"
+    elif dist_alerts or conf["pct_below_50"] > 0.70 or ood_rate > 0.05:
+        status = "AMBER"
+        if dist_alerts:
+            reasons.append(f"{len(dist_alerts)} class-mix alert(s) >10%")
+        if conf["pct_below_50"] > 0.70:
+            reasons.append(f"{conf['pct_below_50']:.0%} below 0.5 confidence")
+        if ood_rate > 0.05:
+            reasons.append(f"out-of-distribution {ood_rate:.0%}")
+    else:
+        status = "GREEN"
+    print(f"\n  MONITOR STATUS: {status}"
+          + (f" — {'; '.join(reasons)}" if reasons else " — all signals nominal"))
+
     # Log — week_start/week_end stamp the window the run was scoped to
     # (set by pipeline.py via INFERENCE_SINCE/UNTIL env vars; blank for ad-hoc runs).
     log_entry = {

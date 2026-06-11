@@ -10,6 +10,8 @@ jobs:
   drift:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      issues: write
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
 
     steps:
@@ -48,6 +50,26 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -m src.inference.s09_monitor | tee drift_output.txt
+
+      - name: Open issue on RED drift
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f drift_output.txt ] && grep -q "MONITOR STATUS: RED" drift_output.txt; then
+            {
+              echo "The weekly drift monitor flagged **RED** on $(date -u +'%Y-%m-%d %H:%M UTC')."
+              echo
+              echo "Review notebook 12 (§12 review surface) + the retrain-trigger check."
+              echo
+              echo '```'
+              tail -45 drift_output.txt
+              echo '```'
+            } > issue_body.md
+            gh issue create --title "RED drift alert - $(date -u +%F)" --body-file issue_body.md || echo "gh issue create failed"
+          else
+            echo "Drift status not RED - no issue opened."
+          fi
 
       - name: Summary
         if: always()

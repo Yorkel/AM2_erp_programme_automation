@@ -38,6 +38,30 @@ green while the data never lands. Detect by **reconciliation / invariant checks*
 trusting the green check. Never `print-and-return` on a missing precondition in a job
 whose entire purpose is that write — raise.
 
+## 2026-06-11 — Triage list reflow → accidental rejects (Gemma feedback, 2026-06-09)
+
+**Symptom (Gemma, week of 2026-06-09).** "Sometimes the screen hides the next
+entry when the previous one is deleted. I think I lost one story by pressing
+reject when I couldn't see the title."
+
+**Root cause.** Each Triage card is an `@st.fragment`, but Keep/Reject called a
+bare `st.rerun()` — which reruns the **whole app**, re-filters the Pending list,
+and reflows every card upward. The curator's cursor stayed put while the next
+card shifted under it and its title scrolled out of view, so a second click
+rejected an unseen story.
+
+**Fix** (`dashboard/pages/triage.py`):
+- Keep/Reject (and topic-sentence regenerate) now use `st.rerun(scope="fragment")`
+  — only the clicked card reruns, so the pending list does **not** reflow.
+- After a decision the card flips **in place** to its outcome ("This article is
+  Kept/Rejected") with an **↩ Undo** button (`delete_decision` → back to Pending),
+  so an accidental Keep/Reject is recoverable — directly addressing the lost-story
+  risk.
+
+**Lesson.** Inside an `@st.fragment`, use `st.rerun(scope="fragment")` for per-item
+actions; a bare `st.rerun()` defeats the fragment and reflows the whole page.
+Destructive single-click actions on a reflowing list need no-reflow *and* an undo.
+
 ## 2026-06-09 — Dashboard stabilisation day (crashes, summaries, body extraction, weekly reset, source filtering)
 
 A long firefighting + hardening session. Multiple issues surfaced together on
