@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-11
 **Status:** Process agreed. Parts already exist; the rest is deferred until after the AM2 write-up.
-**Trigger:** Building the inference-data EDA in `notebooks/11_drift_monitoring.ipynb`.
+**Trigger:** Building the inference-data EDA in `notebooks/12_drift_monitoring.ipynb`.
 
 ## Context
 
@@ -113,7 +113,7 @@ other misses:
   performance drop), investigate immediately.
 
 "Only on alert" trusts the thresholds are perfectly tuned and lets slow degradation slip under
-them; "never" is just hoping. The notebook (`11_drift_monitoring.ipynb`) is the human review
+them; "never" is just hoping. The notebook (`12_drift_monitoring.ipynb`) is the human review
 surface for both loops — it pulls the raw data (`v_dashboard`) plus the pipeline's computed
 logs (`drift_log`, `fairness_log`, rejected archive) and displays them.
 
@@ -121,10 +121,10 @@ logs (`drift_log`, `fairness_log`, rejected archive) and displays them.
 
 Analysis notebooks reduced to two, split by the label rule (*does it use ground-truth labels?*):
 
-- **`11_drift_monitoring.ipynb` — Monitoring** (live stream, no labels): data quality, drift,
+- **`12_drift_monitoring.ipynb` — Monitoring** (live stream, no labels): data quality, drift,
   confidence, per-source fairness disparity, retrain-trigger check, relevance-filter analysis
   (folded in from old nb15).
-- **`evaluation.ipynb` — Evaluation** (labelled test/val set): held-out performance, calibration,
+- **`11_evaluation.ipynb` — Evaluation** (labelled test/val set): held-out performance, calibration,
   bootstrap CIs, McNemar, bias & fairness by accuracy. Merged from old nb12 + nb13 + nb14.
 
 `notebooks/01-10` remain as the model-build history. Superseded notebooks are in
@@ -140,7 +140,7 @@ the review loop matters.
 
 ## Related
 
-- `notebooks/11_drift_monitoring.ipynb` (the EDA that surfaced these issues)
+- `notebooks/12_drift_monitoring.ipynb` (the EDA that surfaced these issues)
 - `src/scraping/run.py`, `src/scraping/relevance.py`, `src/scraping/rss_adapter.py` (the gate and the alert adapter)
 - `src/inference/s09_monitor.py`, `.github/workflows/drift.yml` (the current monitor)
 - `docs/decisions/model_v1_state_and_retraining_plan.md` (retraining stays human-gated)

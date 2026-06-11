@@ -416,7 +416,7 @@ ethics notes.
   people / education so we don't pull in unrelated benefits/pensions content.
 - **Weekly drift monitoring is compute-only (design agreed, not built)** — the
   monitor (`s09_monitor.py`) computes drift but does not route, score, diff
-  week-over-week, or detect new sources. EDA in `notebooks/11_drift_monitoring.ipynb`
+  week-over-week, or detect new sources. EDA in `notebooks/12_drift_monitoring.ipynb`
   surfaced junk sources, scraping-quality confounds, a new-source-detection gap, and
   the Four Nations/Wales yield gap. Agreed redesign (data quality shifts left to the
   ingestion gate; monitor observes and routes) is in
