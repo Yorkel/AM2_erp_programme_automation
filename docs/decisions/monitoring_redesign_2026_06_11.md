@@ -100,6 +100,36 @@ add monitoring signals but skip a heavy Prometheus/Grafana stack): a weekly emai
 a GitHub Issue auto-opened on red. Sustained red prompts a retraining decision, which stays
 human-gated per `model_v1_state_and_retraining_plan.md`.
 
+## Review cadence (manual review)
+
+Manual review is **scheduled + alert-triggered, never alert-only** — each catches what the
+other misses:
+
+- **Weekly (fast loop):** light glance at drift / confidence. Runs *regardless of alerts*, so
+  it catches slow drift that never trips a threshold and protects against mis-tuned thresholds.
+- **Monthly (slow loop):** deeper review of the rejected-source log (promote / blacklist /
+  leave) + fairness + the retrain-trigger checklist.
+- **Alert-triggered (event-driven):** when a threshold breaks (drift spike, confidence floor,
+  performance drop), investigate immediately.
+
+"Only on alert" trusts the thresholds are perfectly tuned and lets slow degradation slip under
+them; "never" is just hoping. The notebook (`11_drift_monitoring.ipynb`) is the human review
+surface for both loops — it pulls the raw data (`v_dashboard`) plus the pipeline's computed
+logs (`drift_log`, `fairness_log`, rejected archive) and displays them.
+
+## Notebook structure (consolidated 2026-06-11)
+
+Analysis notebooks reduced to two, split by the label rule (*does it use ground-truth labels?*):
+
+- **`11_drift_monitoring.ipynb` — Monitoring** (live stream, no labels): data quality, drift,
+  confidence, per-source fairness disparity, retrain-trigger check, relevance-filter analysis
+  (folded in from old nb15).
+- **`evaluation.ipynb` — Evaluation** (labelled test/val set): held-out performance, calibration,
+  bootstrap CIs, McNemar, bias & fairness by accuracy. Merged from old nb12 + nb13 + nb14.
+
+`notebooks/01-10` remain as the model-build history. Superseded notebooks are in
+`notebooks/_archive/`.
+
 ## AM2 framing (S24)
 
 The robust-monitoring story: quality work sits at ingestion (the gate acts), monitoring
