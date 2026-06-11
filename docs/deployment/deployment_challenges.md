@@ -345,6 +345,45 @@ the UI when the same action is automated — it's an accidental-data-loss trap.
   columns (see [[project-gemma-feedback-2026-05-27]]) — the real ask was the
   exact-format match above.
 
+### Newsletter production workflow + dashboard impact (email thread, 2026-06-09)
+
+Captured from the "Newsletter deadlines" thread (Rachel, Gemma, Nina, Louise)
+the evening issue #115 was being laid up. Strong **Project 2 stakeholder
+evidence (K21 / S27)** — keep for the write-up.
+
+**Production cadence (now explicit).** Tue evening: Nina lays out the issue.
+Weds: Gemma edits/directs; Nina edits Weds evening and sends to Rachel. Thurs:
+Rachel proofs; Nina edits and schedules Thurs evening (issue publishes the
+following Thurs/Fri). The dashboard feeds the **front** of this pipeline (it
+supplies candidate items into the XLS that Nina lays up from). Multi-disciplinary
+team: Nina (layout), Gemma (director/editorial), Rachel (proof + gap-filling),
+Louise (dashboard + automation + scheduling), SK (LinkedIn promo).
+
+**Concrete impact in the published newsletter.** For issue #115, Gemma judged the
+draft gave "too much space to DfE self-promotion" and **used two items from the
+dashboard list as late replacements in the Political-environment (PEKO) section**
+(visible in the #115 draft as "new entry from dashboard in XLS" and an added
+Scottish Government item). Gemma's words: *"She is picking up stuff that Emma W
+doesn't see!"* This is the dashboard's output landing in the real published
+newsletter, in a stakeholder's own voice — the "impact on the organisation"
+evidence the distinction criteria (S27) ask for.
+
+**Stakeholder-driven workflow change.** Rachel and Gemma both found Tuesday-evening
+delivery too late ("dealing with it on Tues eve leads to too many amendments for
+Nina on Weds"). Agreed fix: **Louise runs the dashboard search and delivers on
+Monday night**, so Gemma can update the XLS Monday before Tuesday layout. This is
+adapting the process to fit the curators' cadence rather than the pipeline's
+convenience (S27), and managing conflicting timescales across the team (K21).
+*Implication for a future (post-freeze) update:* the weekly reset (Mon 06:17 UTC)
+and scrape (weekdays 02:23 UTC) may need re-timing so fresh results are ready for
+a Monday-evening hand-off.
+
+**Recall gap recurred (logged).** The Milburn review was again missed in #115
+because it is a **DWP** publication, not DfE, so it is outside the monitored
+education sources (see the cross-department source gap in Open risks below). A
+real instance of the documented limitation, useful for the honest-evaluation /
+ethics notes.
+
 ---
 
 ## Open / recurring deployment risks
@@ -375,3 +414,11 @@ the UI when the same action is automated — it's an accidental-data-loss trap.
   non-education departments (DWP, HM Treasury, etc.) currently slip through.
   Possible fix later: a targeted DWP/Treasury alert filtered to NEET / young
   people / education so we don't pull in unrelated benefits/pensions content.
+- **Weekly drift monitoring is compute-only (design agreed, not built)** — the
+  monitor (`s09_monitor.py`) computes drift but does not route, score, diff
+  week-over-week, or detect new sources. EDA in `notebooks/11_drift_monitoring.ipynb`
+  surfaced junk sources, scraping-quality confounds, a new-source-detection gap, and
+  the Four Nations/Wales yield gap. Agreed redesign (data quality shifts left to the
+  ingestion gate; monitor observes and routes) is in
+  `docs/decisions/monitoring_redesign_2026_06_11.md`. Implementation deferred until
+  after the AM2 write-up.

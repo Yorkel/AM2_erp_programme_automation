@@ -54,6 +54,7 @@ BLOCKED_DOMAINS: tuple[str, ...] = (
     "news-line.co.uk",          # Workers Revolutionary Party paper (earlier guess)
     "wrp.org.uk",                # Workers Revolutionary Party (actual domain)
     "mirror.co.uk",              # UK tabloid
+    "standard.co.uk",            # Evening Standard — curator-dropped 2026-06-11
     "smh.com.au",                # Sydney Morning Herald
     "e.vnexpress.net",           # Vietnamese news
 )
