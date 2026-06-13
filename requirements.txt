@@ -1,29 +1,29 @@
-beautifulsoup4
-ftfy
-matplotlib
-numpy
-pandas
-requests
-scikit-learn
-seaborn
-ipykernel
-sentence-transformers
-transformers
-torch
-anthropic
-python-dotenv
+beautifulsoup4==4.14.2
+ftfy==6.3.1
+matplotlib==3.10.7
+numpy==2.3.4
+pandas==2.3.3
+requests==2.32.5
+scikit-learn==1.8.0
+seaborn==0.13.2
+ipykernel==7.0.1
+sentence-transformers==5.3.0
+transformers==5.5.0
+torch==2.11.0
+anthropic==0.88.0
+python-dotenv==1.0.1
 # scraping module (src/scraping/)
-supabase>=2.0.0
-PyYAML>=6.0
-python-dateutil>=2.8.0
-feedparser>=6.0          # RSS + Google Alert parsing — required by rss_adapter.py
-lxml>=4.9                # tree builder for BeautifulSoup HTML scrapers (gov_scot, gtcs, etc.)
-trafilatura>=1.8         # main-article body extraction (ignores nav/boilerplate); primary path in common.extract_body_text
-# serving module (src/serving/) — FastAPI model API
-fastapi>=0.110.0
-uvicorn[standard]>=0.27.0
-pydantic>=2.0.0
-# dashboard (dashboard/) — Streamlit curator UI
-streamlit>=1.30
-openpyxl>=3.1            # used by review.py / organise.py for .xlsx download buttons
-prometheus-fastapi-instrumentator>=7.0.0
+supabase==2.28.0
+PyYAML==6.0.3
+python-dateutil==2.9.0.post0
+feedparser==6.0.12          # RSS + Google Alert parsing, required by rss_adapter.py
+lxml==6.1.1                 # tree builder for BeautifulSoup HTML scrapers (gov_scot, gtcs, etc.)
+trafilatura==2.1.0          # main-article body extraction (ignores nav/boilerplate); primary path in common.extract_body_text
+# serving module (src/serving/), FastAPI model API
+fastapi==0.136.1
+uvicorn[standard]==0.47.0
+pydantic==2.12.5
+# dashboard (dashboard/), Streamlit curator UI
+streamlit==1.56.0
+openpyxl==3.1.5             # used by review.py / organise.py for .xlsx download buttons
+prometheus-fastapi-instrumentator==7.1.0
