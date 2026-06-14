@@ -1,4 +1,23 @@
 {
     "python.defaultInterpreterPath": "/workspaces/AM2_erp_programme_automataion/.venv/bin/python",
-    "python.terminal.activateEnvironment": true
+    "python.terminal.activateEnvironment": true,
+    "files.watcherExclude": {
+        "**/.venv/**": true,
+        "**/.git/**": true,
+        "**/__pycache__/**": true,
+        "**/.ipynb_checkpoints/**": true,
+        "**/node_modules/**": true,
+        "**/models/**": true
+    },
+    "search.exclude": {
+        "**/.venv": true,
+        "**/__pycache__": true,
+        "**/.ipynb_checkpoints": true,
+        "**/node_modules": true
+    },
+    "files.exclude": {
+        "**/.venv": true,
+        "**/__pycache__": true,
+        "**/.ipynb_checkpoints": true
+    }
 }
