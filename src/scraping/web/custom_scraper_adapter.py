@@ -27,7 +27,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from importlib import import_module
 
-from src.scraping.common import Article
+from src.scraping.common import Article, normalise_url
 
 
 def _to_date(value):
@@ -64,7 +64,7 @@ def scrape(*, source: str, module: str,
         extras = {k: v for k, v in r.items()
                   if k not in ("url", "title", "date", "text")}
         articles.append(Article(
-            url=r["url"],
+            url=normalise_url(r["url"]),
             title=r.get("title"),
             article_date=_to_date(r.get("date")),
             source=source,

@@ -6,6 +6,8 @@ import time
 import re
 from datetime import datetime
 
+from src.scraping.common import resolve_url
+
 # ----------------------------------------------------------
 # Config
 # ----------------------------------------------------------
@@ -34,11 +36,9 @@ def _extract_articles_from_listing(soup):
     seen_hrefs = set()
 
     for a in soup.find_all("a", href=True):
-        href = a["href"].strip()
+        href = resolve_url(a["href"], BASE)
         if "/news/news-and-updates/" not in href:
             continue
-        if not href.startswith("http"):
-            href = BASE + href
         if href in seen_hrefs:
             continue
         seen_hrefs.add(href)
@@ -106,20 +106,14 @@ def _find_next_page(soup):
     for a in soup.find_all("a", href=True):
         text = a.get_text(strip=True).lower()
         if text in ["next", "next page", "›", "»", "next ›"]:
-            href = a["href"].strip()
-            if not href.startswith("http"):
-                href = BASE + href
-            return href
+            return resolve_url(a["href"], BASE)
 
     # Also check for numbered pages
     current_page = soup.find("span", class_=lambda c: c and "current" in c.lower() if c else False)
     if current_page:
         next_a = current_page.find_next("a", href=True)
         if next_a:
-            href = next_a["href"].strip()
-            if not href.startswith("http"):
-                href = BASE + href
-            return href
+            return resolve_url(next_a["href"], BASE)
 
     return None
 

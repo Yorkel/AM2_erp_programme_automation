@@ -6,6 +6,8 @@ from dateutil import parser
 from pathlib import Path
 import time
 
+from src.scraping.common import resolve_url
+
 # ----------------------------------------------------------
 # Config
 # ----------------------------------------------------------
@@ -45,7 +47,7 @@ def extract_latest_cards(html):
         if not href:
             continue
 
-        url = href if href.startswith("http") else BASE + href
+        url = resolve_url(href, BASE)
 
         title = ""
         title_tag = card.select_one("h3.card-item__heading")

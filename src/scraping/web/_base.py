@@ -23,6 +23,7 @@ from src.scraping.common import (
     DEFAULT_SLEEP,
     extract_body_text,
     parse_date_loose,
+    resolve_url,
     soup_of,
 )
 
@@ -59,8 +60,11 @@ def scrape_listing(
         if soup is None:
             break
 
-        links = [a.get(article_url_attr) for a in soup.select(list_selector) if a.get(article_url_attr)]
-        links = [base_url + l if base_url and l.startswith("/") else l for l in links]
+        links = []
+        for a in soup.select(list_selector):
+            link = resolve_url(a.get(article_url_attr), base_url or url)
+            if link:
+                links.append(link)
 
         page_has_recent = False
         for link in links:
@@ -94,9 +98,7 @@ def scrape_listing(
         if not next_page_selector:
             break
         nxt = soup.select_one(next_page_selector)
-        url = nxt.get("href") if nxt and nxt.get("href") else None
-        if url and base_url and url.startswith("/"):
-            url = base_url + url
+        url = resolve_url(nxt.get("href"), base_url or url) if nxt and nxt.get("href") else None
         page += 1
         time.sleep(1)
 

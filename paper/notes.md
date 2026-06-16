@@ -3,12 +3,13 @@
 Companion to `manuscript.md`. Status of what is left.
 
 ## Sections
-- **§2 Background** — NOT written. Needs the verified lit search (8 themes listed in the manuscript §2 stub). The one genuinely-new block. Also resolves the four `[CITE]` placeholders in §1.
+- **§2 Background**: DRAFTED 2026-06-14 from the measurement-theory landscape (Borsboom; Bollen & Lennox; Edwards & Bagozzi; Howell/Breivik/Wilcox; Bollen & Diamantopoulos; Adcock & Collier; Kane; Messick; Loevinger; Jacobs & Wallach). Citations are genuine but need FINAL detail verification (year/venue/pages). Remaining `[CITE]` markers inside §2: benchmark construct-validity critiques, perspectivism, label-error auditing, LLM-as-judge. §1 reframe line added (model vs curator answer different questions: separability vs purpose).
 - **§9 Conclusion** — NOT written. Short, write after §8 is final.
 - **§1, §3, §4, §5, §6, §7, §8** — drafted (in manuscript).
 
 ## Values to confirm (from notebooks)
-- Blind-naming cluster count: inferred `k = 10` (NB13) — confirm.
+- Blind-naming: the `k = 10` I first wrote was WRONG (it was the kNN-purity k, not a clustering k). Removed from §4.4. CONFIRM where the blind LLM-naming step actually runs (not found in NB13 by search) and the cluster count it uses.
+- Verified-from-code (NB13): kNN purity k=10, cosine (cell 8, `purity_k10`); KMeans `n_init=10, random_state=42` (cell 12). KMeans `n_clusters = len(CONTENT_CLASSES)` — confirm the count is 6.
 - Few-shot count: `2 examples per category` (NB14) — confirm.
 - Exact Claude model id (NB14 shows both `claude-sonnet-4-6` and `claude-sonnet-4-20250514`) — state the one used.
 - `max_tokens`: 256 vs 150 — confirm the reported run.
