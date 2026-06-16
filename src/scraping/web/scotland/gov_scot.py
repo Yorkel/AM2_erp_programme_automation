@@ -6,6 +6,8 @@ import time
 import re
 from datetime import datetime
 
+from src.scraping.common import resolve_url
+
 # ----------------------------------------------------------
 # Config
 # ----------------------------------------------------------
@@ -70,9 +72,7 @@ def _get_search_results(base_url, since_date=None, until_date=None):
             link = item.find("a", class_="ds_search-result__link")
             if not link:
                 continue
-            href = link.get("href", "")
-            if not href.startswith("http"):
-                href = BASE + href
+            href = resolve_url(link.get("href", ""), BASE)
             if href in seen:
                 continue
             seen.add(href)

@@ -28,8 +28,6 @@ import re
 import time
 from collections import Counter
 from datetime import date, datetime
-from urllib.parse import urljoin
-
 from bs4 import BeautifulSoup
 
 from src.scraping.common import (
@@ -38,6 +36,7 @@ from src.scraping.common import (
     build_text_clean,
     extract_body_text,
     parse_date_loose,
+    resolve_url,
     soup_of,
 )
 
@@ -92,7 +91,7 @@ def _extract_from_container(container, base_url: str) -> tuple[str, str, date | 
         href = a["href"].strip()
         if not href or href.startswith("#") or href.startswith("javascript:"):
             continue
-        url = urljoin(base_url, href)
+        url = resolve_url(href, base_url)
         if not title:
             title = a.get_text(" ", strip=True)
         break

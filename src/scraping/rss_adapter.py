@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import time
 from datetime import date, datetime
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import urlparse
 
 import html as html_lib
 import re
@@ -27,7 +27,7 @@ import re
 import feedparser
 from bs4 import BeautifulSoup
 
-from src.scraping.common import Article, build_text_clean
+from src.scraping.common import Article, build_text_clean, normalise_url
 
 _WS_RE = re.compile(r"\s+")
 
@@ -42,15 +42,7 @@ def _strip_html(s: str) -> str:
 
 
 def _unwrap_google_url(link: str) -> str:
-    """Google Alerts wraps links in a tracking redirect. Extract the real URL."""
-    if not link or "google.com/url" not in link:
-        return link
-    try:
-        q = parse_qs(urlparse(link).query)
-        inner = q.get("url", []) or q.get("q", [])
-        return unquote(inner[0]) if inner else link
-    except Exception:
-        return link
+    return normalise_url(link)
 
 
 def _domain_as_source(url: str) -> str | None:
@@ -136,6 +128,8 @@ def scrape(*, source: str, feed_url: str,
         url = e.get("link") or ""
         if is_google_alert:
             url = _unwrap_google_url(url)
+        else:
+            url = normalise_url(url)
         if not url or url in seen_urls:
             continue
         seen_urls.add(url)

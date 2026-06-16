@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import time
 from datetime import date
-from urllib.parse import parse_qs, urlparse, urlunparse, urlencode
+from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
@@ -34,19 +34,9 @@ from src.scraping.common import (
     build_text_clean,
     extract_body_text,
     parse_date_loose,
+    normalise_url,
     soup_of,
 )
-
-TRACK_PARAMS = {
-    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-    "mkt_tok", "mc_cid", "mc_eid", "gclid", "fbclid", "igshid", "utm_name",
-}
-SAFE_HOSTS = {
-    "eur01.safelinks.protection.outlook.com",
-    "safelinks.protection.outlook.com",
-    "nam01.safelinks.protection.outlook.com",
-    "emea01.safelinks.protection.outlook.com",
-}
 
 ANCHOR_BLOCKLIST = {
     "more", "read more", "view in browser", "unsubscribe",
@@ -58,23 +48,7 @@ MAX_TITLE_WORDS = 30
 
 
 def canonical_url(u: str) -> str:
-    if not u:
-        return ""
-    u = u.strip()
-    try:
-        p = urlparse(u)
-        if p.netloc.lower() in SAFE_HOSTS:
-            inner = parse_qs(p.query).get("url", []) or parse_qs(p.query).get("URL", [])
-            if inner:
-                u = inner[0]
-                p = urlparse(u)
-        q = {k: v for k, v in parse_qs(p.query, keep_blank_values=True).items()
-             if k.lower() not in TRACK_PARAMS}
-        path = p.path.rstrip("/") or "/"
-        return urlunparse((p.scheme.lower() or "https", p.netloc.lower(),
-                           path, "", urlencode(q, doseq=True), ""))
-    except Exception:
-        return u
+    return normalise_url(u) or ""
 
 
 def parse_newsletter_html(html: str, *, source: str,

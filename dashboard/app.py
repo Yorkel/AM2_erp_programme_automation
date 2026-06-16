@@ -133,7 +133,10 @@ def main():
         st.stop()
 
     if "article_date" in df.columns:
-        df["article_date"] = pd.to_datetime(df["article_date"], errors="coerce", dayfirst=True).dt.strftime("%d-%m-%Y")
+        # article_date from Supabase is ISO (YYYY-MM-DD). Parsing ISO with
+        # dayfirst=True mangles it (2026-06-11 -> 6 Nov) on recent pandas, which
+        # broke the week filters. Parse ISO directly, then format for display.
+        df["article_date"] = pd.to_datetime(df["article_date"], errors="coerce").dt.strftime("%d-%m-%Y")
 
     init_session_state()
 

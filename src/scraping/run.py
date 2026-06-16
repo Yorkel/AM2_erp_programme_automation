@@ -412,8 +412,8 @@ def main():
                              "scrape_runs row, or 7 days ago if no previous run exists. "
                              "Used by the cron workflow for incremental fetches.")
     parser.add_argument("--no-summaries", action="store_true",
-                        help="Skip pre-generating Claude summaries for kept articles. "
-                             "Default is ON (generate). Requires migration 012 applied.")
+                        help="Skip Claude enrichment for kept articles. Body backfill still runs; "
+                             "summary/tag/topic-sentence sweep can run separately.")
     args = parser.parse_args()
 
     # Resolve --since-last-run BEFORE other logic so it sets args.since.
@@ -495,8 +495,8 @@ def _execute_run(args):
                 src, since=args.since, until=args.until
             )
             items = _filter_items(items, name, apply_filter, require_keywords)
+            _backfill_bodies(items, name, dry_run=args.dry_run)
             if not args.no_summaries:
-                _backfill_bodies(items, name, dry_run=args.dry_run)
                 _generate_summaries(items, name, dry_run=args.dry_run)
             records = _to_records(items)
             rows_scraped = len(records)

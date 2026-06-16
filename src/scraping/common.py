@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import re
 import time
+from html import unescape as html_unescape
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Iterable
+from urllib.parse import parse_qs, parse_qsl, unquote, urlencode, urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -82,22 +84,68 @@ def scrape_week(d: date) -> int:
 _NOISE_QUERY_PARAMS = {
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
     "utm_name", "mkt_tok", "mc_cid", "mc_eid", "gclid", "fbclid", "igshid",
-    "_locale", "locale", "lang", "ref", "cmp", "_ga",
+    "_locale", "locale", "lang", "ref", "cmp", "_ga", "dm_i", "mptk",
+    "at_medium", "at_campaign",
 }
+
+_SAFE_LINK_HOSTS = {
+    "eur01.safelinks.protection.outlook.com",
+    "safelinks.protection.outlook.com",
+    "nam01.safelinks.protection.outlook.com",
+    "emea01.safelinks.protection.outlook.com",
+}
+
+_GOOGLE_REDIRECT_HOSTS = {
+    "google.com", "www.google.com", "google.co.uk", "www.google.co.uk",
+}
+
+_SKIP_URL_PREFIXES = ("#", "mailto:", "tel:", "javascript:")
+
+
+def _unwrap_known_redirect(u: str) -> str:
+    # Decode redirect URLs we can resolve without making a network request.
+    try:
+        p = urlparse(u)
+        host = p.netloc.lower()
+        query = parse_qs(p.query)
+        if host in _SAFE_LINK_HOSTS:
+            inner = query.get("url", []) or query.get("URL", [])
+            return unquote(inner[0]) if inner else u
+        if host in _GOOGLE_REDIRECT_HOSTS and p.path.rstrip("/") == "/url":
+            inner = query.get("url", []) or query.get("q", [])
+            return unquote(inner[0]) if inner else u
+    except Exception:
+        return u
+    return u
+
+
+def resolve_url(href: str, base_url: str | None = None) -> str:
+    # Resolve a scraped href into the canonical absolute URL where possible.
+    if not href or not isinstance(href, str):
+        return ""
+    raw = html_unescape(href.strip())
+    if not raw or raw.lower().startswith(_SKIP_URL_PREFIXES):
+        return ""
+    if base_url:
+        raw = urljoin(base_url, raw)
+    return normalise_url(raw)
 
 
 def normalise_url(u: str) -> str:
-    """Canonicalise an article URL for de-duplication: lowercase the host, drop
-    the #fragment, strip a trailing slash, and remove noise/tracking/locale
-    query params (e.g. ?_locale=en) so the same article isn't stored twice.
-    Content-bearing params (anything not in _NOISE_QUERY_PARAMS) are kept."""
+    # Canonicalise an article URL for de-duplication.
     if not u or not isinstance(u, str):
         return u
-    from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
     try:
-        p = urlparse(u.strip())
-        if not p.netloc:           # not an absolute URL — leave untouched
-            return u.strip()
+        cleaned = html_unescape(u.strip())
+        for _ in range(3):
+            unwrapped = html_unescape(_unwrap_known_redirect(cleaned).strip())
+            if unwrapped == cleaned:
+                break
+            cleaned = unwrapped
+
+        p = urlparse(cleaned)
+        if not p.netloc:           # not an absolute URL - leave untouched
+            return cleaned
         path = p.path.rstrip("/") or "/"
         kept = [(k, v) for k, v in parse_qsl(p.query, keep_blank_values=True)
                 if k.lower() not in _NOISE_QUERY_PARAMS]

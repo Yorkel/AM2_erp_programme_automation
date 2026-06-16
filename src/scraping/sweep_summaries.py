@@ -24,7 +24,12 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from supabase import create_client
 
-from src.inference.summarise import summarise_article, tag_article, extract_topic_sentence
+from src.inference.summarise import (
+    DEFAULT_MODEL,
+    extract_topic_sentence,
+    summarise_article,
+    tag_article,
+)
 
 
 # Only sweep the last N days. Older NULLs are stale (likely failed body
@@ -36,6 +41,29 @@ MIN_BODY_CHARS = 200      # text this long is treated as a real article body
 MIN_SNIPPET_CHARS = 40    # text_clean (title + standfirst) usable as a fallback
 
 PLACEHOLDER = "Summary unavailable"
+
+
+def _claude_available(ant_client) -> bool:
+    """Return False quickly when the sweep cannot reach Claude at all.
+
+    Without this guard, a transient/network-wide Anthropic outage causes three
+    retried calls per article (summary, tags, topic sentence), which turns a
+    best-effort sweep into several minutes of repetitive log noise.
+    """
+    try:
+        ant_client.messages.create(
+            model=DEFAULT_MODEL,
+            max_tokens=1,
+            temperature=0,
+            messages=[{"role": "user", "content": "Reply OK."}],
+        )
+        return True
+    except Exception as e:
+        print(
+            f"ERROR: Claude unreachable before sweep: {type(e).__name__}: {e}",
+            file=sys.stderr,
+        )
+        return False
 
 
 def _best_text(row: dict) -> str:
@@ -77,11 +105,6 @@ def main() -> int:
         return 1
     client = create_client(sup_url, sup_key)
 
-    # Build a single Anthropic client and reuse it across all calls (cheaper +
-    # benefits from the SDK's max_retries=5 we set in summarise.py).
-    from anthropic import Anthropic
-    ant_client = Anthropic(max_retries=5)
-
     # Find articles needing summaries OR tags within the lookback window.
     cutoff = (datetime.now(timezone.utc).timestamp() - LOOKBACK_DAYS * 86400)
     cutoff_iso = datetime.fromtimestamp(cutoff, tz=timezone.utc).isoformat()
@@ -120,6 +143,15 @@ def main() -> int:
     if not needing_summary and not needing_tags and not needing_topic:
         print("Nothing to sweep — exiting clean.")
         return 0
+
+    # Build a single Anthropic client and reuse it across all calls (cheaper +
+    # prompt-cache friendly). Probe connectivity once so a total Claude outage
+    # fails quickly instead of retrying every enrichment call for every row.
+    from anthropic import Anthropic
+    probe_client = Anthropic(max_retries=1)
+    if not _claude_available(probe_client):
+        return 1
+    ant_client = Anthropic(max_retries=5)
 
     n_sum_ok = 0
     n_sum_fail = 0

@@ -55,6 +55,8 @@ from datetime import datetime
 from pathlib import Path
 import time
 
+from src.scraping.common import resolve_url
+
 # ------------------------------------------------------
 # CONFIG
 # ------------------------------------------------------
@@ -93,7 +95,7 @@ CORE_EDUCATION_BODIES = [
 def extract_links(html):
     soup = BeautifulSoup(html, "html.parser")
     return [
-        BASE + a["href"]
+        resolve_url(a["href"], BASE)
         for a in soup.select("li.gem-c-document-list__item a[href]")
     ]
 
@@ -101,7 +103,7 @@ def extract_links(html):
 def extract_next_page(html):
     soup = BeautifulSoup(html, "html.parser")
     next_btn = soup.select_one("div.govuk-pagination__next a")
-    return BASE + next_btn["href"] if next_btn else None
+    return resolve_url(next_btn["href"], BASE) if next_btn else None
 
 
 # ------------------------------------------------------

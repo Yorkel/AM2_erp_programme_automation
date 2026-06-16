@@ -6,6 +6,8 @@ from pathlib import Path
 import time
 import re
 
+from src.scraping.common import resolve_url
+
 # ----------------------------------------------------------
 # Config
 # ----------------------------------------------------------
@@ -41,7 +43,7 @@ def extract_links(html):
         a = art.select_one("div.box-typ1-title a")
         if a and a.get("href"):
             href = a["href"].strip()
-            links.append(href if href.startswith("http") else BASE + href)
+            links.append(resolve_url(href, BASE))
 
     return links
 
@@ -55,7 +57,7 @@ def extract_next_page(html):
     next_a = soup.select_one("li.next-page a")
     if next_a and next_a.get("href"):
         href = next_a["href"].strip()
-        return href if href.startswith("http") else BASE + href
+        return resolve_url(href, BASE)
 
     return None
 

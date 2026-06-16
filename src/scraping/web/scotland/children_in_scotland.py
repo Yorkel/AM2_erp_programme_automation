@@ -5,6 +5,8 @@ from pathlib import Path
 import time
 from datetime import datetime
 
+from src.scraping.common import resolve_url
+
 # ----------------------------------------------------------
 # Config
 # ----------------------------------------------------------
@@ -28,7 +30,7 @@ HEADERS = {
 def _extract_links(soup):
     links = []
     for a in soup.select("a.card--news_article"):
-        href = a.get("href", "")
+        href = resolve_url(a.get("href", ""), BASE)
         if href and href not in links:
             links.append(href)
     return links
