@@ -9,7 +9,7 @@ def get_css():
     return f"""
 <style>
     /* Hide Streamlit's auto-generated multipage nav (we use a custom radio
-       in app.py — the dashboard/pages/ folder is just a Python module). */
+       in app.py - the dashboard/pages/ folder is just a Python module). */
     [data-testid="stSidebarNav"] {{
         display: none;
     }}
@@ -76,13 +76,13 @@ def get_css():
         display: none !important;
     }}
 
-    /* Card containers — light background */
+    /* Card containers - light background */
     [data-testid="stVerticalBlockBorderWrapper"] {{
         background-color: #f8f9fb !important;
         border-radius: 8px !important;
     }}
 
-    /* Download button — light orange */
+    /* Download button - light orange */
     [data-testid="stDownloadButton"] button {{
         background-color: #ffecd2 !important;
         color: #856404 !important;
@@ -92,13 +92,13 @@ def get_css():
         background-color: #ffe0b2 !important;
     }}
 
-    /* All buttons — same height, larger text */
+    /* All buttons - same height, larger text */
     [data-testid="stButton"] button {{
         min-height: 50px !important;
         font-size: 16px !important;
     }}
 
-    /* Primary buttons — light blue (Category 1 + Manual) */
+    /* Primary buttons - light blue (Category 1 + Manual) */
     [data-testid="stButton"] button[kind="primary"] {{
         background-color: #d6e4f0 !important;
         border: 1px solid #4472c4 !important;
@@ -108,7 +108,7 @@ def get_css():
         background-color: #b8cfe2 !important;
     }}
 
-    /* Tertiary buttons — light orange (Category 2) */
+    /* Tertiary buttons - light orange (Category 2) */
     [data-testid="stButton"] button[kind="tertiary"] {{
         background-color: #fde8d0 !important;
         border: 1px solid #ed7d31 !important;
@@ -118,7 +118,7 @@ def get_css():
         background-color: #f9d4ae !important;
     }}
 
-    /* Secondary buttons — light red (Reject) */
+    /* Secondary buttons - light red (Reject) */
     [data-testid="stButton"] button[kind="secondary"] {{
         background-color: #fadbd8 !important;
         border: 1px solid #e74c3c !important;

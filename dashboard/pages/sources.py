@@ -1,11 +1,11 @@
 """
-Page 4 — Sources.
+Page 4 - Sources.
 
 A coverage view of every source running through the dashboard (web scrape +
 Google Alerts), with how many articles were scraped OVERALL and in the LAST
 COMPLETED week. Built by joining the live source roster
 (`data/sources_master.csv`, excluding newsletter sources which arrive by email)
-with actual article counts — so approved sources that produced nothing still
+with actual article counts - so approved sources that produced nothing still
 appear (with 0), making coverage gaps visible.
 
 Columns: Source · Link · Overall · Last week. The Link column shows
@@ -122,7 +122,7 @@ def render(df):
 
     # De-duplicate: a publisher that has both a direct source and a
     # "(Google Alert)" twin (e.g. Rebecca Eynon) shouldn't appear twice. Group by
-    # the base name and keep the better row — higher article count, and on a tie
+    # the base name and keep the better row - higher article count, and on a tie
     # the non-"Google Alert" one.
     def _key(name: str) -> str:
         return str(name).lower().replace("(google alert)", "").strip()

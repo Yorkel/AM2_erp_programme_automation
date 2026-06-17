@@ -7,7 +7,7 @@ Writes curator decisions and summaries to the `curator_decisions` table.
 
 The only session-state we still own here is the curator-added rows
 (`st.session_state.curator_articles`) and the in-page UI category overrides
-(`st.session_state.category_overrides`) — those are managed in their page
+(`st.session_state.category_overrides`) - those are managed in their page
 modules, not here.
 """
 
@@ -100,7 +100,7 @@ def get_week_boundary() -> str | None:
             .select("reset_at").order("reset_at", desc=True).limit(1).execute()
         )
     except Exception:
-        # Table not created yet (migration 015 not run) — treat as "no boundary
+        # Table not created yet (migration 015 not run) - treat as "no boundary
         # set" so Categorise/Draft show everything instead of crashing. Once the
         # migration is applied this path stops being hit.
         return None
@@ -207,7 +207,7 @@ def set_newsletter_pick(url: str, selected: bool) -> None:
     """Persist a 'shortlist for newsletter' click on an already-accepted article.
 
     Uses UPDATE (not upsert) because Organise only shows articles with an
-    existing decision row — and upsert would fail the NOT NULL on `action`
+    existing decision row - and upsert would fail the NOT NULL on `action`
     if it ever hit the insert path.
     """
     client = get_client()
@@ -270,7 +270,7 @@ def add_curator_article(
 
 def record_feedback(suggestions: str) -> None:
     """Append a free-text feedback row to curator_feedback (table from migration 008).
-    Anonymous — no curator identity is recorded, per the Page 3 feedback-box spec.
+    Anonymous - no curator identity is recorded, per the Page 3 feedback-box spec.
     """
     if not suggestions or not suggestions.strip():
         return
@@ -283,7 +283,7 @@ def record_feedback(suggestions: str) -> None:
 def record_summary(url: str, summary: str) -> None:
     """Persist a generated LLM summary onto a curator_decisions row.
 
-    Safe to call before any keep/reject — Page 1 (Review) lets the curator
+    Safe to call before any keep/reject - Page 1 (Review) lets the curator
     Generate Summary on a pending article. If no row exists yet, we insert
     a placeholder with action='summary_only' so the NOT NULL constraint on
     `action` is satisfied. Any subsequent keep/reject via record_decision()
@@ -310,7 +310,7 @@ def record_topic_sentence(url: str, sentence: str) -> None:
 
     Unlike record_summary (a curator override stored in curator_decisions), the
     topic sentence is article-level enrichment shown on the Triage page, so it's
-    written straight to `articles` — same place the scrape/sweep populate it.
+    written straight to `articles` - same place the scrape/sweep populate it.
     """
     client = get_client()
     client.table("articles").update(
@@ -327,7 +327,7 @@ def record_topic_sentence(url: str, sentence: str) -> None:
 def init_session_state() -> None:
     """Lazy-initialise the UI-only state the pages depend on.
 
-    Decisions and summaries no longer live in session_state — they're in
+    Decisions and summaries no longer live in session_state - they're in
     Supabase. Only purely-UI ephemeral state remains here.
     """
     if "curator_articles" not in st.session_state:

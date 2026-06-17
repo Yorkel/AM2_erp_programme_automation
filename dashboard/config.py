@@ -1,7 +1,7 @@
 """
 Shared constants: category labels, colors, source labels, brand colors.
 
-Note: DATA_DIR removed 2026-05-17 — dashboard now reads from Supabase
+Note: DATA_DIR removed 2026-05-17 - dashboard now reads from Supabase
 `v_dashboard` view (see dashboard/data.py), not local CSV.
 """
 
@@ -23,7 +23,7 @@ CATEGORY_ORDER = [
     "what_matters_ed",
 ]
 
-# Short labels used on the Select Categories buttons — full CATEGORY_LABELS
+# Short labels used on the Select Categories buttons - full CATEGORY_LABELS
 # names ("Political environment and key organisations" etc.) make Top 1 /
 # Top 2 buttons enormous because they wrap to three lines.
 CATEGORY_SHORT_LABELS = {
@@ -64,7 +64,7 @@ TEAL = "#44b4a6"
 LIGHT_BLUE = "#5b9bd5"
 MID_BLUE = "#1d3461"
 
-# MS Form URL — Page 1 "Add article" hyperlink. Curators fill the form
+# MS Form URL - Page 1 "Add article" hyperlink. Curators fill the form
 # externally; submissions are stored in MS only for now (post-AM2: sync
 # back into Supabase).
 MS_FORM_URL = "https://forms.office.com/Pages/ResponsePage.aspx?id=_oivH5ipW0yTySEKEdmlwtqBMy17V29Hgbgj295AyCRUNDZDWlJaWUU1V1VKNjRVUThPMklOOVRSWiQlQCN0PWcu"

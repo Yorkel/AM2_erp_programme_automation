@@ -1,5 +1,5 @@
 """
-Page 3 — Newsletter Draft.
+Page 3 - Newsletter Draft.
 
 Shows every categorised article (action ∈ {accept_top1, accept_top2, manual}),
 grouped by section. Curator can:
@@ -27,7 +27,7 @@ from src.inference.summarise import summarise_article
 
 
 def _category_of(art: dict) -> str | None:
-    """Effective section assignment — what Page 2 set on the curator_decisions row."""
+    """Effective section assignment - what Page 2 set on the curator_decisions row."""
     return art.get("curator_label") or art.get("top1")
 
 
@@ -35,8 +35,8 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
     """Single-sheet Excel matching the curator MS Form export structure, so the
     download can be merged directly with the curator-suggestions spreadsheet.
 
-    Columns match the MS Form export (ERPNewsletterSubmissions.xlsx) EXACTLY —
-    same names and order — so the download is the same format and can be pasted
+    Columns match the MS Form export (ERPNewsletterSubmissions.xlsx) EXACTLY -
+    same names and order - so the download is the same format and can be pasted
     straight into the form's spreadsheet:
       Id, Start time, Completion time, Email, Name, Organisation, Title,
       Include, Link (website address / URL), Short description,
@@ -102,7 +102,7 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
     df = pd.DataFrame(rows, columns=columns)
     buf = BytesIO()
 
-    # Formatted Excel — bold header row, ESRC navy fill on headers,
+    # Formatted Excel - bold header row, ESRC navy fill on headers,
     # auto-width per column (capped), wrapped text on long-content columns,
     # frozen header row, banded rows.
     from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
@@ -139,7 +139,7 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
             letter = get_column_letter(col_idx)
             ws.column_dimensions[letter].width = width_map.get(col_name, 18)
 
-        # Body cell styling — wrap text on long-text columns, vertical-top
+        # Body cell styling - wrap text on long-text columns, vertical-top
         # alignment everywhere so wrapped content stays readable.
         wrap_align = Alignment(wrap_text=True, vertical="top")
         plain_align = Alignment(vertical="top")
@@ -172,7 +172,7 @@ def render(df):
         return
 
     # Group by curator-assigned category. Articles without a valid category
-    # are silently skipped — Page 2 always sets one, so this shouldn't happen.
+    # are silently skipped - Page 2 always sets one, so this shouldn't happen.
     grouped: dict[str, list[dict]] = {k: [] for k in CATEGORY_ORDER}
     for art in accepted:
         cat = _category_of(art)
@@ -294,11 +294,11 @@ def render(df):
                             del st.session_state[session_key]
                         st.rerun()
 
-                # Per-article fillable fields — BELOW the summary
+                # Per-article fillable fields - BELOW the summary
                 col_section, col_notes, col_submitter = st.columns(3)
                 with col_section:
                     # Re-assign the newsletter section in place. Picking a
-                    # different category commits immediately via on_change —
+                    # different category commits immediately via on_change -
                     # records action=manual and the card regroups under the
                     # new section on rerun (same mechanic as Page 2).
                     def _on_change_section(_url=art_url, _current=cat_key):
@@ -344,7 +344,7 @@ def render(df):
         type="primary",
     )
     st.caption(
-        "Tip: hit **Save** on any edited summary before downloading — "
+        "Tip: hit **Save** on any edited summary before downloading - "
         "unsaved edits will still appear in the Excel, but won't persist if you reload."
     )
 
