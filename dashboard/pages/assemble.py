@@ -33,16 +33,11 @@ def render(df):
 
     authed = bool(st.session_state.get("authenticated"))
     if not authed:
-        st.info("Log in (top right) to run the agent — it makes paid API calls.")
+        st.info("Log in (top right) to run the agent - it makes paid API calls.")
 
-    c1, c2, c3 = st.columns([2, 1, 1])
-    with c1:
-        up = st.file_uploader("Manual submissions Excel (.xlsx)", type=["xlsx"])
-    da, db = _default_week()
-    with c2:
-        win_a = st.date_input("Week from (Tue)", value=da)
-    with c3:
-        win_b = st.date_input("Week to (Mon)", value=db)
+    win_a, win_b = _default_week()
+    up = st.file_uploader("Manual submissions Excel (.xlsx)", type=["xlsx"])
+    st.caption(f"This week: {win_a:%a %d %b} to {win_b:%a %d %b}")
 
     if st.button("🧩 Assemble draft", type="primary", disabled=not authed):
         with st.spinner("Building the candidate pool and running the three-voice panel…"):

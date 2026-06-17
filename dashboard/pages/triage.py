@@ -1,8 +1,8 @@
 """
-Page 1 — Review (triage).
+Page 1 - Review (triage).
 
 Curator quickly keeps or rejects each article from the selected week, and
-optionally generates a summary. NO category assignment here — kept articles
+optionally generates a summary. NO category assignment here - kept articles
 flow to Page 2 (Organise) where the category is set.
 
 Action values written to curator_decisions:
@@ -39,7 +39,7 @@ def _clean(v):
 
 
 def _tuesday_on_or_before(d: date) -> date:
-    """Most recent Tuesday on or before `d` — anchors a scrape-week (Tue→Mon)."""
+    """Most recent Tuesday on or before `d` - anchors a scrape-week (Tue→Mon)."""
     return d - timedelta(days=(d.weekday() - 1) % 7)
 
 
@@ -77,7 +77,7 @@ def _week_options(df: pd.DataFrame) -> list[tuple[str, date, date]]:
     today = date.today()
     days_since_mon = (today.weekday() - 0) % 7  # Mon=0
     last_completed_end = today - timedelta(days=days_since_mon + 1) if days_since_mon == 0 else today - timedelta(days=days_since_mon)
-    # If today is Mon, the week ending yesterday hasn't quite finished — so
+    # If today is Mon, the week ending yesterday hasn't quite finished - so
     # only show weeks ending strictly before today.
     if last_completed_end >= today:
         last_completed_end = today - timedelta(days=1)
@@ -102,7 +102,7 @@ def _status_for(url: str, decisions: dict) -> str:
         return "Kept"
     if action in ("accept_top1", "accept_top2", "manual"):
         return "Categorised"
-    # summary_only or unknown — show as pending in this view
+    # summary_only or unknown - show as pending in this view
     return "Pending"
 
 
@@ -120,7 +120,7 @@ _TAG_STYLE = (
 
 
 def _badges_html(geo: str | None, topics: list[str] | None) -> str:
-    """Return an HTML snippet for the 'Key tags:' row — geographic_focus +
+    """Return an HTML snippet for the 'Key tags:' row - geographic_focus +
     up to 3 topic_tags. All badges share one neutral style (country isn't
     coloured differently from topics). Empty string if nothing to render."""
     parts = []
@@ -173,7 +173,7 @@ def render(df):
     # dayfirst=True handles both.
     df = df.copy()
     # Defensive: if the loaded data is missing article_date (schema drift in
-    # classify_newsletter), don't crash — create an all-NaT column so the rest
+    # classify_newsletter), don't crash - create an all-NaT column so the rest
     # of the page renders an empty week instead of white-screening.
     if "article_date" in df.columns:
         df["_article_date"] = pd.to_datetime(
@@ -184,7 +184,7 @@ def render(df):
 
     # ── Search (all weeks) ──────────────────────────────────────────────────
     # When the curator types here, search EVERY article (all weeks, any status)
-    # by title/summary — for checking coverage ("did we cover X?") or finding a
+    # by title/summary - for checking coverage ("did we cover X?") or finding a
     # past item. Empty box = normal current-week view below.
     col_search, col_clear = st.columns([8, 1])
     with col_search:
@@ -240,13 +240,13 @@ def render(df):
     ].copy()
 
     # Default behaviour: show only Pending articles, newest first. The filter
-    # and sort selectboxes used to live here but Gemma asked them removed —
+    # and sort selectboxes used to live here but Gemma asked them removed -
     # in practice she always used the defaults anyway.
     decisions = load_decisions()
     # .astype(bool) is load-bearing: when the selected week has no rows, apply()
     # returns an empty object/str Series, which pandas would treat as a list of
     # COLUMN labels (selecting zero columns and dropping _article_date) rather
-    # than a boolean row mask — making the sort below KeyError. astype(bool)
+    # than a boolean row mask - making the sort below KeyError. astype(bool)
     # keeps it a boolean mask even when empty.
     filtered = filtered[filtered["url"].apply(
         lambda u: _status_for(u, decisions) == "Pending"
@@ -263,7 +263,7 @@ def render(df):
 @st.fragment
 def _render_triage_card(row: dict):
     """Render one article card. Wrapped in @st.fragment so clicks
-    (Keep, Reject, Generate Summary) only rerun this single card — not
+    (Keep, Reject, Generate Summary) only rerun this single card - not
     the whole 100-card list. Fetches own decisions for fresh state."""
     decisions = load_decisions()
     auth = is_authenticated()
@@ -285,13 +285,13 @@ def _render_triage_card(row: dict):
         # take up the rest. Tags go ABOVE source (matches Select Categories).
         colour = _STATUS_COLOUR.get(status, "#888")
 
-        # Key tags row — directly under title, before source/date
+        # Key tags row - directly under title, before source/date
         badges = _badges_html(row.get("geographic_focus"), row.get("topic_tags"))
         if badges:
             st.markdown(badges, unsafe_allow_html=True)
 
         # Status badge + Source · Date. The badge shows the article's current
-        # state (Pending / Kept / Rejected / Categorised) — useful everywhere,
+        # state (Pending / Kept / Rejected / Categorised) - useful everywhere,
         # but especially in all-weeks search results where statuses are mixed.
         status_badge = (
             f"<span style='background:{colour};color:white;padding:1px 8px;"
@@ -304,7 +304,7 @@ def _render_triage_card(row: dict):
             unsafe_allow_html=True,
         )
 
-        # URL (full-width, no per-card Status badge — filter already gates view)
+        # URL (full-width, no per-card Status badge - filter already gates view)
         if url:
             st.markdown(
                 f"<p style='font-size:12px;margin:0;overflow-wrap:anywhere;'>"
@@ -313,7 +313,7 @@ def _render_triage_card(row: dict):
             )
 
         # Triage shows the EXTRACTIVE topic sentence (verbatim from the article)
-        # — quicker for the curator to trust during keep/reject. The polished
+        # - quicker for the curator to trust during keep/reject. The polished
         # AI summary lives on the Draft page. Both are stored separately.
         topic_sentence = _clean(row.get("topic_sentence"))
         with st.expander("📌 Topic sentence", expanded=False):
@@ -335,7 +335,7 @@ def _render_triage_card(row: dict):
                     "📌 Regenerate topic sentence", key=f"topic_{url}",
                     use_container_width=True,
                     help="Pull a key sentence verbatim from the article "
-                         "(its own words — quick to check).",
+                         "(its own words - quick to check).",
                 ):
                     with st.spinner("Finding a key sentence…"):
                         body = fetch_article_text(url)
@@ -374,7 +374,7 @@ def _render_triage_card(row: dict):
             if st.button(
                 "↩ Undo", key=f"undo_{url}",
                 type="secondary", use_container_width=True, disabled=not auth,
-                help="Put this article back to Pending — recovers an accidental Keep/Reject.",
+                help="Put this article back to Pending - recovers an accidental Keep/Reject.",
             ):
                 delete_decision(url)
                 st.rerun(scope="fragment")
