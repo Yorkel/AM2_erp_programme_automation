@@ -47,13 +47,23 @@ def _ensure_keys() -> None:
     need = [k for k in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "SUPABASE_URL") if not os.environ.get(k)]
     if not need:
         return
+    keys = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "SUPABASE_URL",
+            "SUPABASE_SERVICE_KEY", "SUPABASE_ANON_KEY")
+    # 1) local .env
     env = Path(__file__).resolve().parent.parent / ".env"
     if env.exists():
         for line in env.read_text().splitlines():
-            for k in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "SUPABASE_URL",
-                      "SUPABASE_SERVICE_KEY", "SUPABASE_ANON_KEY"):
+            for k in keys:
                 if line.startswith(k) and not os.environ.get(k):
                     os.environ[k] = line.split("=", 1)[1].strip().strip('"').strip("'")
+    # 2) Streamlit host secrets (Streamlit Cloud etc.)
+    try:
+        import streamlit as st
+        for k in keys:
+            if not os.environ.get(k) and k in st.secrets:
+                os.environ[k] = str(st.secrets[k])
+    except Exception:
+        pass
 
 
 def available() -> dict:
