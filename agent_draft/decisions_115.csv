@@ -1,0 +1,30 @@
+id,section,decision,reason,title
+M0,Four Nations,include,strong fit NI policy,Givan announces award of professional learning programme for new and aspiring school principals
+M1,"Teacher recruitment, retention & development",include,strong fit headship pipeline,"New heads need more than a one-off qualification, say charities"
+M2,"Teacher recruitment, retention & development",include,strong fit recruitment data,Secondary teacher job adverts hit a historic low as market ‘contracts’
+M3,What matters in education?,include,strong fit SEND equity,Five things the government can do to ensure SEND reforms promote educational equity 
+M4,"Teacher recruitment, retention & development",include,strong fit resilience research,Teacher resilience ‘depends on system-wide change’
+M5,EdTech,include,strong fit online misogyny,Call it what it is: The impact of online misogyny on children and young people's attitudes and behaviour
+M6,"Teacher recruitment, retention & development",exclude,thin,A healthy labour market?
+M7,EdTech,include,strong fit AI policy critique,Limitations of technical fixes in AI policy
+M8,Research – Practice – Policy,exclude,"thin academic, niche",Uncovering Edtech's Embedded Values: Making the Case for Socio-Technical Audits in Ethnographic Inquiry
+M9,Political environment and key organisations,include,strong fit DfE policy,Experts at Hand: Everything you need to know 
+M10,What matters in education?,exclude,off-scope Nigeria/international,When multilateralism fractures: Reimagining educational cooperation from the Nigerian context
+M11,EdTech,include,strong fit screen-free,"The London school that has screen-free days for pupils, teachers – and parents"
+M12,Political environment and key organisations,include,strong fit attendance evaluation,Attendance mentors intervention: year 2 and 3 evaluation
+M13,What matters in education?,include,strong fit growing up digital,"‘I love it, but I hate it’ – Young people’s experiences and expectations of growing up digital"
+M14,Political environment and key organisations,exclude,"overlaps digital/social media theme, thinner",Parental support for a social media minimum age of 16
+M15,Political environment and key organisations,include,strong fit breakfast clubs,Breakfast club early adopters: interim evaluation
+M16,"Teacher recruitment, retention & development",include,strong fit workforce stats,School workforce in England 2025
+M17,"Teacher recruitment, retention & development",include,strong fit union response,"Falling pupil numbers should lead to smaller class sizes, says union"
+M18,Research – Practice – Policy,include,strong fit inspection debate,Ofsted: It is time for a primary-specific inspection framework?
+M19,Research – Practice – Policy,exclude,duplicate of M18 (same authors/theme),Invitation to inspection: A shared quest for improvement 
+D0,What matters in education?,include,strong fit MH inquiry,Children and young people's mental health: committees launch survey and announce first ...
+D1,Four Nations,include,strong fit Scotland phones,Phone-free learning in Scottish schools
+D2,What matters in education?,exclude,duplicate SEND theme with M3,SEND reforms can improve children’s outcomes but existing system remains ‘vulnerable’ – new independent report
+D3,What matters in education?,include,strong fit pupil numbers,Secondary pupil numbers fall for first time in a decade
+D4,Political environment and key organisations,include,strong fit admissions guidance,Managed moves could be ‘consigned to the history books’
+D5,"Teacher recruitment, retention & development",include,strong fit teacher effects,"Primary school teachers matter for learning, but may have little impact on attendance"
+D6,What matters in education?,exclude,thin advocacy piece,"Inclusion is for life, not just the 31st December"
+D7,EdTech,include,strong fit MIS framework,Schools 'expected' to use government route to buy MIS from 2027
+D8,Political environment and key organisations,exclude,thin,The Big Future: Speaking to children in Birmingham
