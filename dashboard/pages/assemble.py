@@ -28,12 +28,7 @@ def render(df):
     if not avail["claude"] or not avail["supabase"]:
         st.error("Missing ANTHROPIC_API_KEY or SUPABASE_URL. Set them in the deployment secrets (or .env locally).")
         return
-    if not avail["gpt"]:
-        st.warning("No OPENAI_API_KEY found, so the panel runs with two voices (Claude + your classifier) instead of three.")
-
     authed = bool(st.session_state.get("authenticated"))
-    if not authed:
-        st.info("Log in (top right) to run the agent - it makes paid API calls.")
 
     win_a, win_b = _default_week()
     up = st.file_uploader("Manual submissions Excel (.xlsx)", type=["xlsx"])
