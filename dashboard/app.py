@@ -146,8 +146,6 @@ def main():
         select_categories.render(df)
     elif page == "Newsletter Draft":
         draft.render(df)
-    elif page == "Newsletter Agent":
-        assemble.render(df)
     elif page == "Sources":
         sources.render(df)
 
