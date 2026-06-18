@@ -6,7 +6,6 @@ streamlit>=1.30
 pandas
 supabase>=2.0.0
 anthropic
-openai
 python-dotenv
 openpyxl>=3.1
 PyYAML>=6.0
