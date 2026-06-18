@@ -35,13 +35,18 @@ def render(df):
     st.caption(f"This week: {win_a:%a %d %b} to {win_b:%a %d %b}")
 
     if st.button("🧩 Assemble draft", type="primary", disabled=not authed):
-        with st.spinner("Building the candidate pool and running the three-voice panel…"):
+        with st.spinner("Building the candidate pool…"):
             pool = eng.build_pool(up.getvalue() if up else None, str(win_a), str(win_b))
-            if not pool:
-                st.warning("No candidate items found for that week. Check the dates and the upload.")
-                return
+        if not pool:
+            st.warning("No candidate items found for that week. Check the upload.")
+            return
+        with st.spinner("Filling any missing summaries…"):
+            made = eng.fill_summaries(pool)
+        if made:
+            st.caption(f"Generated {made} missing summaries.")
+        with st.spinner("Running the panel…"):
             st.session_state["_agent_panel"] = eng.run_panel(pool)
-            st.session_state.pop("_agent_draft", None)
+        st.session_state.pop("_agent_draft", None)
 
     panel = st.session_state.get("_agent_panel")
     if not panel:
@@ -58,7 +63,7 @@ def render(df):
             with st.container(border=True):
                 st.markdown(f"**{p['title']}**")
                 v = p["votes"]
-                st.caption(f"Claude: {v['Claude']}  ·  GPT-4o: {v['GPT-4o']}  ·  Your classifier: {v['Classifier']}")
+                st.caption("  ·  ".join(f"{name}: {sec}" for name, sec in v.items()))
                 choice = st.selectbox("Your section", eng.SECTIONS, key=f"flag_{p['id']}",
                                       index=eng.SECTIONS.index(v["Claude"]) if v["Claude"] in eng.SECTIONS else 0)
                 p["section"] = choice  # curator resolves it
