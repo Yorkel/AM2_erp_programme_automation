@@ -62,7 +62,7 @@ def main():
         "Triage": "Step 1: Triage",
         "Select Categories": "Step 2: Categorise",
         "Newsletter Draft": "Step 3: Draft Newsletter",
-        "Newsletter Agent": "Assemble (beta)",
+        "Newsletter Agent": "Assemble",
         "Sources": "Sources",
     }
 

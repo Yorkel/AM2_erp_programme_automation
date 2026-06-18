@@ -83,7 +83,7 @@ def build_pool(excel_bytes: bytes | None, win_a: str, win_b: str) -> list[dict]:
     sb = create_client(os.environ["SUPABASE_URL"],
                         os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_ANON_KEY"))
     dash = pd.DataFrame(sb.table("v_dashboard").select(
-        "title,url,article_date,summary,top1,composite_score").execute().data)
+        "title,url,article_date,summary,top1,composite_score,source,text_clean").execute().data)
     dash["article_date"] = pd.to_datetime(dash["article_date"], errors="coerce")
     dash = dash[(dash["article_date"] >= win_a) & (dash["article_date"] <= win_b + " 23:59:59")]
     rejects = {r["url"] for r in sb.table("curator_decisions").select("url,action").eq("action", "reject").execute().data}
@@ -101,6 +101,7 @@ def build_pool(excel_bytes: bytes | None, win_a: str, win_b: str) -> list[dict]:
                 continue
             seen.add(k)
             pool.append({"id": str(len(pool)), "origin": "manual", "title": str(r["Title"]),
+                         "source": "" if pd.isna(r.get("Organisation")) else str(r["Organisation"]),
                          "description": "" if pd.isna(r.get("Short description")) else str(r["Short description"])[:280],
                          "url": "" if pd.isna(r.get("Link (website address / URL)")) else str(r["Link (website address / URL)"]),
                          "suggested": None if pd.isna(r.get("Which section of the newsletter is this for?")) else str(r["Which section of the newsletter is this for?"])})
@@ -109,9 +110,41 @@ def build_pool(excel_bytes: bytes | None, win_a: str, win_b: str) -> list[dict]:
         if k in seen:
             continue
         seen.add(k)
-        pool.append({"id": str(len(pool)), "origin": "dashboard", "title": r["title"],
-                     "description": (r["summary"] or "")[:280], "url": r["url"], "suggested": r["top1"]})
+        pool.append({"id": str(len(pool)), "origin": "dashboard",
+                     "title": str(r["title"]),
+                     "source": "" if pd.isna(r["source"]) else str(r["source"]),
+                     "description": ("" if pd.isna(r["summary"]) else str(r["summary"]))[:280],
+                     "url": "" if pd.isna(r["url"]) else str(r["url"]),
+                     "suggested": None if pd.isna(r["top1"]) else str(r["top1"]),
+                     "_text": "" if pd.isna(r["text_clean"]) else str(r["text_clean"])})
     return pool
+
+
+def fill_summaries(pool: list[dict]) -> int:
+    """Generate a summary (in-house voice) for any pooled item missing one.
+    Most items already have a summary, so this usually touches only a few.
+    Returns how many were generated."""
+    try:
+        from src.inference.summarise import summarise_article
+        from anthropic import Anthropic
+    except Exception:
+        return 0
+    client = Anthropic(max_retries=3)
+    made = 0
+    for it in pool:
+        desc = (it.get("description") or "").strip()
+        if desc and desc.lower() != "summary unavailable":
+            continue
+        text = it.get("_text") or desc or it["title"]
+        try:
+            s = summarise_article(title=it["title"], text=text,
+                                  category=it.get("suggested"), few_shot=[], client=client)
+            if s and s.strip().lower() != "summary unavailable":
+                it["description"] = s.strip()[:300]
+                made += 1
+        except Exception:
+            continue
+    return made
 
 
 def _llm_sections(pool: list[dict]) -> tuple[dict, dict]:
@@ -149,19 +182,29 @@ def _clf_sections(pool: list[dict]) -> dict:
 
 
 def run_panel(pool: list[dict]) -> list[dict]:
-    """Three-voice vote. Returns each item enriched with votes, agreed section, and flag."""
+    """Panel vote. 3 voices where available (Claude + GPT-4o + classifier), else 2.
+    >=2 agree -> assign; otherwise flag for the curator."""
     claude, gpt = _llm_sections(pool)
-    clf = _clf_sections(pool)
+    try:
+        clf = _clf_sections(pool)  # needs sentence-transformers + sklearn; absent on the slim dashboard
+    except Exception:
+        clf = {}
     out = []
     for p in pool:
         i = p["id"]
-        votes = {"Claude": claude.get(i, "?"), "GPT-4o": gpt.get(i, "?"), "Classifier": clf.get(i, "?")}
-        tally = Counter([v for v in votes.values() if v != "?"])
+        votes = {"Claude": claude.get(i, "?")}
+        if gpt:
+            votes["GPT-4o"] = gpt.get(i, "?")
+        if clf:
+            votes["Classifier"] = clf.get(i, "?")
+        cast = [v for v in votes.values() if v != "?"]
+        tally = Counter(cast)
         top, n = tally.most_common(1)[0]
+        agreed = n >= 2
         out.append({**p, "votes": votes,
-                    "section": top if n >= 2 else None,
-                    "flag": n < 2,
-                    "agreement": f"{n}/3"})
+                    "section": top if agreed else None,
+                    "flag": not agreed,
+                    "agreement": f"{n}/{len(cast)}"})
     return out
 
 
