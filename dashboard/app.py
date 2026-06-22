@@ -15,7 +15,10 @@ import pandas as pd
 
 from dashboard.config import NAVY, TEAL
 from dashboard.styles import get_css
-from dashboard.data import load_classified_articles, init_session_state, record_feedback
+from dashboard.data import (
+    load_classified_articles, init_session_state, record_feedback,
+    week_processing_status,
+)
 from dashboard.pages import triage, select_categories, draft, sources
 
 
@@ -123,6 +126,20 @@ def main():
                         st.error("Wrong password" if pwd else "Enter a password")
 
     st.markdown("---")
+
+    # ── Pipeline status banner ───────────────────────────────────────────────
+    # The dashboard only shows classified articles, so anything scraped-but-not-
+    # yet-processed is invisible below. Warn the curator instead of letting it
+    # look like "nothing happened this week".
+    _status = week_processing_status()
+    if _status and not _status.get("ok"):
+        _pending = _status.get("unclassified", 0) + _status.get("blank_summary", 0)
+        st.warning(
+            f"⚠️ **{_pending} article(s) from this week are still being processed** "
+            "(not yet categorised or summarised) and aren't shown below yet. This "
+            "normally clears within a few minutes of the morning update. If it's "
+            "still here later, the pipeline may need attention."
+        )
 
     page = st.session_state.current_page
 

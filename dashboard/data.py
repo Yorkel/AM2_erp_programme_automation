@@ -14,6 +14,7 @@ modules, not here.
 from __future__ import annotations
 
 import os
+from datetime import date, datetime, timedelta, timezone
 
 import streamlit as st
 import pandas as pd
@@ -74,6 +75,54 @@ def load_classified_articles(min_week: int | None = None) -> pd.DataFrame:
     if "week_number" in df.columns:
         df["week_number"] = pd.to_numeric(df["week_number"], errors="coerce").astype("Int64")
     return df
+
+
+def _last_tuesday(today: date | None = None) -> date:
+    """Most recent Tuesday strictly before today — the start of the current
+    Tue→Tue newsletter week. Matches src/monitoring/pipeline_health.py."""
+    today = today or datetime.now(timezone.utc).date()
+    offset = (today.weekday() - 1) % 7   # Mon=0..Sun=6; Tuesday=1
+    if offset == 0:
+        offset = 7
+    return today - timedelta(days=offset)
+
+
+@st.cache_data(ttl=120)
+def week_processing_status() -> dict:
+    """Lightweight pipeline-status for the dashboard banner.
+
+    The dashboard only shows CLASSIFIED articles, so articles that are scraped
+    but not yet classified/summarised are invisible here. This queries the
+    `articles` table directly to count, for the current Tue→Tue week, how many
+    are still unprocessed (unclassified or blank summary). Returns {} on any
+    error so a status hiccup never breaks the dashboard.
+    """
+    try:
+        client = get_client()
+        since = _last_tuesday().isoformat()
+        arts = (
+            client.table("articles")
+            .select("url, summary")
+            .gte("article_date", since)
+            .execute()
+            .data
+            or []
+        )
+        classified = {
+            r["url"]
+            for r in (client.table("classify_newsletter").select("url").execute().data or [])
+        }
+        unclassified = sum(1 for a in arts if a["url"] not in classified)
+        blank_summary = sum(1 for a in arts if not clean_text(a.get("summary")))
+        return {
+            "since": since,
+            "total": len(arts),
+            "unclassified": unclassified,
+            "blank_summary": blank_summary,
+            "ok": unclassified == 0 and blank_summary == 0,
+        }
+    except Exception:
+        return {}
 
 
 @st.cache_data(ttl=60)
