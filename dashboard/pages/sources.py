@@ -22,7 +22,7 @@ from urllib.parse import urlparse
 import pandas as pd
 import streamlit as st
 
-from dashboard.config import SOURCE_LABELS
+from dashboard.config import source_label
 
 _MASTER = Path(__file__).resolve().parents[2] / "data" / "sources_master.csv"
 
@@ -118,7 +118,7 @@ def render(df):
         })
     for s, overall, wk in unclaimed:
         link = f"https://{s}" if ("." in s and " " not in s) else ""
-        rows.append({"Source": SOURCE_LABELS.get(s, s), "Link": link, "Overall": overall, wk_col: wk})
+        rows.append({"Source": source_label(s), "Link": link, "Overall": overall, wk_col: wk})
 
     # De-duplicate: a publisher that has both a direct source and a
     # "(Google Alert)" twin (e.g. Rebecca Eynon) shouldn't appear twice. Group by
