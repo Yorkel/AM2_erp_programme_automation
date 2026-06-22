@@ -2,11 +2,13 @@ name: Weekly curator reset
 
 on:
   schedule:
-    # GitHub Actions cron is UTC. Monday 06:17 UTC = 07:17 UK (BST) / 06:17 (GMT).
-    # Off-peak-ish morning, odd minute to dodge the top-of-hour stampede that the
-    # free tier deprioritises hardest. Archives the previous week + starts fresh
-    # before the curator begins the new week.
-    - cron: '17 6 * * 1'   # Every Monday 06:17 UTC
+    # GitHub Actions cron is UTC. Monday 01:17 UTC = 02:17 UK (BST) / 01:17 (GMT).
+    # Off-peak overnight slot so the free tier reliably fires it — important now
+    # that the Monday scrape is CHAINED to this workflow finishing (scrape.yml
+    # workflow_run), so the scrape always runs AFTER the reset. Odd minute dodges
+    # the top-of-hour stampede. Archives the previous week + starts fresh well
+    # before the curator begins work Monday morning.
+    - cron: '17 1 * * 1'   # Every Monday 01:17 UTC
   workflow_dispatch:        # manual "reset now" from the Actions tab
 
 jobs:
