@@ -223,8 +223,8 @@ def render(df):
             # articles.summary is exposed via v_dashboard after migration 012.
             if session_key not in st.session_state:
                 st.session_state[session_key] = (
-                    (decisions.get(art_url) or {}).get("summary")
-                    or art.get("summary")
+                    clean_text((decisions.get(art_url) or {}).get("summary"))
+                    or clean_text(art.get("summary"))
                     or ""
                 )
 

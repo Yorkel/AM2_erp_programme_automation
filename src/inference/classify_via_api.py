@@ -52,9 +52,12 @@ ARCHIVE_DIR = Path("data/archive/classified")
 DEFAULT_INPUT = DATA_DIR / "supabase_inference_articles.csv"
 DEFAULT_OUTPUT = DATA_DIR / "classified_articles.csv"
 DEFAULT_BATCH_SIZE = 50
-COLD_START_TIMEOUT = 60     # seconds — Render free tier can sleep
+COLD_START_TIMEOUT = 120    # seconds — HF Space free tier sleeps when idle and
+                            # the overnight cron slot is when it's coldest; give
+                            # the wake-up longer than a single 60s read timeout.
 WARM_TIMEOUT = 30           # seconds — once warm, requests are fast
-MAX_RETRIES = 3
+MAX_RETRIES = 5             # health-probe + batch POST attempts (was 3). With a
+                            # sleeping Space, 3x60s wasn't enough to wake it.
 BACKOFF_BASE = 2            # seconds; doubled each retry
 
 

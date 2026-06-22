@@ -83,6 +83,32 @@ nuance captured) is good P1-brief material independent of the scope-drift point.
 Gemma's "single summary sentence from the text, don't write it in our own words"
 directly seeded the later extractive topic-sentence feature.
 
+## Live operation — fragile dependencies + silent failure (2026-06-16 + 2026-06-22)
+**Criteria:** K11/S22/S24 (deploy + monitor), S32 (operate in production),
+Distinction "what I'd do differently" + resilience/operational judgement.
+**Full write-ups:** [incident_2026_06_16_pipeline_failure.md](../../docs/decisions/incident_2026_06_16_pipeline_failure.md),
+[incident_2026_06_22_classifier_cold_start.md](../../docs/decisions/incident_2026_06_22_classifier_cold_start.md).
+
+- **Two incidents, one week, same theme:** both were transient *infrastructure*
+  faults, not application logic — 06-16 the GitHub runner could not reach Claude;
+  06-22 the runner could not reach the HuggingFace classifier Space (free-tier
+  cold-start, 60s probe timed out 3x at 04:54; the Space answered in 0.6s hours
+  later). The pattern is **fragile free-tier dependencies + silent failure +
+  no proactive monitoring**.
+- **The honest gap (strong "differently" material):** after 06-16 I (a) fixed the
+  NaN symptom with a shared `clean_text` guard but **missed one call site** (the
+  Draft text-box seed), which is the exact line that crashed on 06-22, and (b) did
+  not add any monitoring — so the second failure was found by a *curator*, not by
+  me. Operational lesson: alerting + self-healing matter as much as model quality.
+- **Recovery evidence (no data loss):** ran the summary sweep from the dev
+  container (84 summaries / 57 tags / 57 topic sentences, 0 failures); 174 curator
+  decisions including 65 made that morning were untouched, because curator state
+  (`curator_decisions`) and enrichment (`articles`) are separate tables.
+- **Concrete prevention proposed:** raise HF probe tolerance + pre-warm the Space;
+  make the `continue-on-error` summary sweep loud; daily health-check that
+  self-heals before curators see it; dashboard status banner instead of a stack
+  trace.
+
 ## Cross-references (already in memory)
 - **Taxonomy overlap insight** — the weakest classes (policy_practice_research ↔
   political_environment) reflect the newsletter's own overlapping editorial

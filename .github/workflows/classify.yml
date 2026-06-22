@@ -28,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run inference pipeline
+      - name: Run inference pipeline (retry once on cold-start)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -36,7 +36,25 @@ jobs:
           # is the HF access token (needed because the Space is Private).
           CLASSIFIER_API_URL: ${{ secrets.CLASSIFIER_API_URL }}
           CLASSIFIER_API_KEY: ${{ secrets.CLASSIFIER_API_KEY }}
-        run: python src/pipeline.py --inference
+        # The pipeline is idempotent (upserts), so a clean re-run is safe. If the
+        # first attempt fails on a still-cold Space, wait 60s (it's waking) and
+        # try once more before failing the job.
+        run: |
+          for attempt in 1 2; do
+            echo "::group::Inference attempt ${attempt}"
+            if python src/pipeline.py --inference; then
+              echo "::endgroup::"
+              echo "Inference succeeded on attempt ${attempt}."
+              exit 0
+            fi
+            echo "::endgroup::"
+            if [ "${attempt}" -eq 1 ]; then
+              echo "Attempt 1 failed; waiting 60s for the Space to finish waking..."
+              sleep 60
+            fi
+          done
+          echo "Inference failed after 2 attempts."
+          exit 1
 
       - name: Sweep any still-unclassified articles (safety net)
         # Catches articles missed by the main pipeline — single-article
