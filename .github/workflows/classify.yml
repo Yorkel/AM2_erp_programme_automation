@@ -40,6 +40,14 @@ jobs:
         # first attempt fails on a still-cold Space, wait 60s (it's waking) and
         # try once more before failing the job.
         run: |
+          # Scope the run to the current newsletter week (TUESDAY → TUESDAY): pull
+          # + classify + cluster only articles since the most recent Tuesday,
+          # instead of re-classifying the whole corpus every run. s07_pull reads
+          # INFERENCE_SINCE. Near-duplicate clustering is then within-week, which
+          # is what curators want. "last tuesday" = the Tuesday before today, so
+          # it covers the open Tue→Tue cycle on both the Monday and Tuesday runs.
+          export INFERENCE_SINCE=$(date -u -d "last tuesday" +%Y-%m-%d)
+          echo "Classify window (Tue→Tue): article_date >= ${INFERENCE_SINCE}"
           for attempt in 1 2; do
             echo "::group::Inference attempt ${attempt}"
             if python src/pipeline.py --inference; then

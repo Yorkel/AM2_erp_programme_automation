@@ -1,22 +1,30 @@
 name: Scrape sources → articles
 
 on:
+  # Twice a week, matching the newsletter cadence (decide Tuesday, publish Friday
+  # 11am, dashboard resets Monday 06:17 UTC):
+  #   - MONDAY  → triggered BY the "Weekly curator reset" finishing, so the scrape
+  #     is GUARANTEED to run after the reset (no fragile cron timing). Curators
+  #     then start Monday with a fresh week already populated.
+  #   - TUESDAY → cron top-up before curators lock content Tuesday morning.
+  # GitHub Actions cron is UTC; 02:23 UTC = 03:23 UK (BST). The off-peak slot and
+  # the :23 minute dodge the free-tier peak / top-of-hour skips. The downstream
+  # chain (classify → drift → fairness) follows via workflow_run; the scraper is
+  # --since-last-run incremental, so the Tuesday run just ingests the delta.
+  workflow_run:
+    workflows: ["Weekly curator reset"]   # Monday: fire right after the reset
+    types: [completed]
   schedule:
-    # GitHub Actions cron uses UTC. Off-peak overnight slot to maximise the
-    # chance scheduled runs actually fire on the free tier (peak skips runs).
-    # During BST (Mar–Oct) this is 03:23 UK; during GMT (Nov–Feb) it's 02:23 UK.
-    # Runs every weekday (Mon–Fri). The downstream chain (classify → drift →
-    # fairness) follows automatically via workflow_run, so this is the only
-    # schedule to change. The scraper is --since-last-run incremental, so daily
-    # runs just ingest smaller deltas; no duplicate work. The :23 minute avoids
-    # the top-of-hour stampede that GitHub deprioritises hardest.
-    - cron: '23 2 * * 1-5'  # Every weekday 02:23 UTC = 03:23 UK (BST)
-  workflow_dispatch:        # also allow manual triggering from the Actions tab
+    - cron: '23 2 * * 2'                   # Tuesday 02:23 UTC = 03:23 UK (BST)
+  workflow_dispatch:                       # manual trigger from the Actions tab
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # When triggered by the reset finishing (Monday), only run if the reset
+    # succeeded. The schedule (Tuesday) and manual dispatch always run.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout repository
