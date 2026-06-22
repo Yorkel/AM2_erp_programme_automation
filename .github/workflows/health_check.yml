@@ -1,0 +1,65 @@
+name: Pipeline health check + self-heal
+
+# The safety net behind the 2026-06-16 / 2026-06-22 incidents: the pipeline used
+# to fail SILENTLY and a curator hit the broken dashboard before we knew. This
+# workflow runs after the classifier, tries to self-heal the two known failure
+# modes (unclassified articles, blank summaries), then verifies. If it's still
+# broken, the job FAILS — which sends the standard GitHub failure email, so we
+# find out, not the curators.
+
+on:
+  # Primary: run right after the classifier finishes (whether it passed or
+  # failed — if it failed, this is exactly when we want to heal + alert).
+  workflow_run:
+    workflows: ["Classify pending articles → classify_newsletter"]
+    types: [completed]
+  # Backstop: in case the chain doesn't fire, run on the pipeline mornings
+  # (Mon + Tue) at 06:00 UTC — after the runs, before curators start work.
+  schedule:
+    - cron: '0 6 * * 1,2'
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ── Self-heal (best-effort; both are idempotent no-ops when clean) ──
+      - name: Self-heal — classify any stragglers
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          CLASSIFIER_API_URL: ${{ secrets.CLASSIFIER_API_URL }}
+          CLASSIFIER_API_KEY: ${{ secrets.CLASSIFIER_API_KEY }}
+        run: python -m src.inference.sweep_unclassified
+
+      - name: Self-heal — fill blank summaries + tags
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m src.scraping.sweep_summaries
+
+      # ── Verify (this step is the alarm: non-zero exit → GitHub failure email) ──
+      - name: Verify this week is classified + summarised
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m src.monitoring.pipeline_health
