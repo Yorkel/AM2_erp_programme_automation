@@ -16,7 +16,7 @@ from io import BytesIO
 import streamlit as st
 import pandas as pd
 
-from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, SOURCE_LABELS
+from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, source_label
 from dashboard.data import (
     clean_text, fetch_article_text, get_accepted_articles,
     is_authenticated, load_decisions, record_decision, record_feedback,
@@ -78,7 +78,7 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
                 "Completion time": "",
                 "Email": "",
                 "Name": "",
-                "Organisation": SOURCE_LABELS.get(src, src),
+                "Organisation": source_label(src),
                 "Title": clean_text(art.get("title")),
                 "Include": "Yes",
                 "Link (website address / URL)": url,
@@ -214,7 +214,7 @@ def render(df):
         for art in articles:
             art_url = art.get("url") or ""
             title = art.get("title") or "No title"
-            source_name = SOURCE_LABELS.get(art.get("source", ""), art.get("source") or "")
+            source_name = source_label(art.get("source"))
             article_date = art.get("article_date") or ""
             session_key = f"desc_{art_url}"
 

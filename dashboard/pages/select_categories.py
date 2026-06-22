@@ -18,7 +18,7 @@ from collections import defaultdict
 import streamlit as st
 import pandas as pd
 
-from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, CATEGORY_SHORT_LABELS, SOURCE_LABELS
+from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, CATEGORY_SHORT_LABELS, source_label
 from dashboard.data import (
     get_kept_articles, is_authenticated, record_decision,
 )
@@ -78,7 +78,7 @@ def _render_article(art: dict, idx_in_cluster: int):
     """
     url = art.get("url", "")
     title = art.get("title") or "No title"
-    source = SOURCE_LABELS.get(art.get("source", ""), art.get("source", ""))
+    source = source_label(art.get("source"))
     article_date = art.get("article_date", "")
     action = art.get("action")
     curator_label = art.get("curator_label")

@@ -44,19 +44,94 @@ CATEGORY_COLORS = {
     "what_matters_ed": "#44b4a6",
 }
 
+# Friendly organisation names for the `source` value on each article.
+# Keys MUST match the raw values in articles.source (mix of internal keys and
+# domains). Curators see these names on every page (Gemma asked for org names,
+# not raw URLs/keys). Some sources appear in both an internal-key and a domain
+# form, so both are mapped to the same name.
 SOURCE_LABELS = {
+    # News / media
     "schoolsweek": "Schools Week",
-    "gov": "GOV.UK",
-    "fft": "FFT Education Datalab",
-    "fed": "Further Education Development",
-    "epi": "Education Policy Institute",
-    "tes": "TES",
-    "nfer": "National Foundation for Educational Research",
+    "schoolsweek.co.uk": "Schools Week",
+    "tes.com": "TES",
+    "bbc.co.uk": "BBC",
+    "theguardian.com": "The Guardian",
+    "belfast_telegraph": "Belfast Telegraph",
+    "belfasttelegraph.co.uk": "Belfast Telegraph",
+    # UK government / parliament / regulators
+    "gov.uk": "GOV.UK",
+    "dfe": "Department for Education",
     "ofsted": "Ofsted",
+    "committees.parliament.uk": "UK Parliament Committees",
+    "post_parliament": "POST (UK Parliament)",
+    # Scotland
+    "gov_scot": "Scottish Government",
+    "gov.scot": "Scottish Government",
+    "scotland_digital_blog": "Scottish Government (Digital)",
+    "scotland_scottish_parliament_blog": "Scottish Parliament",
+    "gtcs": "General Teaching Council for Scotland",
+    "ades": "Association of Directors of Education in Scotland (ADES)",
+    "sera": "Scottish Educational Research Association",
+    "children_in_scotland": "Children in Scotland",
+    # Wales
+    "gov.wales": "Welsh Government",
+    "wales_centre_for_public_policy": "Wales Centre for Public Policy",
+    # Northern Ireland
+    "education-ni.gov.uk": "Department of Education (NI)",
+    # Unions / sector bodies
+    "ascl": "ASCL (School & College Leaders)",
+    "neu.org.uk": "National Education Union",
+    "lga": "Local Government Association",
+    "local.gov.uk": "Local Government Association",
+    # Research / think tanks / foundations
+    "fft_datalab": "FFT Education Datalab",
+    "epi": "Education Policy Institute",
+    "nfer": "National Foundation for Educational Research",
+    "nuffield": "Nuffield Foundation",
     "sutton_trust": "Sutton Trust",
-    "bbc": "BBC",
-    "guardian": "The Guardian",
+    "institute_for_government": "Institute for Government",
+    "jacobs_foundation": "Jacobs Foundation",
+    "joseph_rowntree_foundation": "Joseph Rowntree Foundation",
+    "fed": "Foundation for Education Development",
+    "lpips": "Local Policy Innovation Partnership (LPIP) Hub",
+    # Children / digital rights
+    "children_s_commissioner": "Children's Commissioner",
+    "childrenscommissioner.gov.uk": "Children's Commissioner",
+    "defend_digital_me": "Defend Digital Me",
+    "digital_poverty_alliance": "Digital Poverty Alliance",
+    # UCL / academics
+    "ucl.ac.uk": "UCL",
+    "ucl_ioe_blog": "UCL Institute of Education",
+    "ucl_ioe_news": "UCL Institute of Education",
+    "ucl_research_for_the_real_world_ioe_podcast": "UCL Institute of Education",
+    "professor_rebecca_eynon": "Professor Rebecca Eynon",
+    "teacher_tapp": "Teacher Tapp",
 }
+
+_TLDS = (".co.uk", ".org.uk", ".gov.uk", ".ac.uk", ".com", ".org", ".uk", ".net")
+
+
+def source_label(src) -> str:
+    """Friendly organisation name for a source value.
+
+    Looks up SOURCE_LABELS; for any unmapped source, prettifies (strip TLD,
+    underscores/dots → spaces, title-case) so a raw key or domain is NEVER shown
+    to curators again. Returns '' for null-ish input.
+    """
+    if src is None:
+        return ""
+    s = str(src).strip()
+    if not s or s.lower() in {"nan", "none", "nat"}:
+        return ""
+    if s in SOURCE_LABELS:
+        return SOURCE_LABELS[s]
+    base = s
+    for tld in _TLDS:
+        if base.lower().endswith(tld):
+            base = base[: -len(tld)]
+            break
+    base = base.replace("_", " ").replace(".", " ").strip()
+    return base.title() if base else s
 
 # ESRC brand colours
 NAVY = "#0f1e3d"

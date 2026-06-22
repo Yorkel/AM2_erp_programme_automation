@@ -16,7 +16,7 @@ from datetime import date, timedelta
 import streamlit as st
 import pandas as pd
 
-from dashboard.config import SOURCE_LABELS
+from dashboard.config import source_label
 from dashboard.data import (
     delete_decision, fetch_article_text, is_authenticated, load_decisions,
     record_decision, record_topic_sentence,
@@ -270,7 +270,7 @@ def _render_triage_card(row: dict):
     url = _clean(row.get("url"))
     title = _clean(row.get("title")) or "No title"
     source_raw = _clean(row.get("source"))
-    source_name = SOURCE_LABELS.get(source_raw, source_raw)
+    source_name = source_label(source_raw)
     article_date = _clean(row.get("article_date"))
     status = _status_for(url, decisions)
 
