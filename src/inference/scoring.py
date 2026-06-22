@@ -1,11 +1,15 @@
 """
 scoring.py
-Cluster near-duplicates and compute per-article composite scores for curator
-priority sorting. Runs after classify_via_api, before push_predictions.
+Compute per-article composite scores for curator priority sorting. Runs after
+classify_via_api, before push_predictions.
 
-Two outputs added to each article record:
-  - cluster_id, cluster_size, is_cluster_lead — from semantic clustering on
-    sentence-transformer embeddings (threshold 0.85 cosine)
+NOTE: near-duplicate CLUSTERING was REMOVED 2026-06-22 (it grouped distinct
+articles as "the same story" and hid them in the dashboard). cluster_id /
+cluster_size / is_cluster_lead are still written as trivial singletons (own id,
+size 1, own lead) so the table schema and dashboard reads don't break.
+
+Outputs added to each article record:
+  - cluster_id, cluster_size, is_cluster_lead — trivial singletons (no clustering)
   - source_authority, recency_score, substance_score, composite_score — the
     composite is a defensible default for sort order; individual components
     are kept too so the dashboard can re-sort by any of them.
@@ -17,7 +21,7 @@ curator can edit those without touching code. Composite formula:
               +  0.25 * top1_confidence
               +  0.20 * recency_score
               +  0.15 * substance_score
-              +  0.10 * (1.0 if is_cluster_lead else 0.7)
+              +  0.10 * 1.0   (cluster-lead term, now a uniform constant)
 
 All in [0, 1]; composite is too.
 """
@@ -42,16 +46,12 @@ DEFAULT_OUTPUT = DATA_DIR / "classified_articles.csv"   # overwrites with extra 
 
 AUTHORITY_YAML = Path("src/scraping/source_authority.yml")
 
-# Clustering
-COSINE_THRESHOLD = 0.85   # threshold for "same story"; tuneable
-
 # Composite weights
 W_AUTHORITY  = 0.30
 W_CONFIDENCE = 0.25
 W_RECENCY    = 0.20
 W_SUBSTANCE  = 0.15
 W_LEAD_BONUS = 0.10
-LEAD_NON_LEAD_WEIGHT = 0.7  # non-leads still get most of the bonus
 
 
 # ─── Component scores ────────────────────────────────────────────────────────
@@ -106,80 +106,33 @@ def substance_score(text: str) -> float:
     return float(np.clip(n / 500.0, 0.3, 1.0))
 
 
-# ─── Clustering ──────────────────────────────────────────────────────────────
-
-def _l2_normalize(x: np.ndarray) -> np.ndarray:
-    norms = np.linalg.norm(x, axis=1, keepdims=True)
-    norms[norms == 0] = 1
-    return x / norms
-
-
-def cluster_articles(embeddings: np.ndarray, threshold: float = COSINE_THRESHOLD) -> np.ndarray:
-    """Greedy single-link clustering by cosine similarity ≥ threshold.
-    Returns an array of integer cluster IDs (0 = first cluster, etc.).
-    Singletons get their own cluster ID. O(N^2) — fine for N up to ~5000.
-    """
-    n = len(embeddings)
-    if n == 0:
-        return np.array([], dtype=int)
-    emb = _l2_normalize(np.asarray(embeddings, dtype=float))
-    # Cosine similarity matrix
-    sim = emb @ emb.T
-    np.fill_diagonal(sim, 0.0)
-
-    cluster_ids = np.full(n, -1, dtype=int)
-    next_id = 0
-    for i in range(n):
-        if cluster_ids[i] != -1:
-            continue
-        # Start a new cluster with this point
-        cluster_ids[i] = next_id
-        # Add anything that's similar enough
-        queue = [i]
-        while queue:
-            j = queue.pop()
-            for k in range(n):
-                if cluster_ids[k] == -1 and sim[j, k] >= threshold:
-                    cluster_ids[k] = next_id
-                    queue.append(k)
-        next_id += 1
-    return cluster_ids
-
 
 # ─── Composite & pipeline ────────────────────────────────────────────────────
 
 def add_scores_to_df(df: pd.DataFrame, *, authority_table: dict[str, float],
                      today: date | None = None) -> pd.DataFrame:
-    """Add cluster_id, cluster_size, is_cluster_lead, the four component scores,
-    and composite_score columns to `df`.
+    """Add cluster_id, cluster_size, is_cluster_lead (trivial singletons — no
+    clustering), the four component scores, and composite_score columns to `df`.
 
     Requires the input to have already been classified (top1_confidence column
-    present) and to have a `_embeddings` column with sentence-transformer
-    embeddings as numpy arrays. The pipeline step `classify_via_api` should
-    write embeddings as a column for downstream clustering; if missing, we
-    re-embed here using the same model.
+    present). No embeddings are needed — clustering was removed 2026-06-22.
     """
     if today is None:
         today = date.today()
 
-    df = df.copy()
-    # If embeddings weren't stored, compute them now using the local
-    # sentence-transformer (Haiku-equivalent — works offline). The deployed API
-    # doesn't currently return embeddings; computing locally is the pragmatic
-    # path. (Alternative: change API to return them.)
-    if "_embedding" not in df.columns or df["_embedding"].isna().any():
-        from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-        texts = df["text_clean"].fillna("").tolist()
-        emb = model.encode(texts, show_progress_bar=False, normalize_embeddings=False)
-        df["_embedding"] = list(emb)
+    df = df.copy().reset_index(drop=True)
 
-    # Clustering — produces cluster_id, cluster_size, is_cluster_lead
-    emb_matrix = np.vstack(df["_embedding"].to_list())
-    df["cluster_id"] = cluster_articles(emb_matrix, threshold=COSINE_THRESHOLD)
-    df["cluster_size"] = df.groupby("cluster_id")["cluster_id"].transform("size")
+    # Near-duplicate CLUSTERING REMOVED (2026-06-22): it grouped distinct articles
+    # as "the same story" and hid them behind "+N similar" in the dashboard, so
+    # real content went missing (e.g. two separate IfG early-years pieces). Every
+    # article is now its own singleton. The cluster_* columns are kept (size 1,
+    # each its own lead) so the classify_newsletter schema and dashboard reads
+    # don't break. No embeddings are computed anymore.
+    df["cluster_id"] = df.index
+    df["cluster_size"] = 1
+    df["is_cluster_lead"] = True
 
-    # Component scores
+    # Component scores (kept — used for content ordering)
     df["source_authority"] = df["source"].apply(
         lambda s: authority_score(s, authority_table)
     )
@@ -188,29 +141,17 @@ def add_scores_to_df(df: pd.DataFrame, *, authority_table: dict[str, float],
     )
     df["substance_score"] = df["text_clean"].apply(substance_score)
 
-    # Within each cluster, the LEAD is the highest-authority article. Tie-break
-    # by top1_confidence, then by recency (recent wins). Written as an explicit
-    # loop because `groupby().apply()` in newer pandas drops the grouping
-    # column from the result, which broke downstream reads of cluster_id.
-    df["is_cluster_lead"] = False
-    for _, group in df.groupby("cluster_id"):
-        lead_idx = group.sort_values(
-            by=["source_authority", "top1_confidence", "recency_score"],
-            ascending=[False, False, False],
-        ).index[0]
-        df.loc[lead_idx, "is_cluster_lead"] = True
-
-    # Composite
+    # Composite. The cluster-lead term is now a uniform constant (every article is
+    # its own lead), so it no longer affects ordering — kept only for score
+    # continuity with historical rows.
     df["composite_score"] = (
         W_AUTHORITY  * df["source_authority"]
       + W_CONFIDENCE * df["top1_confidence"].fillna(0.0)
       + W_RECENCY    * df["recency_score"]
       + W_SUBSTANCE  * df["substance_score"]
-      + W_LEAD_BONUS * df["is_cluster_lead"].map({True: 1.0, False: LEAD_NON_LEAD_WEIGHT})
+      + W_LEAD_BONUS * 1.0
     ).clip(0.0, 1.0)
 
-    # Drop the working _embedding column before writing — too large for CSV
-    df = df.drop(columns=["_embedding"], errors="ignore")
     return df
 
 

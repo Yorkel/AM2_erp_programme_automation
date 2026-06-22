@@ -282,66 +282,27 @@ def render(df):
         )
         return
 
-    # Group by cluster_id. NaN/None becomes its own per-article group so
-    # uncluster-ed items still render.
-    groups: dict[object, list[dict]] = defaultdict(list)
-    for art in kept:
-        cid = art.get("cluster_id")
-        # Treat NaN/None as a unique key per-URL - singleton groups, no grouping
-        if cid is None or (isinstance(cid, float) and cid != cid):
-            cid = f"_solo_{art.get('url', id(art))}"
-        groups[cid].append(art)
-
-    # Sort articles within each group: cluster lead first (if present), then
-    # by composite_score desc, then by URL for stability.
-    def _within_group_sort_key(a):
-        lead = -1 if a.get("is_cluster_lead") else 0
-        score = -(a.get("composite_score") or 0.0)
-        return (lead, score, a.get("url") or "")
-    for cid in groups:
-        groups[cid].sort(key=_within_group_sort_key)
-
-    # Sort groups by the lead article's date (newest first)
-    def _group_sort_key(item):
-        cid, members = item
-        lead = members[0]
-        d = pd.to_datetime(lead.get("article_date"), errors="coerce", dayfirst=True)
-        # NaT sorts last
-        return (pd.isna(d), -(d.value if not pd.isna(d) else 0))
-    sorted_groups = sorted(groups.items(), key=_group_sort_key)
+    # Near-duplicate CLUSTERING REMOVED (2026-06-22): it grouped distinct articles
+    # as "the same story" and hid them behind a "+N similar" expander, so real
+    # content went missing. Every kept article now renders on its own. cluster_id
+    # in the data is ignored here. Sort newest-first, then by composite_score.
+    def _sort_key(a):
+        d = pd.to_datetime(a.get("article_date"), errors="coerce", dayfirst=True)
+        return (
+            pd.isna(d),
+            -(d.value if not pd.isna(d) else 0),
+            -(a.get("composite_score") or 0.0),
+            a.get("url") or "",
+        )
+    ordered = sorted(kept, key=_sort_key)
 
     # Summary line
-    n_groups = len(sorted_groups)
     n_articles = len(kept)
     n_awaiting = sum(1 for a in kept if _status_for(a.get("action")) == "Awaiting category")
     st.info(
-        f"**{n_articles}** kept article(s) across **{n_groups}** group(s); "
-        f"{n_awaiting} awaiting category."
+        f"**{n_articles}** kept article(s); {n_awaiting} awaiting category."
     )
 
-    # Render
-    for group_idx, (cid, members) in enumerate(sorted_groups):
-        lead = members[0]
-        size = len(members)
-        if size == 1:
-            # Singleton - render directly, no expander
-            _render_article(lead, idx_in_cluster=0)
-        else:
-            # Cluster - header card + expander for siblings
-            lead_title = lead.get("title") or "No title"
-            lead_source = SOURCE_LABELS.get(lead.get("source", ""), lead.get("source", ""))
-            st.markdown(
-                f"<div style='border-top:3px solid #1d3461;margin:18px 0 4px 0;'></div>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"### {lead_title}  "
-                f"<span style='background:#1d3461;color:white;padding:2px 8px;"
-                f"border-radius:10px;font-size:11px;'>+{size - 1} similar</span>",
-                unsafe_allow_html=True,
-            )
-            st.caption(f"Cluster lead from {lead_source}. Expand to see {size - 1} other item(s) covering the same story.")
-            _render_article(lead, idx_in_cluster=0)
-            with st.expander(f"Show {size - 1} similar item(s) in this cluster"):
-                for i, sibling in enumerate(members[1:], start=1):
-                    _render_article(sibling, idx_in_cluster=i)
+    # Render each article individually (no clustering)
+    for art in ordered:
+        _render_article(art, idx_in_cluster=0)
