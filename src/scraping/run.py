@@ -274,7 +274,13 @@ def _filter_items(items: list, source: str,
 # Feed bodies shorter than this (chars) are treated as headline-only — many
 # RSS feeds and ~all Google Alerts give a one-line blurb with no article body.
 # Below the threshold we fetch the page and extract the real content.
-MIN_BODY_CHARS = 200
+# Raised 200 → 600 (2026-06-22): some feeds (e.g. spice-spotlight.scot, the
+# Scottish Parliament SPICe blog) return a ~200-400 char *intro snippet* that
+# squeaked over the old 200 bar, so the full ~7k-char body was never fetched and
+# the summary came out "Summary unavailable". 600 distinguishes an RSS snippet
+# from a real body. Safe: backfill only fetches KEPT articles (<100/wk) and only
+# swaps in the fetched body when it's longer, so genuinely-short items are kept.
+MIN_BODY_CHARS = 600
 
 
 def _backfill_bodies(items: list, source: str, *, dry_run: bool = False) -> None:
