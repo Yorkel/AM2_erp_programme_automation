@@ -33,6 +33,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Pre-warm classifier Space (fire-and-forget)
+        # The HF classifier Space sleeps when idle and can take >60s to cold
+        # start (it failed the classify run on 2026-06-22 this way). Ping /health
+        # NOW, at the start of the scrape, so it wakes up during the minutes the
+        # scrape takes and is warm by the time the chained classify job runs.
+        # Best-effort: never fail the scrape if the warm-up doesn't land — the
+        # classify step has its own hardened probe as the real backstop.
+        if: always()
+        continue-on-error: true
+        env:
+          CLASSIFIER_API_URL: ${{ secrets.CLASSIFIER_API_URL }}
+          CLASSIFIER_API_KEY: ${{ secrets.CLASSIFIER_API_KEY }}
+        run: |
+          curl -fsS --max-time 150 --retry 4 --retry-all-errors --retry-delay 15 \
+            -H "Authorization: Bearer ${CLASSIFIER_API_KEY}" \
+            "${CLASSIFIER_API_URL%/}/health" && echo "Classifier Space warmed." \
+            || echo "Warm-up did not land; classify step will cold-start it."
+
       - name: Run scraper (incremental — since last successful run)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
