@@ -127,6 +127,17 @@ def main():
 
     st.markdown("---")
 
+    # ── Read-only notice ─────────────────────────────────────────────────────
+    # The action buttons (triage / categorise / draft) are disabled until the
+    # curator logs in (top-right), but they "look ready to go" — Rachel opened the
+    # dashboard and the in/out buttons did nothing without her realising why
+    # (2026-06). Make the gate explicit.
+    if not st.session_state.get("authenticated"):
+        st.info(
+            "🔒 **Read-only mode.** Log in (top-right) to triage, categorise, "
+            "or edit articles — the action buttons stay disabled until you do."
+        )
+
     # ── Pipeline status banner ───────────────────────────────────────────────
     # The dashboard only shows classified articles, so anything scraped-but-not-
     # yet-processed is invisible below. Warn the curator instead of letting it

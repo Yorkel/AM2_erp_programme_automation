@@ -178,22 +178,13 @@ def _render_article(art: dict, idx_in_cluster: int):
             MANUAL_PLACEHOLDER = "Other"
             options = [MANUAL_PLACEHOLDER] + list(CATEGORY_ORDER)
 
-            def _on_pick_manual(_url=url):
-                choice = st.session_state.get(f"cat_man_choice_{_url}")
-                if choice and choice != MANUAL_PLACEHOLDER:
-                    record_decision(_url, "manual", choice)
-                    # Do NOT reset to the "Other" placeholder - leaving the chosen
-                    # category shown is what makes it visibly "stick" (Gemma's
-                    # "Other didn't stick" feedback). record_decision clears the
-                    # decisions cache, so the badge updates to Categorised on rerun.
-
             # If curator has already chosen a manual category, show that
             # as the displayed value; else show the placeholder.
             current_idx = 0
             if action == "manual" and curator_label in CATEGORY_ORDER:
                 current_idx = options.index(curator_label)
 
-            st.selectbox(
+            choice = st.selectbox(
                 "Manual",
                 options=options,
                 index=current_idx,
@@ -201,8 +192,17 @@ def _render_article(art: dict, idx_in_cluster: int):
                 key=f"cat_man_choice_{url}",
                 label_visibility="collapsed",
                 disabled=not auth,
-                on_change=_on_pick_manual,
             )
+            # Commit on a genuinely new pick, then a full st.rerun() (app scope) so
+            # the page-level "awaiting category" count refreshes too. The card is an
+            # @st.fragment, so without an app rerun that count goes stale — this is
+            # Rachel's "categorising doesn't update the status in real time" (2026-06).
+            # Leaving the chosen category shown is what makes it stick (Gemma's
+            # earlier "Other didn't stick" point); record_decision clears the
+            # decisions cache so the badge flips to Categorised on rerun.
+            if auth and choice != MANUAL_PLACEHOLDER and choice != curator_label:
+                record_decision(url, "manual", choice)
+                st.rerun()
         with col_rem:
             if st.button(
                 "Remove",
