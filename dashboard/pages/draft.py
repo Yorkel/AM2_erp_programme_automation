@@ -61,12 +61,15 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
             )
             src = clean_text(art.get("source"))
             article_date = art.get("article_date") or ""
-            # Render article_date as DD/MM/YYYY to match MS Forms convention
+            # The Form's "Start time" is a real datetime column, so write a real
+            # date value (not a DD/MM/YYYY string). Pasting text into a datetime
+            # column gave mixed types — broken sorting + US-locale misparsing
+            # (Gemma, 2026-06). None → blank cell if the date won't parse.
             try:
-                d = pd.to_datetime(article_date, errors="coerce", dayfirst=True)
-                date_str = d.strftime("%d/%m/%Y") if not pd.isna(d) else (article_date or "")
+                _d = pd.to_datetime(article_date, errors="coerce", dayfirst=True)
+                start_time = _d.date() if not pd.isna(_d) else None
             except Exception:
-                date_str = article_date or ""
+                start_time = None
             # EXACT column set + order of the live MS Form export
             # (ERPNewsletterSubmissions.xlsx) so the download is the same format
             # and can be pasted straight into the form's spreadsheet. The Form
@@ -74,7 +77,7 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
             # apply to scraped articles, so they're left blank.
             rows.append({
                 "Id": row_id,
-                "Start time": date_str,
+                "Start time": start_time,
                 "Completion time": "",
                 "Email": "",
                 "Name": "",
