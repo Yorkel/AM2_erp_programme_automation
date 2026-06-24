@@ -5,12 +5,17 @@ Note: DATA_DIR removed 2026-05-17 - dashboard now reads from Supabase
 `v_dashboard` view (see dashboard/data.py), not local CSV.
 """
 
+# These MUST match the MS Form's "Which section…" dropdown values EXACTLY — the
+# dashboard's Excel export is pasted into the Form spreadsheet, and a non-matching
+# section value fails the Form's validation (Gemma, 2026-06). Verified against
+# agent_draft/ERPNewsletterSubmissions_June.xlsx. The en-dashes in the Research
+# label are the Form's official punctuation, so they're required here.
 CATEGORY_LABELS = {
-    "teacher_rrd": "Teacher recruitment, retention & development",
-    "edtech": "EdTech",
+    "teacher_rrd": "Teacher recruitment, retention and development",
+    "edtech": "Edtech",
     "political_environment_key_organisations": "Political environment and key organisations",
     "four_nations": "Four Nations",
-    "policy_practice_research": "Research, Practice, Policy",
+    "policy_practice_research": "Research – Practice – Policy",
     "what_matters_ed": "What matters in education?",
 }
 
