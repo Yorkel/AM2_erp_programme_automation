@@ -76,7 +76,15 @@ Actions API rather than waiting for the weekly cycle: push → manually run the 
 check → inspect the log for `APIConnectionError` (gone = fixed; present = escalate).
 
 ## Outcome
-- ⏳ A4 deployed 2026-06-29; verification run in progress. [UPDATE WITH RESULT.]
+- ❌ **A4 (force IPv4) did NOT work.** The verification scrape on the A4 commit
+  still logged `APIConnectionError: Connection error` on every Claude call
+  (tag_article, summary, and the sweep probe); the new articles came in blank.
+  So the cause is **not** IPv6 routing — it is a harder network block between
+  GitHub runners and `api.anthropic.com` (Anthropic refusing GitHub's shared CI
+  IP ranges, or a runner egress firewall). A4 is ruled out.
+- ➡️ **Next: a durable off-runner fix is required** — route Claude via a host that
+  can reach it: C1 (enrichment endpoint on the HF Space, reuses existing infra),
+  B1 (Render cron job), or A1 (Claude via AWS Bedrock — the runner reaches AWS).
 - Interim recovery (always works): `python -m src.scraping.sweep_summaries` from a
   Claude-reachable host (dev container / Streamlit Cloud).
 
