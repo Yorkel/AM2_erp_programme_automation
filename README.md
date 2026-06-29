@@ -184,6 +184,20 @@ python -m src.scraping.try_source --source dfe --since 2026-05-01 --save
 
 ---
 
+## Development / verification
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest tests/ -q
+python -m pip check
+python -c "from fastapi.testclient import TestClient; from src.serving.api import app; c=TestClient(app); print(c.get('/health').json())"
+```
+
+The pytest suite is intentionally lightweight and network-free; it covers URL
+normalisation, scraper helpers, and the Anthropic proxy-token client wiring.
+
+---
+
 ## Automation (GitHub Actions)
 
 | Workflow | Purpose |

@@ -11,7 +11,9 @@ grouped by section. Curator can:
 """
 
 from datetime import datetime
+from html import escape as html_escape
 from io import BytesIO
+from urllib.parse import urlparse
 
 import streamlit as st
 import pandas as pd
@@ -28,6 +30,18 @@ from src.inference.summarise import summarise_article
 def _category_of(art: dict) -> str | None:
     """Effective section assignment - what Page 2 set on the curator_decisions row."""
     return art.get("curator_label") or art.get("top1")
+
+
+def _html(v) -> str:
+    """Escape external text before inserting it into styled HTML snippets."""
+    return html_escape(clean_text(v), quote=True)
+
+
+def _safe_href(v) -> str:
+    """Return a clickable web URL, or '' for non-web / malformed values."""
+    url = clean_text(v)
+    parsed = urlparse(url)
+    return url if parsed.scheme in {"http", "https"} and parsed.netloc else ""
 
 
 def _build_excel(grouped: dict, today: datetime) -> bytes:
@@ -209,14 +223,14 @@ def render(df):
         st.markdown(
             f"<div style='background:#1d3461;padding:10px 16px;border-radius:4px;"
             f"margin:18px 0 8px 0;'>"
-            f"<span style='color:#c8d8ec;font-size:15px;font-weight:600;'>{cat_label}</span></div>",
+            f"<span style='color:#c8d8ec;font-size:15px;font-weight:600;'>{_html(cat_label)}</span></div>",
             unsafe_allow_html=True,
         )
 
         for art in articles:
-            art_url = art.get("url") or ""
-            title = art.get("title") or "No title"
-            source_name = source_label(art.get("source"))
+            art_url = clean_text(art.get("url"))
+            title = clean_text(art.get("title")) or "No title"
+            source_name = source_label(clean_text(art.get("source")))
             article_date = art.get("article_date") or ""
             session_key = f"desc_{art_url}"
 
@@ -235,11 +249,17 @@ def render(df):
                 # X-remove button sits in the top-right corner.
                 col_t, col_x = st.columns([10, 1])
                 with col_t:
+                    art_url_html = _html(art_url)
+                    href_html = _html(_safe_href(art_url))
+                    url_link = (
+                        f"<a href='{href_html}' target='_blank'>{art_url_html}</a>"
+                        if href_html else art_url_html
+                    )
                     st.markdown(
-                        f"<p style='margin:0;'><b>TITLE:</b> {title}</p>"
-                        f"<p style='margin:0;'><b>SOURCE:</b> {source_name}</p>"
+                        f"<p style='margin:0;'><b>TITLE:</b> {_html(title)}</p>"
+                        f"<p style='margin:0;'><b>SOURCE:</b> {_html(source_name)}</p>"
                         + (f"<p style='margin:0 0 6px 0;overflow-wrap:anywhere;'>"
-                           f"<b>URL:</b> <a href='{art_url}' target='_blank'>{art_url}</a></p>"
+                           f"<b>URL:</b> {url_link}</p>"
                            if art_url else ""),
                         unsafe_allow_html=True,
                     )

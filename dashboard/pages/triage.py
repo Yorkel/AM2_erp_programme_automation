@@ -12,6 +12,8 @@ Action values written to curator_decisions:
 """
 
 from datetime import date, timedelta
+from html import escape as html_escape
+from urllib.parse import urlparse
 
 import streamlit as st
 import pandas as pd
@@ -36,6 +38,18 @@ def _clean(v):
         return ""
     s = str(v).strip()
     return "" if s.lower() == "nan" else s
+
+
+def _html(v) -> str:
+    """Escape external text before inserting it into styled HTML snippets."""
+    return html_escape(_clean(v), quote=True)
+
+
+def _safe_href(v) -> str:
+    """Return a clickable web URL, or '' for non-web / malformed values."""
+    url = _clean(v)
+    parsed = urlparse(url)
+    return url if parsed.scheme in {"http", "https"} and parsed.netloc else ""
 
 
 def _tuesday_on_or_before(d: date) -> date:
@@ -126,12 +140,12 @@ def _badges_html(geo: str | None, topics: list[str] | None) -> str:
     parts = []
     geo = _clean(geo)
     if geo:
-        parts.append(f"<span style='{_TAG_STYLE}'>{geo}</span>")
+        parts.append(f"<span style='{_TAG_STYLE}'>{_html(geo)}</span>")
     topics = topics if isinstance(topics, (list, tuple)) else []
     for t in topics[:3]:
         t = _clean(t)
         if t:
-            parts.append(f"<span style='{_TAG_STYLE}'>{t}</span>")
+            parts.append(f"<span style='{_TAG_STYLE}'>{_html(t)}</span>")
     if not parts:
         return ""
     return (
@@ -278,7 +292,7 @@ def _render_triage_card(row: dict):
         "<div style='border-top:3px solid #1d3461;margin:20px 0;'></div>",
         unsafe_allow_html=True,
     )
-    st.markdown(f"### {title}")
+    st.markdown(f"### {_html(title)}")
 
     with st.container(border=True):
         # Status badge sits inline with title area on the right; URL + tags
@@ -299,16 +313,19 @@ def _render_triage_card(row: dict):
         )
         st.markdown(
             f"<p style='color:#666;font-size:14px;margin:2px 0;'>"
-            f"{status_badge} &nbsp; <b>Source:</b> {source_name} "
-            f"&nbsp;&nbsp; <b>Date:</b> {article_date}</p>",
+            f"{status_badge} &nbsp; <b>Source:</b> {_html(source_name)} "
+            f"&nbsp;&nbsp; <b>Date:</b> {_html(article_date)}</p>",
             unsafe_allow_html=True,
         )
 
         # URL (full-width, no per-card Status badge - filter already gates view)
         if url:
+            url_html = _html(url)
+            href_html = _html(_safe_href(url))
+            link = f"<a href='{href_html}' target='_blank'>{url_html}</a>" if href_html else url_html
             st.markdown(
                 f"<p style='font-size:12px;margin:0;overflow-wrap:anywhere;'>"
-                f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
+                f"<b>URL:</b> {link}</p>",
                 unsafe_allow_html=True,
             )
 
@@ -320,7 +337,7 @@ def _render_triage_card(row: dict):
             if topic_sentence:
                 st.markdown(
                     f"<div style='background:#eef6ee;border-left:3px solid #2ecc71;"
-                    f"padding:8px 12px;'>{topic_sentence}</div>",
+                    f"padding:8px 12px;'>{_html(topic_sentence)}</div>",
                     unsafe_allow_html=True,
                 )
             else:
@@ -354,7 +371,7 @@ def _render_triage_card(row: dict):
             if summary:
                 st.markdown(
                     f"<div style='background:#eef;border-left:3px solid #5b8def;"
-                    f"padding:8px 12px;'>{summary}</div>",
+                    f"padding:8px 12px;'>{_html(summary)}</div>",
                     unsafe_allow_html=True,
                 )
             else:

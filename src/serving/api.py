@@ -144,15 +144,18 @@ async def anthropic_proxy(request: Request) -> Response:
     runner — incident 2026-06-29) route Claude calls through this Space, which
     CAN reach it (confirmed via /claude_probe). The caller's API key arrives in
     the x-api-key header, is forwarded as-is, and is NEVER stored or logged
-    here. Optionally gated: if PROXY_TOKEN is set in the Space environment, the
-    caller must send a matching x-proxy-token header (locks it to your runner).
+    here. Gated by PROXY_TOKEN: the Space must define it, and callers must send
+    the same value as x-proxy-token. This avoids creating an open relay.
     """
     import os
     import urllib.error
     import urllib.request
 
     expected = os.environ.get("PROXY_TOKEN")
-    if expected and request.headers.get("x-proxy-token") != expected:
+    if not expected:
+        return Response(content=b'{"error":"proxy not configured"}',
+                        status_code=503, media_type="application/json")
+    if request.headers.get("x-proxy-token") != expected:
         return Response(content=b'{"error":"forbidden"}', status_code=403,
                         media_type="application/json")
 

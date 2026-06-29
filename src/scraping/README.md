@@ -104,13 +104,16 @@ python src/pipeline.py --inference
 
 ## Schema
 
-Apply `migrations/001_articles_topics.sql` to a Supabase project (original migration; table since renamed to `articles`). Then apply migrations 002, 003, 004 for the predictions / decisions / view layer. Sets up:
+Apply the SQL files in `migrations/` in numeric order when bootstrapping a new
+Supabase project. The core objects are:
 
-- `articles` (originally `articles_topics`) — column names match what `s07_pull_supabase.py` already SELECTs (`url, title, article_date, source, text_clean, week_number`), plus `text` (full body) and `source_type` (`web`/`newsletter`/`rss`).
-- `scrape_runs` — one row per source per orchestrator run for monitoring.
-- `classify_newsletter` — model predictions (migration 002).
-- `curator_decisions` — curator accept/reject decisions (migration 003).
-- `v_dashboard` — view joining articles + predictions for the curator dashboard (migration 004).
+- `articles` — canonical scraped article records (`url`, `title`, `article_date`,
+  `source`, `text`, `text_clean`, `week_number`, summary/tag enrichment).
+- `classify_newsletter` — model predictions, confidence scores, and ranking signals.
+- `curator_decisions` — curator keep/reject/category/edit decisions.
+- `curator_feedback`, `drift_log`, `fairness_log`, and reset/archive tables — the
+  monitoring and feedback loop around the dashboard.
+- `v_dashboard` — the joined article + prediction view consumed by Streamlit.
 
 ## Environment
 
@@ -121,10 +124,10 @@ SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_SERVICE_KEY=<service role key>
 ```
 
-## Build order (where we are)
+## Production status
 
-- [x] Phase 1: foundation (this scaffolding)
-- [ ] Phase 2: add sources to `sources.yml`, build/test each with `try_source.py`
-- [ ] Phase 3: backfill via `run.py --since <start>`
-- [ ] Phase 4: GitHub Actions twice-weekly cron + Gmail API ingestion
-- [ ] Phase 5: monitoring/eval dashboards on `scrape_runs`
+The source registry is live in `sources.yml`; GitHub Actions runs weekday
+incremental scraping, classification, health checks, drift, fairness, and backup
+jobs. Gmail ingestion remains intentionally stubbed in `newsletters/gmail.py`;
+email-only sources are tracked in the source roster until an approved ingestion
+path is added.

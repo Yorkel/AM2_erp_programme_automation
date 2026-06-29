@@ -2,7 +2,7 @@
 #
 # Build:    docker build -t am2-classifier .
 # Run:      docker run -p 8000:8000 am2-classifier
-# Deploy:   Render auto-builds this on every push to main (see render.yaml).
+# Deploy:   Hugging Face Spaces builds this Docker image from the repo root.
 
 # 1. Base image — Python 3.12 slim (small, single-purpose).
 FROM python:3.12-slim
@@ -32,8 +32,8 @@ COPY src/serving/ src/serving/
 COPY src/__init__.py src/__init__.py
 COPY models/runs/ models/runs/
 
-# 7. Port the API listens on. Render passes its own $PORT env var at runtime,
-#    so the CMD below reads it (falls back to 8000 locally).
+# 7. Port the API listens on. Hosts may pass $PORT at runtime; the CMD below
+#    reads it and falls back to 8000 locally / on Hugging Face Spaces.
 EXPOSE 8000
 
 # 8. Start the server. Use the shell form so $PORT env-var expansion works.

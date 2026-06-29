@@ -25,8 +25,8 @@ OUTPUT_CSV = "data/preprocessed/newsletters_preprocessed.csv"
 
 UNSUB_THEME = (
     "You have indicated that you are happy to receive news and updates from the "
-    "ESRC Education Research Programme. To unsubscribe, please email "
-    "Elizabeth.hudson@ucl.ac.uk with the word UNSUBSCRIBE in the title of the email."
+    "ESRC Education Research Programme. To unsubscribe, please email the "
+    "programme contact address with the word UNSUBSCRIBE in the title of the email."
 )
 
 

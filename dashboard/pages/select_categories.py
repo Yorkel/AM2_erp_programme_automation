@@ -14,13 +14,15 @@ Action transitions:
 
 from __future__ import annotations
 from collections import defaultdict
+from html import escape as html_escape
+from urllib.parse import urlparse
 
 import streamlit as st
 import pandas as pd
 
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, CATEGORY_SHORT_LABELS, source_label
 from dashboard.data import (
-    get_kept_articles, is_authenticated, record_decision,
+    clean_text, get_kept_articles, is_authenticated, record_decision,
 )
 
 
@@ -39,16 +41,31 @@ def _badges_html(geo, topics) -> str:
     """'Key tags:' row - geographic_focus + up to 3 topic_tags, all in the
     same neutral style (country no longer coloured differently)."""
     parts = []
+    geo = clean_text(geo)
     if geo:
-        parts.append(f"<span style='{_TAG_STYLE}'>{geo}</span>")
+        parts.append(f"<span style='{_TAG_STYLE}'>{_html(geo)}</span>")
     for t in (topics or [])[:3]:
-        parts.append(f"<span style='{_TAG_STYLE}'>{t}</span>")
+        t = clean_text(t)
+        if t:
+            parts.append(f"<span style='{_TAG_STYLE}'>{_html(t)}</span>")
     if not parts:
         return ""
     return (
         "<p style='margin:2px 0;font-size:11px;color:#555;'>"
         "<b>Key tags:</b> " + "".join(parts) + "</p>"
     )
+
+
+def _html(v) -> str:
+    """Escape external text before inserting it into styled HTML snippets."""
+    return html_escape(clean_text(v), quote=True)
+
+
+def _safe_href(v) -> str:
+    """Return a clickable web URL, or '' for non-web / malformed values."""
+    url = clean_text(v)
+    parsed = urlparse(url)
+    return url if parsed.scheme in {"http", "https"} and parsed.netloc else ""
 
 
 def _format_conf(c) -> str:
@@ -76,10 +93,10 @@ def _render_article(art: dict, idx_in_cluster: int):
     only rerun this single card - not the whole page list. Massively cuts
     perceived latency on a busy queue.
     """
-    url = art.get("url", "")
-    title = art.get("title") or "No title"
-    source = source_label(art.get("source"))
-    article_date = art.get("article_date", "")
+    url = clean_text(art.get("url"))
+    title = clean_text(art.get("title")) or "No title"
+    source = source_label(clean_text(art.get("source")))
+    article_date = clean_text(art.get("article_date"))
     action = art.get("action")
     curator_label = art.get("curator_label")
     status = _status_for(action)
@@ -95,7 +112,7 @@ def _render_article(art: dict, idx_in_cluster: int):
         # Title row - title on the left, status badge inline on the right
         col_title, col_status = st.columns([5, 1])
         with col_title:
-            st.markdown(f"### {title}")
+            st.markdown(f"### {_html(title)}")
         with col_status:
             colour = _STATUS_COLOUR[status]
             badge_text = "Categorised" if status == "Categorised" else "Awaiting category"
@@ -113,15 +130,18 @@ def _render_article(art: dict, idx_in_cluster: int):
         # Source, Date
         st.markdown(
             f"<p style='color:#666;font-size:13px;margin:2px 0;'>"
-            f"<b>Source:</b> {source} &nbsp;&nbsp; <b>Date:</b> {article_date}</p>",
+            f"<b>Source:</b> {_html(source)} &nbsp;&nbsp; <b>Date:</b> {_html(article_date)}</p>",
             unsafe_allow_html=True,
         )
 
         # URL (full, clickable)
         if url:
+            url_html = _html(url)
+            href_html = _html(_safe_href(url))
+            link = f"<a href='{href_html}' target='_blank'>{url_html}</a>" if href_html else url_html
             st.markdown(
                 f"<p style='font-size:12px;margin:0 0 6px 0;overflow-wrap:anywhere;'>"
-                f"<b>URL:</b> <a href='{url}' target='_blank'>{url}</a></p>",
+                f"<b>URL:</b> {link}</p>",
                 unsafe_allow_html=True,
             )
 
@@ -132,7 +152,7 @@ def _render_article(art: dict, idx_in_cluster: int):
             if summary_text:
                 st.markdown(
                     f"<div style='background:#f8f4ea;border-left:3px solid #f39c12;"
-                    f"padding:8px 12px;font-size:12px;'>{summary_text}</div>",
+                    f"padding:8px 12px;font-size:12px;'>{_html(summary_text)}</div>",
                     unsafe_allow_html=True,
                 )
             else:
