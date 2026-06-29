@@ -143,6 +143,13 @@ celerybeat.pid
 .streamlit/secrets.toml
 secrets.toml
 *.secrets.toml
+
+# Supabase backups are uploaded as CI artifacts, not committed to the repo
+backups/
+
+# Personal / assessment material — never commit to the public portfolio repo
+AM2 now/
+x_assessment/
 .venv
 env/
 venv/

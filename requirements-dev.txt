@@ -1,0 +1,10 @@
+# Dev / test dependencies.
+# Deliberately lean so CI stays fast — only what the tests in tests/ need to
+# import the modules under test. NOT the full runtime (no torch/transformers/
+# streamlit). For the full pipeline use requirements.txt; for the API image use
+# requirements-api.txt.
+pytest==8.3.4
+requests==2.32.5
+beautifulsoup4==4.14.2
+feedparser==6.0.12
+anthropic==0.88.0

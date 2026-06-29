@@ -1,20 +1,22 @@
--- 001_articles_topics.sql
+-- 001_articles.sql
 -- Schema for the in-house scraping pipeline.
 --
 -- Two tables:
---   articles_topics  -- scraped articles awaiting classification (read by s07_pull_supabase)
---   scrape_runs      -- one row per source per run, for monitoring/eval
+--   articles     -- scraped articles awaiting classification (read by the inference pipeline)
+--   scrape_runs  -- one row per source per run, for monitoring/eval
 --
--- Column names in articles_topics are chosen to match what
--- src/inference/s07_pull_supabase.py already SELECTs, so the inference
--- pipeline keeps working unchanged once we cut over from atlas-ed-data.
+-- NOTE: this table was originally created as `articles_topics` and renamed to
+-- `articles` in production (2026-05-17). All later migrations (002+) and the
+-- application code reference `articles`, so this migration now creates it under
+-- the canonical name directly. A fresh apply of migrations 001 -> 016 in order
+-- reproduces the production schema with no separate rename step.
 
 create extension if not exists "pgcrypto";
 
 -- ----------------------------------------------------------------
--- articles_topics
+-- articles
 -- ----------------------------------------------------------------
-create table if not exists articles_topics (
+create table if not exists articles (
     id              uuid        primary key default gen_random_uuid(),
     url             text        not null unique,
     title           text,
@@ -23,17 +25,17 @@ create table if not exists articles_topics (
     source_type     text        not null,         -- 'web' | 'newsletter' | 'rss'
     text            text,                         -- full article body
     text_clean      text,                         -- title + first ~80 words (model input)
-    country         text        default 'eng',    -- kept for backwards compat with s07_pull
+    country         text        default 'eng',    -- kept for backwards compat with the inference pull
     dataset_type    text        default 'inference',
     week_number     int,
     scraped_at      timestamptz not null default now(),
     classification_status text  default 'pending' -- 'pending' | 'classified' | 'failed'
 );
 
-create index if not exists idx_articles_topics_date    on articles_topics (article_date);
-create index if not exists idx_articles_topics_source  on articles_topics (source);
-create index if not exists idx_articles_topics_status  on articles_topics (classification_status);
-create index if not exists idx_articles_topics_country_dataset on articles_topics (country, dataset_type);
+create index if not exists idx_articles_date    on articles (article_date);
+create index if not exists idx_articles_source  on articles (source);
+create index if not exists idx_articles_status  on articles (classification_status);
+create index if not exists idx_articles_country_dataset on articles (country, dataset_type);
 
 -- ----------------------------------------------------------------
 -- scrape_runs  (monitoring; one row per source per run)

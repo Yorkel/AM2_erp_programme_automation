@@ -1,4 +1,4 @@
-name: Daily Supabase backup → backups/
+name: Daily Supabase backup → artifact
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:        # manual trigger from Actions tab
 
 permissions:
-  contents: write            # needed to commit the snapshot back to main
+  contents: read             # backups are uploaded as artifacts, not committed
 
 jobs:
   backup:
@@ -34,18 +34,13 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -m src.utils.backup_supabase
 
-      - name: Commit + push snapshot
-        run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name  "github-actions[bot]"
-          git add backups/
-          if git diff --cached --quiet; then
-            echo "No changes to commit (tables unchanged since last backup)."
-          else
-            DATE=$(date -u +'%Y-%m-%d')
-            git commit -m "backup: Supabase tables ${DATE}"
-            git push
-          fi
+      - name: Upload snapshot as artifact (not committed to the repo)
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 90
+          if-no-files-found: warn
 
       - name: Summary
         if: always()
