@@ -82,10 +82,28 @@ check → inspect the log for `APIConnectionError` (gone = fixed; present = esca
   So the cause is **not** IPv6 routing — it is a harder network block between
   GitHub runners and `api.anthropic.com` (Anthropic refusing GitHub's shared CI
   IP ranges, or a runner egress firewall). A4 is ruled out.
-- ➡️ **Next: a durable off-runner fix is required** — route Claude via a host that
-  can reach it: C1 (enrichment endpoint on the HF Space, reuses existing infra),
-  B1 (Render cron job), or A1 (Claude via AWS Bedrock — the runner reaches AWS).
-- Interim recovery (always works): `python -m src.scraping.sweep_summaries` from a
+- ✅ **Resolution — a variant of C1 (route Claude via the HF Space).** The Space
+  was the natural host: the runner *already* calls it for classification every
+  week (so runner→Space is proven), and `/claude_probe` confirmed Space→Claude
+  works (`{"reachable":true,"status":401}` — 401 = reached Anthropic, only the
+  deliberately-omitted key rejected). Rather than duplicate the enrichment logic
+  in a new endpoint, the Space hosts a **transparent proxy** at `/v1/messages`
+  that forwards Claude requests upstream. The runner then sets
+  `ANTHROPIC_BASE_URL=https://yorkel-erp-classifier.hf.space`, which the Anthropic
+  SDK reads automatically, so **every** Claude call (summary, tags, topic
+  sentence) routes runner→Space→Claude with **no change to the enrichment code**.
+  - **Why a proxy, not a stored-key endpoint:** the caller's API key is forwarded
+    in the `x-api-key` header over TLS and is **never stored or logged** on the
+    Space. The Space cannot spend the key's budget (it holds no key); a public
+    stored-key endpoint could. Optional `PROXY_TOKEN` header gate locks the proxy
+    to our runner (open-relay hardening; not required for key safety).
+  - **Zero new infrastructure / zero cost:** reuses the existing classifier Space.
+    No AWS/GCP account, no Render service, no rewrite — A1/B1 kept as fallback.
+- Verified end-to-end on **29 June**: a real Haiku call through the proxy returned
+  the expected sentinel (`CLAUDE VIA PROXY → PROXY_OK`). Production confirmation =
+  the next scheduled/manual run's "Sweep null summaries + tags" step reporting
+  `summaries N ok / 0 fail` instead of `APIConnectionError`.
+- Interim recovery (still works): `python -m src.scraping.sweep_summaries` from a
   Claude-reachable host (dev container / Streamlit Cloud).
 
 ## Reflection (for the AM2 write-up)
@@ -97,9 +115,17 @@ check → inspect the log for `APIConnectionError` (gone = fixed; present = esca
   self-heal shares the failing component; resilience has to be designed at the right
   layer (where Claude is actually reachable).
 - **K15 / S19 (risk & scalability decisions, Distinction):** the fix was chosen by
-  cost/effort — try the free IPv4 change before paying for Bedrock or standing up
-  new infrastructure. A defensible, scale-appropriate decision rather than
-  over-engineering.
+  cost/effort, escalating only as evidence required. The free IPv4 change was tried
+  first and **disproven by the logs** (ruling out IPv6 routing). Rather than then
+  jump to paid infrastructure (Bedrock/Vertex) or a new service (Render cron), the
+  resolution **reused infrastructure that already existed and was already trusted**
+  — the classifier Space the runner talks to every week — adding only a thin proxy.
+  A defensible, scale-appropriate decision: the cheapest durable option that reused
+  proven components, with paid routes kept as a documented fallback rather than
+  over-engineered in pre-emptively.
+- **Security in the design (K11/S22):** the proxy forwards the key over TLS and
+  never persists it, a deliberate choice over a stored-key endpoint so the public
+  Space can never be made to spend the key's budget.
 - **Diagnosis discipline:** the cause was confirmed from the actual run logs
   (connection vs auth), not guessed — the same isolation approach as the earlier
   incidents.
