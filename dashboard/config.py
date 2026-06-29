@@ -8,7 +8,7 @@ Note: DATA_DIR removed 2026-05-17 - dashboard now reads from Supabase
 # These MUST match the MS Form's "Which section…" dropdown values EXACTLY — the
 # dashboard's Excel export is pasted into the Form spreadsheet, and a non-matching
 # section value fails the Form's validation (Gemma, 2026-06). Verified against
-# agent_draft/ERPNewsletterSubmissions_June.xlsx. The en-dashes in the Research
+# experiments/agent_draft/ERPNewsletterSubmissions_June.xlsx. The en-dashes in the Research
 # label are the Form's official punctuation, so they're required here.
 CATEGORY_LABELS = {
     "teacher_rrd": "Teacher recruitment, retention and development",

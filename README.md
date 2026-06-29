@@ -117,7 +117,7 @@ Python · Supabase/Postgres · scikit-learn · sentence-transformers · FastAPI 
 | `docs/decisions/` | Engineering decisions, model card, incident write-ups, threat model, lifecycle notes |
 | `notebooks/` | Modelling, evaluation, drift, SHAP, and analysis notebooks |
 | `paper/` | Research manuscript and write-up material |
-| `agent_draft/` | Experimental newsletter-drafting agent trials + a construct-validity finding for the paper |
+| `experiments/agent_draft/` | Experimental newsletter-drafting agent trials + a construct-validity finding for the paper |
 
 ---
 
