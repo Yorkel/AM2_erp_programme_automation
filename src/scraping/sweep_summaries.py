@@ -147,11 +147,11 @@ def main() -> int:
     # Build a single Anthropic client and reuse it across all calls (cheaper +
     # prompt-cache friendly). Probe connectivity once so a total Claude outage
     # fails quickly instead of retrying every enrichment call for every row.
-    from anthropic import Anthropic
-    probe_client = Anthropic(max_retries=1)
+    from src.inference.anthropic_client import make_anthropic_client
+    probe_client = make_anthropic_client(1)
     if not _claude_available(probe_client):
         return 1
-    ant_client = Anthropic(max_retries=5)
+    ant_client = make_anthropic_client(5)
 
     n_sum_ok = 0
     n_sum_fail = 0

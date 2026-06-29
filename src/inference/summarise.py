@@ -213,8 +213,8 @@ def summarise_article(*, title: str, text: str, category: str | None = None,
     """Generate one summary. Reuses `few_shot` and `client` across calls if
     passed (saves the train.csv reload + the SDK init)."""
     if client is None:
-        from anthropic import Anthropic
-        client = Anthropic(max_retries=5)   # picks up ANTHROPIC_API_KEY from env
+        from src.inference.anthropic_client import make_anthropic_client
+        client = make_anthropic_client(5)   # IPv4-forced; picks up ANTHROPIC_API_KEY
 
     if few_shot is None:
         few_shot = _load_few_shot_examples()
@@ -272,8 +272,8 @@ def extract_topic_sentence(*, title: str, text: str,
     if len(body) < 200:        # no real article body to quote — use the title
         return title_fallback
     if client is None:
-        from anthropic import Anthropic
-        client = Anthropic(max_retries=5)   # picks up ANTHROPIC_API_KEY from env
+        from src.inference.anthropic_client import make_anthropic_client
+        client = make_anthropic_client(5)   # IPv4-forced; picks up ANTHROPIC_API_KEY
 
     user = (
         f"TITLE: {title}\n\nARTICLE:\n{body[:6000]}\n\n"
@@ -340,8 +340,8 @@ def tag_article(*, title: str, text: str, model: str = DEFAULT_MODEL,
     """
     import json
     if client is None:
-        from anthropic import Anthropic
-        client = Anthropic(max_retries=5)
+        from src.inference.anthropic_client import make_anthropic_client
+        client = make_anthropic_client(5)
 
     body_truncated = " ".join((text or "").split()[:TEXT_TRUNCATE_WORDS])
     user_prompt = f"TITLE: {title}\n\nTEXT: {body_truncated}"
@@ -390,8 +390,8 @@ def summarise_batch(items: list[dict], *, model: str = DEFAULT_MODEL,
     Reuses the same client + few-shot examples across the batch so prompt
     caching kicks in from the 2nd article onwards.
     """
-    from anthropic import Anthropic
-    client = Anthropic()
+    from src.inference.anthropic_client import make_anthropic_client
+    client = make_anthropic_client()
     few_shot = _load_few_shot_examples(seed=seed)
 
     out = []

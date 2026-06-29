@@ -88,8 +88,8 @@ def main() -> int:
 
     ant_client = None
     if not args.dry_run:
-        from anthropic import Anthropic
-        ant_client = Anthropic(max_retries=5)
+        from src.inference.anthropic_client import make_anthropic_client
+        ant_client = make_anthropic_client(5)
 
     candidates = _fetch_candidates(client, args.lookback_days)
     if args.limit:
