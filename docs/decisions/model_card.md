@@ -53,7 +53,7 @@ classifier is deliberately scoped to the 6 it can learn from the published data.
 ## Metrics
 - **Validation macro F1: 0.750** (stratified 85/15 split).
 - **Held-out macro F1: 0.725**, bootstrap 95% CI **[0.644, 0.796]** (unseen
-  issues 105–114, leakage-free; NB11/NB14). This is the headline, most rigorous
+  issues 105–113, leakage-free; NB11/NB14). This is the headline, most rigorous
   number.
 - **Top-2 accuracy: 0.879** (the model is used as a top-2 suggester).
 - **Real-world weighted F1: 0.630** on 264 manually-labelled production articles
