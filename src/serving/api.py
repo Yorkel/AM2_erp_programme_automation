@@ -104,6 +104,38 @@ def health() -> HealthResponse:
     )
 
 
+@app.get("/claude_probe")
+def claude_probe() -> dict:
+    """One-off reachability probe: can THIS host reach api.anthropic.com?
+
+    Decides whether the HF Space is a viable host for Claude enrichment
+    (incident 2026-06-29: GitHub runners cannot connect to Anthropic). Needs
+    no API key and no anthropic SDK — a plain HTTPS request distinguishes
+    reachability from a network block:
+      - any HTTP response back (e.g. 401 unauthenticated) → host CAN reach Claude
+      - a connection error → egress to api.anthropic.com is blocked from here
+        (the same failure the runner hits).
+    """
+    import urllib.error
+    import urllib.request
+
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=b"{}",
+        method="POST",
+        headers={"content-type": "application/json"},
+    )
+    try:
+        urllib.request.urlopen(req, timeout=15)
+        return {"reachable": True, "detail": "unexpected 2xx"}
+    except urllib.error.HTTPError as e:
+        # Got an HTTP status (401/400/...) → the host reached Anthropic fine.
+        return {"reachable": True, "status": e.code}
+    except urllib.error.URLError as e:
+        # No HTTP response at all → connection to the host is blocked.
+        return {"reachable": False, "error": str(e.reason)}
+
+
 @app.post("/predict", response_model=PredictResponse)
 def predict(request: PredictRequest) -> PredictResponse:
     if not request.articles:

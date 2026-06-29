@@ -64,11 +64,24 @@ def load_classified_articles(min_week: int | None = None) -> pd.DataFrame:
     `min_week` lets a page narrow to recent weeks; pass None to fetch all.
     """
     client = get_client()
-    q = client.table("v_dashboard").select("*")
-    if min_week is not None:
-        q = q.gte("week_number", min_week)
-    resp = q.execute()
-    df = pd.DataFrame(resp.data or [])
+    # Page through the view: PostgREST caps a single response at 1000 rows, so
+    # a bare .execute() silently dropped the oldest articles once v_dashboard
+    # passed 1000 rows (e.g. "search all weeks" missing old items). Loop in
+    # 1000-row pages until a short page signals the end. Matches the pagination
+    # in src/monitoring/pipeline_health.py.
+    PAGE = 1000
+    rows: list[dict] = []
+    off = 0
+    while True:
+        q = client.table("v_dashboard").select("*")
+        if min_week is not None:
+            q = q.gte("week_number", min_week)
+        batch = q.range(off, off + PAGE - 1).execute().data or []
+        rows.extend(batch)
+        if len(batch) < PAGE:
+            break
+        off += PAGE
+    df = pd.DataFrame(rows)
     if df.empty:
         return df
     # Ensure week_number is integer (Supabase may return as int or float depending)
