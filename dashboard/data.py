@@ -108,10 +108,21 @@ def week_processing_status() -> dict:
             .data
             or []
         )
+        # Only check whether THIS week's article urls are classified. A bare
+        # select on classify_newsletter is capped at 1000 rows by PostgREST, so
+        # once the table passed 1000 rows it silently dropped classified urls
+        # and the banner cried "still processing" for already-classified articles
+        # (e.g. the 2 Sutton Trust items, 2026-06-29). Filtering to the week's
+        # urls returns at most ~50 rows, never hits the cap, and scales.
+        week_urls = [a["url"] for a in arts]
         classified = {
             r["url"]
-            for r in (client.table("classify_newsletter").select("url").execute().data or [])
-        }
+            for r in (
+                client.table("classify_newsletter")
+                .select("url").in_("url", week_urls).execute().data
+                or []
+            )
+        } if week_urls else set()
         unclassified = sum(1 for a in arts if a["url"] not in classified)
         blank_summary = sum(1 for a in arts if not clean_text(a.get("summary")))
         return {
