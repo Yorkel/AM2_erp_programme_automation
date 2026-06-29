@@ -29,21 +29,31 @@ runs on the same runner — so it recurred weekly and was rescued manually each 
   0 unclassified (classification fine); they show in Triage but unenriched.
 - Health check workflow concluded **failure**; scrape + classify concluded success.
 
-## Root cause (confirmed from run logs)
+## Root cause — what the logs confirm, and what stays a hypothesis
 Pulled from the failed health-check run (GitHub Actions API, run 28357314531):
 ```
 ERROR: Claude unreachable before sweep: APIConnectionError: Connection error.
   needing summary: 84
 UNHEALTHY: 0 unclassified, 51 blank summaries this week — self-heal did not fully recover.
 ```
-- It is a **connection** failure, **not** authentication — the API key is present
-  (`ANTHROPIC_API_KEY: ***`).
-- The same runner reaches the HF Space and Supabase, so general egress works.
-  **Only `api.anthropic.com` is unreachable from GitHub's runners** — the classic
-  signature of a broken IPv6 route (the runner resolves Anthropic to an IPv6
-  address it cannot reach) and/or Anthropic refusing GitHub's shared CI IP ranges.
-- The dev container and Streamlit Cloud both reach Claude fine, which localises the
-  fault to the GitHub runner environment, not the key, account, or Anthropic itself.
+**Confirmed from the logs:**
+- It is a **connection** failure, **not** authentication — `APIConnectionError`,
+  never a 401/403, and the API key is present (`ANTHROPIC_API_KEY: ***`). A
+  connection error means no HTTP response ever came back; an auth error would be
+  an HTTP response. Different layers.
+- The fault is **isolated to the GitHub runner.** The same key reaches Claude
+  fine from the dev container and Streamlit Cloud, and the same runner reaches the
+  HF Space and Supabase. So it is not the key, the account, or Anthropic — it is
+  the runner's network path to `api.anthropic.com` specifically.
+
+**Not isolated (candidate causes, not confirmed):** which layer fails.
+Forcing IPv4 (below) ruled out a broken IPv6 route, which leaves a TLS-handshake
+or edge/WAF-level drop (Anthropic's API is fronted by Cloudflare, which can drop
+connections it judges automated) or a runner egress restriction as the likely
+causes. A blanket "Anthropic blocks GitHub's CI IP ranges" was an early
+hypothesis but is unlikely (many projects call the API from Actions) and was
+never proven. The fix routes around the failure rather than depending on which
+layer it is.
 
 ## Why it was hard to fix
 - The obvious safety nets don't help: **retries** (it failed for an hour on 16
@@ -78,10 +88,11 @@ check → inspect the log for `APIConnectionError` (gone = fixed; present = esca
 ## Outcome
 - ❌ **A4 (force IPv4) did NOT work.** The verification scrape on the A4 commit
   still logged `APIConnectionError: Connection error` on every Claude call
-  (tag_article, summary, and the sweep probe); the new articles came in blank.
-  So the cause is **not** IPv6 routing — it is a harder network block between
-  GitHub runners and `api.anthropic.com` (Anthropic refusing GitHub's shared CI
-  IP ranges, or a runner egress firewall). A4 is ruled out.
+  (tag_article, summary, and the sweep probe — note the probe is a *fast* connect,
+  so this is not a slow-call timeout); the new articles came in blank. So the
+  cause is **not** IPv6 routing — it is a connection-establishment failure at the
+  TLS/edge or egress layer (exact layer not isolated). A4 is ruled out; the
+  durable fix routes around the failure rather than depending on the precise cause.
 - ✅ **Resolution — a variant of C1 (route Claude via the HF Space).** The Space
   was the natural host: the runner *already* calls it for classification every
   week (so runner→Space is proven), and `/claude_probe` confirmed Space→Claude
