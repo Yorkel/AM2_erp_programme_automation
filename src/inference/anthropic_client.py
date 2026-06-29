@@ -13,17 +13,31 @@ Usage:  client = make_anthropic_client(max_retries=5)
 """
 from __future__ import annotations
 
+import os
+
 import httpx
 from anthropic import Anthropic
 
 
 def make_anthropic_client(max_retries: int = 5) -> Anthropic:
     """Anthropic client pinned to IPv4 (works around the GitHub-runner IPv6
-    connection failure). Picks up ANTHROPIC_API_KEY from the environment."""
+    connection failure). Picks up ANTHROPIC_API_KEY from the environment.
+
+    When the runner routes Claude through the HF Space proxy (ANTHROPIC_BASE_URL),
+    a PROXY_TOKEN in the environment is sent as the `x-proxy-token` header so the
+    proxy accepts the request and rejects anyone else (open-relay guard). Calling
+    Anthropic directly (no proxy) just sends an extra header it ignores — harmless.
+    """
     http_client = httpx.Client(
         # local_address forces the socket to bind IPv4, so the connection can't
         # try an unreachable IPv6 route. retries handles transient connect drops.
         transport=httpx.HTTPTransport(local_address="0.0.0.0", retries=2),
         timeout=httpx.Timeout(60.0, connect=15.0),
     )
-    return Anthropic(max_retries=max_retries, http_client=http_client)
+    proxy_token = os.environ.get("PROXY_TOKEN")
+    default_headers = {"x-proxy-token": proxy_token} if proxy_token else None
+    return Anthropic(
+        max_retries=max_retries,
+        http_client=http_client,
+        default_headers=default_headers,
+    )

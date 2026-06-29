@@ -136,7 +136,13 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
+!.env.example
 .envrc
+# Secret stores (Streamlit / local secrets)
+.streamlit/secrets.toml
+secrets.toml
+*.secrets.toml
 .venv
 env/
 venv/

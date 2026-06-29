@@ -58,6 +58,8 @@ jobs:
           # Route Claude through the HF Space (runner cannot reach Anthropic —
           # incident 2026-06-29). SDK reads this and posts to {url}/v1/messages.
           ANTHROPIC_BASE_URL: https://yorkel-erp-classifier.hf.space
+          # Shared secret the Space proxy checks, so only this pipeline can use it.
+          PROXY_TOKEN: ${{ secrets.PROXY_TOKEN }}
         run: python -m src.scraping.sweep_summaries
 
       # ── Verify (this step is the alarm: non-zero exit → GitHub failure email) ──

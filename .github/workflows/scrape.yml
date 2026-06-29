@@ -72,6 +72,8 @@ jobs:
           # the runner itself cannot (incident 2026-06-29). The anthropic SDK
           # picks up this base_url automatically and posts to {url}/v1/messages.
           ANTHROPIC_BASE_URL: https://yorkel-erp-classifier.hf.space
+          # Shared secret the Space proxy checks, so only this pipeline can use it.
+          PROXY_TOKEN: ${{ secrets.PROXY_TOKEN }}
         run: python -m src.scraping.run --since-last-run
 
       - name: Sweep null summaries + tags (safety net)
@@ -88,6 +90,8 @@ jobs:
           # the runner itself cannot (incident 2026-06-29). The anthropic SDK
           # picks up this base_url automatically and posts to {url}/v1/messages.
           ANTHROPIC_BASE_URL: https://yorkel-erp-classifier.hf.space
+          # Shared secret the Space proxy checks, so only this pipeline can use it.
+          PROXY_TOKEN: ${{ secrets.PROXY_TOKEN }}
         run: python -m src.scraping.sweep_summaries
 
       - name: Summary
