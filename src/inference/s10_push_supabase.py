@@ -6,7 +6,7 @@ Upserts results to the classify_newsletter table.
 Uses URL as unique key — re-running won't create duplicates.
 Saves a per-week CSV locally for historical tracking.
 
-Input:  data/modelling/classified_articles.csv (from s08_predict)
+Input:  data/modelling/classified_articles.csv (from classify_via_api)
 Output: Supabase classify_newsletter table
         data/modelling/weekly/week_N_classified.csv
 """
@@ -40,7 +40,7 @@ def main():
         return
 
     if not INPUT_CSV.exists():
-        print(f"  ERROR: {INPUT_CSV} not found. Run s08_predict.py first.")
+        print(f"  ERROR: {INPUT_CSV} not found. Run classify_via_api first.")
         return
 
     client = create_client(url, key)

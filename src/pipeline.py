@@ -8,11 +8,11 @@ Runs the pipeline in one of three modes.
 
   python src/pipeline.py --inference
     Weekly inference from Supabase:
-    s07 pull from Supabase → s08 classify → s09 monitor
+    pull from Supabase → classify (via deployed classifier API) → monitor
 
   python src/pipeline.py --classify-only
     Classify existing local data (skip Supabase pull):
-    s08 classify → s09 monitor
+    classify (via deployed classifier API) → monitor
 
 Run from the project root.
 """

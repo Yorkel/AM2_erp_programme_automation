@@ -1,3 +1,9 @@
+# ⚠️ LEGACY — NOT the current production target.
+# The live classifier API runs on a Hugging Face Space (Docker), built from the
+# same repo-root Dockerfile. This Render config is kept only as
+# infrastructure-as-code evidence from the earlier Render deployment; the Render
+# service is suspended. See docs/deployment/huggingface_spaces_setup.md.
+#
 # render.yaml — Render deployment config (Infrastructure as Code).
 #
 # Defines the AM2 classifier API as a Render Web Service built from the

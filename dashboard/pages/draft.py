@@ -23,7 +23,6 @@ from dashboard.data import (
     record_summary,
 )
 from src.inference.summarise import summarise_article
-from src.inference.summarise import summarise_article
 
 
 def _category_of(art: dict) -> str | None:
