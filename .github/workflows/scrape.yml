@@ -1,21 +1,25 @@
 name: Scrape sources → articles
 
 on:
-  # Twice a week, matching the newsletter cadence (decide Tuesday, publish Friday
-  # 11am, dashboard resets Monday 06:17 UTC):
+  # DAILY on weekdays — needed because RSS feeds only hold the latest few items
+  # (e.g. Schools Week's feed shows ~3). A twice-weekly cadence let high-volume
+  # sources, and the Thursday publishing peak, roll off the feed before being
+  # scraped, so articles were silently lost. Daily capture catches each day's
+  # items before they cycle out.
   #   - MONDAY  → triggered BY the "Weekly curator reset" finishing, so the scrape
-  #     is GUARANTEED to run after the reset (no fragile cron timing). Curators
-  #     then start Monday with a fresh week already populated.
-  #   - TUESDAY → cron top-up before curators lock content Tuesday morning.
-  # GitHub Actions cron is UTC; 02:23 UTC = 03:23 UK (BST). The off-peak slot and
-  # the :23 minute dodge the free-tier peak / top-of-hour skips. The downstream
-  # chain (classify → drift → fairness) follows via workflow_run; the scraper is
-  # --since-last-run incremental, so the Tuesday run just ingests the delta.
+  #     is GUARANTEED to run after the reset (no fragile cron timing).
+  #   - TUE–FRI → cron, 02:23 UTC (03:23 UK BST), off-peak + :23 to dodge free-tier
+  #     skips. (Weekends are low-volume, so no Sat/Sun run.)
+  # Articles are CAPTURED daily but only SURFACE on the dashboard as a complete
+  # Tue→Mon week (the UI shows the most-recently-completed week), so daily scraping
+  # fills the week's bucket without changing the curators' one-week-at-a-time view.
+  # Downstream classify → drift → fairness follows via workflow_run; the scraper is
+  # --since-last-run incremental, so each daily run just ingests that day's delta.
   workflow_run:
     workflows: ["Weekly curator reset"]   # Monday: fire right after the reset
     types: [completed]
   schedule:
-    - cron: '23 2 * * 2'                   # Tuesday 02:23 UTC = 03:23 UK (BST)
+    - cron: '23 2 * * 2-5'                 # Tue–Fri 02:23 UTC = 03:23 UK (BST)
   workflow_dispatch:                       # manual trigger from the Actions tab
 
 jobs:
