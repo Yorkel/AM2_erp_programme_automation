@@ -18,7 +18,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 import numpy as np
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 
@@ -134,6 +134,50 @@ def claude_probe() -> dict:
     except urllib.error.URLError as e:
         # No HTTP response at all → connection to the host is blocked.
         return {"reachable": False, "error": str(e.reason)}
+
+
+@app.post("/v1/messages")
+async def anthropic_proxy(request: Request) -> Response:
+    """Transparent proxy to api.anthropic.com.
+
+    Lets callers that cannot reach Anthropic directly (the GitHub Actions
+    runner — incident 2026-06-29) route Claude calls through this Space, which
+    CAN reach it (confirmed via /claude_probe). The caller's API key arrives in
+    the x-api-key header, is forwarded as-is, and is NEVER stored or logged
+    here. Optionally gated: if PROXY_TOKEN is set in the Space environment, the
+    caller must send a matching x-proxy-token header (locks it to your runner).
+    """
+    import os
+    import urllib.error
+    import urllib.request
+
+    expected = os.environ.get("PROXY_TOKEN")
+    if expected and request.headers.get("x-proxy-token") != expected:
+        return Response(content=b'{"error":"forbidden"}', status_code=403,
+                        media_type="application/json")
+
+    body = await request.body()
+    headers = {"content-type": "application/json"}
+    for h in ("x-api-key", "anthropic-version", "anthropic-beta"):
+        v = request.headers.get(h)
+        if v:
+            headers[h] = v
+
+    upstream = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages", data=body, method="POST",
+        headers=headers,
+    )
+    try:
+        with urllib.request.urlopen(upstream, timeout=120) as r:
+            return Response(content=r.read(), status_code=r.status,
+                            media_type="application/json")
+    except urllib.error.HTTPError as e:
+        return Response(content=e.read(), status_code=e.code,
+                        media_type="application/json")
+    except urllib.error.URLError as e:
+        return Response(
+            content=f'{{"error":"upstream unreachable: {e.reason}"}}'.encode(),
+            status_code=502, media_type="application/json")
 
 
 @app.post("/predict", response_model=PredictResponse)

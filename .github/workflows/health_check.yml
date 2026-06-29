@@ -55,6 +55,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Route Claude through the HF Space (runner cannot reach Anthropic —
+          # incident 2026-06-29). SDK reads this and posts to {url}/v1/messages.
+          ANTHROPIC_BASE_URL: https://yorkel-erp-classifier.hf.space
         run: python -m src.scraping.sweep_summaries
 
       # ── Verify (this step is the alarm: non-zero exit → GitHub failure email) ──
