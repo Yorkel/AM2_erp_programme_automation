@@ -19,9 +19,9 @@ import pandas as pd
 from dashboard.config import source_label
 from dashboard.data import (
     delete_decision, fetch_article_text, is_authenticated, load_decisions,
-    record_decision, record_topic_sentence,
+    record_decision, record_summary, record_topic_sentence,
 )
-from src.inference.summarise import extract_topic_sentence
+from src.inference.summarise import extract_topic_sentence, summarise_article
 
 
 def _clean(v):
@@ -341,6 +341,42 @@ def _render_triage_card(row: dict):
                         body = fetch_article_text(url)
                         new_ts = extract_topic_sentence(title=title, text=body)
                     record_topic_sentence(url, new_ts)
+                    st.rerun(scope="fragment")
+
+        # AI summary — same Claude-backed generation as the Draft page, surfaced
+        # here so a curator can fill a blank summary at review time. The scheduled
+        # pipeline can leave summaries blank when the GitHub runner cannot reach
+        # Claude (incident 2026-06-29); the dashboard runs on Streamlit Cloud,
+        # which CAN reach Claude, so generating from here always works. The
+        # expander opens by default when there's no summary, to prompt the action.
+        summary = _clean(row.get("summary"))
+        with st.expander("📝 Summary", expanded=not summary):
+            if summary:
+                st.markdown(
+                    f"<div style='background:#eef;border-left:3px solid #5b8def;"
+                    f"padding:8px 12px;'>{summary}</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    "<div style='background:#fff4f4;border-left:3px solid #e0a;"
+                    "padding:8px 12px;color:#666;font-style:italic;'>"
+                    "No summary yet — generate one below.</div>",
+                    unsafe_allow_html=True,
+                )
+            if auth:
+                if st.button(
+                    "✎ Generate summary" if not summary else "✎ Regenerate summary",
+                    key=f"summary_{url}", use_container_width=True,
+                    help="AI writes a 1-2 sentence summary from the article "
+                         "(runs from the dashboard, which can reach Claude).",
+                ):
+                    with st.spinner("Summarising via Claude…"):
+                        body = fetch_article_text(url)
+                        new_summary = summarise_article(
+                            title=title, text=body, category=row.get("top1"),
+                        )
+                    record_summary(url, new_summary)
                     st.rerun(scope="fragment")
 
         # Keep/Reject only while Pending. Once decided, the card flips IN PLACE to
