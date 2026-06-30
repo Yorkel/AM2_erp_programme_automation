@@ -4,7 +4,7 @@ Page 3 - Newsletter Draft.
 Shows every categorised article (action ∈ {accept_top1, accept_top2, manual}),
 grouped by section. Curator can:
   - edit each summary in place + Save
-  - click Generate summary to re-draft via Claude
+  - click Generate summary to re-draft via AI
   - click × in the top-right of a card to remove from the draft (sets reject)
   - download the lot as Excel (TITLE / SOURCE / URL / SUMMARY / SECTION / DATE)
   - leave free-text feedback at the bottom (→ curator_feedback.suggestions)
@@ -303,7 +303,7 @@ def render(df):
                         "✎ Generate", key=f"gen_{art_url}", disabled=not auth,
                         help="AI writes a 1-2 sentence summary from the article.",
                     ):
-                        with st.spinner("Summarising via Claude…"):
+                        with st.spinner("Summarising…"):
                             body = fetch_article_text(art_url)
                             new_summary = summarise_article(
                                 title=title, text=body,

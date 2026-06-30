@@ -39,6 +39,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Pre-warm Claude proxy Space
+        continue-on-error: true
+        env:
+          ANTHROPIC_BASE_URL: https://yorkel-erp-classifier.hf.space
+        run: |
+          BASE="${ANTHROPIC_BASE_URL%/}"
+          curl -fsS --max-time 150 --retry 4 --retry-all-errors --retry-delay 15 \
+            "$BASE/health" \
+            && echo "Proxy Space warmed." \
+            || echo "Proxy Space warm-up did not land."
+          curl -fsS --max-time 30 --retry 2 --retry-all-errors --retry-delay 10 \
+            "$BASE/claude_probe" \
+            || echo "Claude probe did not land; summary sweep has OpenAI/local fallback."
+
       # ── Self-heal (best-effort; both are idempotent no-ops when clean) ──
       - name: Self-heal — classify any stragglers
         continue-on-error: true
@@ -55,6 +69,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # Route Claude through the HF Space (runner cannot reach Anthropic —
           # incident 2026-06-29). SDK reads this and posts to {url}/v1/messages.
           ANTHROPIC_BASE_URL: https://yorkel-erp-classifier.hf.space

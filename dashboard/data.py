@@ -149,6 +149,61 @@ def week_processing_status() -> dict:
         return {}
 
 
+def generate_missing_article_summaries(limit: int = 25) -> dict:
+    """Fill this week's blank article-level summaries from the dashboard.
+
+    Writes to `articles.summary`, not curator_decisions, because this is the
+    pipeline health field. Provider order is handled by summarise_article:
+    Claude -> OpenAI -> deterministic extractive fallback.
+    """
+    client = get_client()
+    since = _last_tuesday().isoformat()
+    rows = (
+        client.table("articles")
+        .select("id, url, title, text, text_clean, summary, article_date")
+        .gte("article_date", since)
+        .execute()
+        .data
+        or []
+    )
+    missing = [r for r in rows if not clean_text(r.get("summary"))]
+    selected = missing[:limit]
+
+    if not selected:
+        return {"since": since, "scanned": len(rows), "missing": 0, "ok": 0, "fail": 0}
+
+    from src.inference.summarise import summarise_article
+
+    ok = 0
+    fail = 0
+    errors: list[str] = []
+    for row in selected:
+        title = clean_text(row.get("title"))
+        body = clean_text(row.get("text")) or clean_text(row.get("text_clean"))
+        try:
+            summary = summarise_article(title=title, text=body, category=None)
+            client.table("articles").update({
+                "summary": summary,
+                "summary_generated_at": "now()",
+            }).eq("id", row["id"]).execute()
+            ok += 1
+        except Exception as e:
+            fail += 1
+            errors.append(f"{row.get('url')}: {type(e).__name__}: {e}")
+
+    load_classified_articles.clear()
+    week_processing_status.clear()
+    return {
+        "since": since,
+        "scanned": len(rows),
+        "missing": len(missing),
+        "attempted": len(selected),
+        "ok": ok,
+        "fail": fail,
+        "errors": errors[:5],
+    }
+
+
 @st.cache_data(ttl=60)
 def load_decisions() -> dict[str, dict]:
     """Return {url: {action, label, summary, summary_generated_at, decided_at, notes}}.

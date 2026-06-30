@@ -68,6 +68,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # Route Claude calls through the HF Space, which CAN reach Anthropic;
           # the runner itself cannot (incident 2026-06-29). The anthropic SDK
           # picks up this base_url automatically and posts to {url}/v1/messages.
@@ -86,6 +87,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # Route Claude calls through the HF Space, which CAN reach Anthropic;
           # the runner itself cannot (incident 2026-06-29). The anthropic SDK
           # picks up this base_url automatically and posts to {url}/v1/messages.

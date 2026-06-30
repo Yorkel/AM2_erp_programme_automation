@@ -1,11 +1,13 @@
 """
 summarise.py
 Generate 1-2 sentence editorial summaries of accepted newsletter articles
-using Claude. Called by the dashboard when the curator clicks "Generate
-Summary" on an accepted article (or in batch when assembling the draft).
+using Claude first, then OpenAI if Claude is unavailable. Called by the
+dashboard when the curator clicks "Generate Summary" on an accepted article
+(or in batch when assembling the draft).
 
-NOT part of the cron pipeline — we only want to pay for summaries of articles
-the curator has actually selected, not all 854/week.
+Used by the scrape/sweep enrichment jobs and by the dashboard's manual
+summary buttons. The functions are side-effect-free; callers decide whether to
+write the returned summary to `articles` or `curator_decisions`.
 
 Behaviour:
   - Reads 5 random anchor examples from data/modelling/train.csv to teach
@@ -13,6 +15,10 @@ Behaviour:
   - Calls Claude Haiku 4.5 with prompt caching: the system prompt + few-shot
     examples are cached, so each subsequent article costs ~$0.0003 instead
     of ~$0.0008.
+  - If Claude is unreachable and OPENAI_API_KEY is set, calls OpenAI as a
+    second provider.
+  - If both providers are unavailable, returns a deterministic extractive
+    fallback from the supplied article text, or "Summary unavailable".
   - Returns the generated summary as a plain string.
   - Has --dry-run mode that prints estimated cost without calling the API.
 
@@ -22,7 +28,9 @@ Cost reference (Haiku 4.5):
   → ~$0.0003-$0.0008 per article = ~$0.04 per typical 50-item newsletter
 
 Env:
-  ANTHROPIC_API_KEY — required (already in .env)
+  ANTHROPIC_API_KEY — preferred primary provider
+  OPENAI_API_KEY — optional fallback provider
+  OPENAI_SUMMARY_MODEL — optional override for the OpenAI fallback model
 """
 
 from __future__ import annotations
@@ -39,8 +47,11 @@ from dotenv import load_dotenv
 
 
 DEFAULT_MODEL = "claude-haiku-4-5"
+DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
 DEFAULT_MAX_TOKENS = 200
 DEFAULT_TEMPERATURE = 0.4   # slight variation but mostly deterministic
+PLACEHOLDER = "Summary unavailable"
+FALLBACK_SUMMARY_MAX_WORDS = 60
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 # Few-shot anchor source: the cleaned newsletter archive, where `description`
 # is the curator's editorial prose summary as published. NOT train.csv —
@@ -178,6 +189,16 @@ def _build_user_prompt(title: str, body: str, category: str | None) -> str:
     return "\n\n".join(parts)
 
 
+def _system_text(few_shot: list[dict]) -> str:
+    examples_text = "\n\n".join(
+        f"Example {i+1} (category: {ex.get('category', '')}):\n"
+        f"Article title: {ex['title']}\n"
+        f"Curator summary: {ex['summary']}"
+        for i, ex in enumerate(few_shot)
+    )
+    return SYSTEM_PROMPT + "\n\n--- Example summaries from past issues ---\n\n" + examples_text
+
+
 def _build_messages(article_title: str, article_body: str, article_category: str | None,
                     few_shot: list[dict]) -> tuple[list[dict], list[dict]]:
     """Return (system_messages, user_messages) ready for client.messages.create.
@@ -185,16 +206,10 @@ def _build_messages(article_title: str, article_body: str, article_category: str
     # The system block contains the instructions + the few-shot examples.
     # Marked cache_control so the second-onwards call within the 5-min window
     # gets the 90% input discount on this block.
-    examples_text = "\n\n".join(
-        f"Example {i+1} (category: {ex.get('category', '')}):\n"
-        f"Article title: {ex['title']}\n"
-        f"Curator summary: {ex['summary']}"
-        for i, ex in enumerate(few_shot)
-    )
     system = [
         {
             "type": "text",
-            "text": SYSTEM_PROMPT + "\n\n--- Example summaries from past issues ---\n\n" + examples_text,
+            "text": _system_text(few_shot),
             "cache_control": {"type": "ephemeral"},
         }
     ]
@@ -204,37 +219,154 @@ def _build_messages(article_title: str, article_body: str, article_category: str
     return system, user
 
 
+def _clip_words(text: str, max_words: int = FALLBACK_SUMMARY_MAX_WORDS) -> str:
+    """Collapse whitespace and clip to a readable dashboard-sized snippet."""
+    words = re.sub(r"\s+", " ", (text or "").strip()).split()
+    if len(words) <= max_words:
+        return " ".join(words)
+    return " ".join(words[:max_words]).rstrip(" ,;:") + "..."
+
+
+def _first_sentences(text: str, max_sentences: int = 2) -> str:
+    """Return the opening sentence(s), falling back to a word clip for fragments."""
+    cleaned = re.sub(r"\s+", " ", (text or "").strip())
+    if not cleaned:
+        return ""
+    sentences = [
+        s.strip()
+        for s in re.split(r"(?<=[.!?])\s+", cleaned)
+        if s.strip()
+    ]
+    if not sentences:
+        return _clip_words(cleaned)
+    return _clip_words(" ".join(sentences[:max_sentences]))
+
+
+def extractive_fallback_summary(*, title: str, text: str) -> str:
+    """Summary that requires no external model.
+
+    Used only when Claude/OpenAI are unavailable. It never fabricates: prefer the
+    article body, strip a duplicated title when text_clean was used, then return
+    the opening source sentence(s), clipped for dashboard display.
+    """
+    body = re.sub(r"\s+", " ", (text or "").strip())
+    if not body:
+        return PLACEHOLDER
+
+    clean_title = re.sub(r"\s+", " ", (title or "").strip())
+    if clean_title and body.lower().startswith(clean_title.lower()):
+        body = body[len(clean_title):].strip(" :-")
+
+    summary = _first_sentences(body)
+    if summary:
+        return summary
+    return _clip_words(clean_title) or PLACEHOLDER
+
+
+def _openai_summary_model(model: str | None = None) -> str:
+    return model or os.environ.get("OPENAI_SUMMARY_MODEL") or DEFAULT_OPENAI_MODEL
+
+
+def _clean_summary_result(result: str) -> str:
+    result = (result or "").strip()
+    if not result or _looks_like_refusal(result):
+        return PLACEHOLDER
+    return result
+
+
 # ─── Summarisation entry points ──────────────────────────────────────────────
 
-def summarise_article(*, title: str, text: str, category: str | None = None,
-                      few_shot: list[dict] | None = None,
-                      model: str = DEFAULT_MODEL,
-                      client=None) -> str:
-    """Generate one summary. Reuses `few_shot` and `client` across calls if
-    passed (saves the train.csv reload + the SDK init)."""
+def summarise_article_openai(*, title: str, text: str, category: str | None = None,
+                           few_shot: list[dict] | None = None,
+                           model: str | None = None,
+                           client=None) -> str:
+    """Generate one summary through OpenAI's Responses API.
+
+    This mirrors the Claude prompt and returns the same plain summary string so
+    callers can use it as a drop-in fallback.
+    """
     if client is None:
-        from src.inference.anthropic_client import make_anthropic_client
-        client = make_anthropic_client(5)   # IPv4-forced; picks up ANTHROPIC_API_KEY
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is not set")
+        from openai import OpenAI
+        client = OpenAI(timeout=60.0, max_retries=2)
 
     if few_shot is None:
         few_shot = _load_few_shot_examples()
 
-    system, messages = _build_messages(title, text, category, few_shot)
-    response = client.messages.create(
-        model=model,
-        max_tokens=DEFAULT_MAX_TOKENS,
-        temperature=DEFAULT_TEMPERATURE,
-        system=system,
-        messages=messages,
+    response = client.responses.create(
+        model=_openai_summary_model(model),
+        instructions=_system_text(few_shot),
+        input=_build_user_prompt(title, text, category),
+        max_output_tokens=DEFAULT_MAX_TOKENS,
     )
-    result = response.content[0].text.strip()
-    # Final-belts-and-braces guard: if Claude still returned an empty or
-    # obviously meta-response despite the no-refusal system prompt, fall
-    # back to a clean placeholder rather than leaking model meta-text into
-    # the dashboard.
-    if not result or _looks_like_refusal(result):
-        return "Summary unavailable"
-    return result
+    return _clean_summary_result(getattr(response, "output_text", ""))
+
+
+def summarise_article(*, title: str, text: str, category: str | None = None,
+                      few_shot: list[dict] | None = None,
+                      model: str = DEFAULT_MODEL,
+                      client=None,
+                      openai_client=None,
+                      openai_model: str | None = None,
+                      allow_openai_fallback: bool = True,
+                      allow_local_fallback: bool = True) -> str:
+    """Generate one summary.
+
+    Provider order is Claude -> OpenAI -> deterministic extractive fallback.
+    Passing `client` still reuses a Claude client across calls; passing
+    `openai_client` lets tests or batch callers reuse an OpenAI client too.
+    """
+    if few_shot is None:
+        few_shot = _load_few_shot_examples()
+
+    claude_error: Exception | None = None
+    if client is None and os.environ.get("ANTHROPIC_API_KEY"):
+        from src.inference.anthropic_client import make_anthropic_client
+        client = make_anthropic_client(5)   # IPv4/proxy-aware; picks up env vars
+
+    if client is not None:
+        try:
+            system, messages = _build_messages(title, text, category, few_shot)
+            response = client.messages.create(
+                model=model,
+                max_tokens=DEFAULT_MAX_TOKENS,
+                temperature=DEFAULT_TEMPERATURE,
+                system=system,
+                messages=messages,
+            )
+            return _clean_summary_result(response.content[0].text)
+        except Exception as e:
+            claude_error = e
+            print(
+                f"  Claude summary failed; trying fallback: {type(e).__name__}: {e}",
+                file=sys.stderr,
+            )
+    else:
+        claude_error = RuntimeError("ANTHROPIC_API_KEY is not set")
+
+    if allow_openai_fallback:
+        try:
+            return summarise_article_openai(
+                title=title,
+                text=text,
+                category=category,
+                few_shot=few_shot,
+                model=openai_model,
+                client=openai_client,
+            )
+        except Exception as e:
+            print(
+                f"  OpenAI summary fallback failed: {type(e).__name__}: {e}",
+                file=sys.stderr,
+            )
+
+    if allow_local_fallback:
+        return extractive_fallback_summary(title=title, text=text)
+
+    if claude_error is not None:
+        raise claude_error
+    raise RuntimeError("No summary provider was available")
 
 
 _TOPIC_SENTENCE_SYSTEM = (
@@ -267,7 +399,7 @@ def extract_topic_sentence(*, title: str, text: str,
     actually in the text — so the curator never sees a fabricated line or a bare
     "Summary unavailable". Curator feedback (Gemma, 2026-06): prefer the
     article's own words; defer to the title when there's nothing to extract."""
-    title_fallback = re.sub(r"\s+", " ", (title or "").strip()) or "Summary unavailable"
+    title_fallback = re.sub(r"\s+", " ", (title or "").strip()) or PLACEHOLDER
     body = (text or "").strip()
     if len(body) < 200:        # no real article body to quote — use the title
         return title_fallback
@@ -471,7 +603,7 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=None,
                         help="Seed for few-shot example sampling (reproducibility)")
     parser.add_argument("--dry-run", action="store_true",
-                        help="Estimate cost without calling Claude. Print and exit.")
+                        help="Estimate cost without calling a model. Print and exit.")
     parser.add_argument("--limit", type=int, default=None,
                         help="Only summarise the first N rows (testing)")
     args = parser.parse_args()

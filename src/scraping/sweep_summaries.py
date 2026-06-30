@@ -2,8 +2,11 @@
 sweep_summaries.py — idempotent safety-net for article summaries + tags.
 
 Finds every article in `articles` that has a NULL `summary` (or NULL
-`topic_tags`) and calls Claude to fill them in. Mirrors the
-`sweep_unclassified.py` pattern: same shape, predictable, no surprises.
+`topic_tags`) and calls Claude to fill them in. If Claude/the proxy is
+unreachable, summary rows try OpenAI next, then get a deterministic extractive
+fallback (or the accepted placeholder when there is no text), so health checks
+are not blocked by an external LLM outage. Mirrors the `sweep_unclassified.py` pattern: same shape,
+predictable, no surprises.
 
 Designed to run as a step in .github/workflows/scrape.yml AFTER the main
 scrape. Catches anything the scrape missed (Anthropic transient outage,
@@ -27,7 +30,9 @@ from supabase import create_client
 from src.inference.summarise import (
     DEFAULT_MODEL,
     extract_topic_sentence,
+    extractive_fallback_summary,
     summarise_article,
+    summarise_article_openai,
     tag_article,
 )
 
@@ -82,14 +87,99 @@ def _best_text(row: dict) -> str:
     return ""
 
 
+def _fallback_summary(row: dict) -> str:
+    return extractive_fallback_summary(
+        title=row.get("title") or "",
+        text=_best_text(row),
+    )
+
+
 def _needs_summary(row: dict) -> bool:
-    """A row needs a summary if it has none OR carries the 'Summary unavailable'
-    placeholder (retryable — finding 8), AND we actually have text to work with.
-    Without the usable-text guard the placeholder rows would be retried forever."""
+    """True when the row still needs a terminal summary value.
+
+    Blank rows are work even with no usable text: they should be written to the
+    accepted placeholder so health checks do not flag them forever. Existing
+    placeholders are only retryable when we have text that Claude/OpenAI/fallback can
+    turn into something better.
+    """
     s = (row.get("summary") or "").strip()
     if s and s != PLACEHOLDER:
         return False
-    return bool(_best_text(row))
+    has_text = bool(_best_text(row))
+    if s == PLACEHOLDER and not has_text:
+        return False
+    return True
+
+
+def _apply_fallback_summaries(client, rows: list[dict]) -> tuple[int, int]:
+    """Fill missing summaries without Claude. Returns (ok, fail)."""
+    ok = 0
+    fail = 0
+    generated_at = datetime.now(timezone.utc).isoformat()
+
+    for row in rows:
+        summary = _fallback_summary(row)
+        if not summary:
+            fail += 1
+            continue
+        try:
+            client.table("articles").update({
+                "summary": summary,
+                "summary_generated_at": generated_at,
+            }).eq("id", row["id"]).execute()
+            ok += 1
+        except Exception as e:
+            fail += 1
+            print(
+                f"  fallback summary failed for {row.get('url')}: "
+                f"{type(e).__name__}: {e}",
+                file=sys.stderr,
+            )
+
+    return ok, fail
+
+
+def _apply_openai_summaries(client, rows: list[dict]) -> tuple[int, int]:
+    """Fill missing summaries through OpenAI when Claude/proxy is down."""
+    ok = 0
+    fail = 0
+    generated_at = datetime.now(timezone.utc).isoformat()
+
+    for row in rows:
+        text = _best_text(row)
+        if not text:
+            summary = PLACEHOLDER
+        else:
+            try:
+                summary = summarise_article_openai(
+                    title=row.get("title") or "",
+                    text=text,
+                    category=None,
+                )
+            except Exception as e:
+                fail += 1
+                print(
+                    f"  OpenAI summary failed for {row.get('url')}: "
+                    f"{type(e).__name__}: {e}",
+                    file=sys.stderr,
+                )
+                continue
+
+        try:
+            client.table("articles").update({
+                "summary": summary,
+                "summary_generated_at": generated_at,
+            }).eq("id", row["id"]).execute()
+            ok += 1
+        except Exception as e:
+            fail += 1
+            print(
+                f"  OpenAI summary update failed for {row.get('url')}: "
+                f"{type(e).__name__}: {e}",
+                file=sys.stderr,
+            )
+
+    return ok, fail
 
 
 def main() -> int:
@@ -146,10 +236,31 @@ def main() -> int:
 
     # Build a single Anthropic client and reuse it across all calls (cheaper +
     # prompt-cache friendly). Probe connectivity once so a total Claude outage
-    # fails quickly instead of retrying every enrichment call for every row.
+    # can use OpenAI/local summary fallback instead of retrying every enrichment
+    # call for every row.
     from src.inference.anthropic_client import make_anthropic_client
     probe_client = make_anthropic_client(1)
     if not _claude_available(probe_client):
+        if os.environ.get("OPENAI_API_KEY"):
+            n_openai_ok, n_openai_fail = _apply_openai_summaries(
+                client, needing_summary
+            )
+            print(
+                "Claude unavailable; used OpenAI summaries: "
+                f"{n_openai_ok} ok / {n_openai_fail} fail"
+            )
+            if n_openai_ok > 0:
+                return 0
+
+        n_fallback_ok, n_fallback_fail = _apply_fallback_summaries(
+            client, needing_summary
+        )
+        print(
+            "Claude/OpenAI unavailable; used fallback summaries: "
+            f"{n_fallback_ok} ok / {n_fallback_fail} fail"
+        )
+        if n_fallback_ok > 0:
+            return 0
         return 1
     ant_client = make_anthropic_client(5)
 
@@ -172,16 +283,21 @@ def main() -> int:
         update: dict = {}
 
         if row["id"] in sum_ids:
-            try:
-                summary = summarise_article(
-                    title=title, text=text, category=None, client=ant_client,
-                )
-                update["summary"] = summary
+            if not text:
+                update["summary"] = PLACEHOLDER
                 update["summary_generated_at"] = datetime.now(timezone.utc).isoformat()
                 n_sum_ok += 1
-            except Exception as e:
-                n_sum_fail += 1
-                print(f"  summary failed for {row.get('url')}: {type(e).__name__}: {e}", file=sys.stderr)
+            else:
+                try:
+                    summary = summarise_article(
+                        title=title, text=text, category=None, client=ant_client,
+                    )
+                    update["summary"] = summary
+                    update["summary_generated_at"] = datetime.now(timezone.utc).isoformat()
+                    n_sum_ok += 1
+                except Exception as e:
+                    n_sum_fail += 1
+                    print(f"  summary failed for {row.get('url')}: {type(e).__name__}: {e}", file=sys.stderr)
 
         if row["id"] in tag_ids:
             tags = tag_article(title=title, text=text, client=ant_client)
@@ -223,7 +339,7 @@ def main() -> int:
     had_work = bool(needing_summary or needing_tags or needing_topic)
     made_progress = (n_sum_ok > 0) or (n_tag_ok > 0) or (n_topic_ok > 0)
     if had_work and not made_progress:
-        print("ERROR: sweep had work but made no progress — Claude likely unreachable", file=sys.stderr)
+        print("ERROR: sweep had work but made no progress — summary providers likely unreachable", file=sys.stderr)
         return 1
     return 0
 

@@ -326,10 +326,10 @@ def _backfill_bodies(items: list, source: str, *, dry_run: bool = False) -> None
 
 def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> None:
     """Populate Article.summary + .geographic_focus + .topic_tags for each kept
-    item via Claude. Mutates in place.
+    item via model enrichment. Mutates in place.
 
-    Two Claude calls per article — one for the curator-voice summary
-    (style-anchored on few-shot examples), one for the structured tags.
+    Summary generation tries Claude, then OpenAI/local fallback; structured tags
+    still use Claude.
     Cheap (~$0.001/article with prompt caching). Failures are logged and
     skipped — a single bad article never blocks the scrape.
 
@@ -354,13 +354,13 @@ def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> N
         title = item.title or ""
         # Use only item.text (real body). NEVER fall back to text_clean —
         # it's a noisy 80-word truncation that often starts with nav cruft
-        # ("HOME > Blog >"). If body is empty, the Claude prompt now returns
+        # ("HOME > Blog >"). If body is empty, summarise_article returns
         # "Summary unavailable" rather than fabricating from nothing.
         body = item.text or ""
         if not item.summary:
             try:
-                # Pass only item.text (the real body). If empty, Claude
-                # returns "Summary unavailable" — better than summarising
+                # Pass only item.text (the real body). If empty, summary
+                # generation returns "Summary unavailable" — better than summarising
                 # from text_clean which is a noisy 80-word truncation that
                 # often starts with nav like "HOME > Blog >".
                 item.summary = summarise_article(
@@ -418,7 +418,7 @@ def main():
                              "scrape_runs row, or 7 days ago if no previous run exists. "
                              "Used by the cron workflow for incremental fetches.")
     parser.add_argument("--no-summaries", action="store_true",
-                        help="Skip Claude enrichment for kept articles. Body backfill still runs; "
+                        help="Skip AI enrichment for kept articles. Body backfill still runs; "
                              "summary/tag/topic-sentence sweep can run separately.")
     args = parser.parse_args()
 

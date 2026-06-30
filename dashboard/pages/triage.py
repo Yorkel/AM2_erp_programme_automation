@@ -360,11 +360,11 @@ def _render_triage_card(row: dict):
                     record_topic_sentence(url, new_ts)
                     st.rerun(scope="fragment")
 
-        # AI summary — same Claude-backed generation as the Draft page, surfaced
+        # AI summary — same AI-backed generation as the Draft page, surfaced
         # here so a curator can fill a blank summary at review time. The scheduled
         # pipeline can leave summaries blank when the GitHub runner cannot reach
-        # Claude (incident 2026-06-29); the dashboard runs on Streamlit Cloud,
-        # which CAN reach Claude, so generating from here always works. The
+        # Claude (incident 2026-06-29). Generation now falls back to OpenAI
+        # and then to an extractive source-text summary. The
         # expander opens by default when there's no summary, to prompt the action.
         summary = _clean(row.get("summary"))
         with st.expander("📝 Summary", expanded=not summary):
@@ -388,9 +388,9 @@ def _render_triage_card(row: dict):
                 "✎ Generate summary" if not summary else "✎ Regenerate summary",
                 key=f"summary_{url}", use_container_width=True, disabled=not auth,
                 help="AI writes a 1-2 sentence summary from the article "
-                     "(runs from the dashboard, which can reach Claude).",
+                     "(falls back to OpenAI/source text if Claude is unavailable).",
             ):
-                with st.spinner("Summarising via Claude…"):
+                with st.spinner("Summarising…"):
                     body = fetch_article_text(url)
                     new_summary = summarise_article(
                         title=title, text=body, category=row.get("top1"),
