@@ -150,6 +150,7 @@ backups/
 # Personal / assessment material — never commit to the public portfolio repo
 AM2 now/
 x_assessment/
+DECIDING WHAT TO MEASURE/
 .venv
 env/
 venv/
