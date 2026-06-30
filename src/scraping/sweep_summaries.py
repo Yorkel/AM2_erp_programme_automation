@@ -24,8 +24,6 @@ import os
 import sys
 from datetime import datetime, timezone
 
-from dotenv import load_dotenv
-from supabase import create_client
 
 from src.inference.summarise import (
     DEFAULT_MODEL,
@@ -183,6 +181,9 @@ def _apply_openai_summaries(client, rows: list[dict]) -> tuple[int, int]:
 
 
 def main() -> int:
+    from dotenv import load_dotenv
+    from supabase import create_client
+
     load_dotenv()
     sup_url = os.environ.get("SUPABASE_URL")
     sup_key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_ANON_KEY")

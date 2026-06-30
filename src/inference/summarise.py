@@ -42,8 +42,6 @@ import re
 import sys
 from pathlib import Path
 
-import pandas as pd
-from dotenv import load_dotenv
 
 
 DEFAULT_MODEL = "claude-haiku-4-5"
@@ -152,6 +150,7 @@ def _load_few_shot_examples(n: int = N_FEW_SHOT_EXAMPLES, seed: int | None = Non
     the Streamlit Cloud / GH Actions path.
     """
     if FEW_SHOT_CSV.exists():
+        import pandas as pd
         df = pd.read_csv(FEW_SHOT_CSV)
         df = df.dropna(subset=["title", "description"])
         df = df[df["description"].str.split().str.len() >= 10]
@@ -592,6 +591,9 @@ def main() -> int:
       python -m src.inference.summarise --input <csv> --dry-run
       python -m src.inference.summarise --input <csv> --output <csv>
     """
+    from dotenv import load_dotenv
+    import pandas as pd
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="LLM summarise accepted newsletter articles.")
