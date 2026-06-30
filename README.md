@@ -20,6 +20,18 @@ Before automation, newsletter production involved roughly 7 hours per week of ma
 
 ---
 
+
+## Portfolio snapshot
+
+- **Problem solved:** reduced a roughly 7-hour weekly newsletter-production workflow into a monitored scraping, classification, enrichment, and curator-review pipeline.
+- **My role:** designed and implemented the data pipeline, classifier service, Streamlit dashboard, monitoring jobs, deployment path, and governance documentation.
+- **Production status:** live internal system; weekday ingestion feeds a weekly curator cycle, with human review before publication.
+- **Headline evidence:** held-out macro F1 0.725, top-2 accuracy 0.879, production-feedback loop, drift/fairness monitoring, incident records, model card, and threat model.
+- **Start here:** [`docs/decisions/model_card.md`](docs/decisions/model_card.md), [`docs/decisions/threat_model_and_security.md`](docs/decisions/threat_model_and_security.md), [`docs/decisions/evaluation_findings.md`](docs/decisions/evaluation_findings.md), and [`docs/deployment/huggingface_spaces_setup.md`](docs/deployment/huggingface_spaces_setup.md).
+- **Next improvements:** add API rate limiting/input-length bounds, prompt-injection filtering for LLM enrichment, and a small set of deeper API/dashboard tests.
+
+---
+
 ## What it does
 
 ```text
@@ -115,9 +127,6 @@ Python · Supabase/Postgres · scikit-learn · sentence-transformers · FastAPI 
 | `models/runs/` | Versioned model artefacts and the active-model pointer |
 | `.github/workflows/` | Scheduled scraping, classification, monitoring, reset, and backup workflows |
 | `docs/decisions/` | Engineering decisions, model card, incident write-ups, threat model, lifecycle notes |
-| `notebooks/` | Modelling, evaluation, drift, SHAP, and analysis notebooks |
-| `paper/` | Research manuscript and write-up material |
-| `experiments/agent_draft/` | Experimental newsletter-drafting agent trials + a construct-validity finding for the paper |
 
 ---
 
