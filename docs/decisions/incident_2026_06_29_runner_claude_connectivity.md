@@ -140,3 +140,37 @@ check → inspect the log for `APIConnectionError` (gone = fixed; present = esca
 - **Diagnosis discipline:** the cause was confirmed from the actual run logs
   (connection vs auth), not guessed — the same isolation approach as the earlier
   incidents.
+
+## 2026-06-30 follow-up — the proxy was necessary but not sufficient
+
+**What happened.** On the first real production test of the proxy (health-check
+run #11, 30 June) the runner still failed with `APIConnectionError` connecting to
+the **Space**, not to Anthropic. The Space had just restarted (a `PROXY_TOKEN`
+secret was added), so it was briefly unreachable. This exposed the gap in the
+29 June claim: the proxy removes the runner→Anthropic dependency but adds a
+runner→Space one, and the Space can itself be down or mid-restart. "Verified" on
+29 June had been from a Claude-reachable host, not the runner.
+
+**Fix — two parts.**
+1. **Completed the proxy-token lock.** A shared `PROXY_TOKEN` secret was set on
+   *both* the GitHub repo and the HF Space (previously the Space enforced a token
+   the runner never sent, so every self-heal call was rejected). Verified
+   end-to-end from a runner-equivalent client: `PROXY_OK`.
+2. **Added defence in depth to `sweep_summaries`** so a transient outage can never
+   leave a blank summary or fail the health check. Enrichment now: pre-warms the
+   proxy Space → tries Claude (via the Space) → falls back to OpenAI
+   (`OPENAI_API_KEY`) → falls back to a deterministic **extractive** summary from
+   the article text → writes `Summary unavailable` only when there is no usable
+   text (a value `pipeline_health` accepts). Added a dashboard **Generate missing
+   summaries** control so a curator can repair blanks from the UI.
+
+**Status.** Both changes committed and pushed. Resilience holds by design (a
+summary is always written regardless of LLM reachability). A green health-check
+run on the actual runner is still the outstanding production confirmation — do not
+mark "resolved" until that run is green (the same mistake as the 29 June note).
+
+**Lesson.** A single clever fix (reusing the Space as a proxy) was *necessary but
+not sufficient*. Real resilience came from **layering fallbacks** so no one
+failing component can take the pipeline down, and from insisting on confirmation
+on the actual failing environment, not a convenient one. (S24 robustness, K11/S22
+operation.)
