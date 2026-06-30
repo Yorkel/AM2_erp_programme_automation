@@ -381,20 +381,22 @@ def _render_triage_card(row: dict):
                     "No summary yet — generate one below.</div>",
                     unsafe_allow_html=True,
                 )
-            if auth:
-                if st.button(
-                    "✎ Generate summary" if not summary else "✎ Regenerate summary",
-                    key=f"summary_{url}", use_container_width=True,
-                    help="AI writes a 1-2 sentence summary from the article "
-                         "(runs from the dashboard, which can reach Claude).",
-                ):
-                    with st.spinner("Summarising via Claude…"):
-                        body = fetch_article_text(url)
-                        new_summary = summarise_article(
-                            title=title, text=body, category=row.get("top1"),
-                        )
-                    record_summary(url, new_summary)
-                    st.rerun(scope="fragment")
+            # Always render the button (greyed when not signed in) so it stays
+            # consistent with Keep/Reject and the "generate one below" prompt
+            # never points at a button that isn't there.
+            if st.button(
+                "✎ Generate summary" if not summary else "✎ Regenerate summary",
+                key=f"summary_{url}", use_container_width=True, disabled=not auth,
+                help="AI writes a 1-2 sentence summary from the article "
+                     "(runs from the dashboard, which can reach Claude).",
+            ):
+                with st.spinner("Summarising via Claude…"):
+                    body = fetch_article_text(url)
+                    new_summary = summarise_article(
+                        title=title, text=body, category=row.get("top1"),
+                    )
+                record_summary(url, new_summary)
+                st.rerun(scope="fragment")
 
         # Keep/Reject only while Pending. Once decided, the card flips IN PLACE to
         # its outcome + an Undo, and every click reruns ONLY this fragment
