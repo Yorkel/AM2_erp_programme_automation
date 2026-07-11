@@ -19,6 +19,13 @@ WORKDIR /app
 # 4. Install dependencies first (separate layer so Docker can cache).
 #    The api-only requirements file is much smaller than requirements.txt.
 COPY requirements-api.txt .
+# 4a. Install CPU-only torch FIRST from the PyTorch CPU wheel index. The default
+#     PyPI torch wheel bundles multi-GB CUDA/nvidia libraries we never use — this
+#     host has no GPU. Its own cached layer means it isn't re-fetched when the
+#     other requirements change.
+RUN pip install --no-cache-dir torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+# 4b. Install the rest. pip sees torch==2.11.0 already satisfied and keeps the CPU
+#     build instead of pulling the CUDA one.
 RUN pip install --no-cache-dir -r requirements-api.txt
 
 # 5. Pre-download the sentence-transformer model into the image so the first

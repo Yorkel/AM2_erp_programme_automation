@@ -15,10 +15,12 @@ Run locally:
 
 from __future__ import annotations
 
+import hmac
+import os
 from contextlib import asynccontextmanager
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -26,17 +28,38 @@ from starlette.concurrency import run_in_threadpool
 from src.serving import metrics as m
 from src.serving.model_loader import get_model
 
+# Safety ceilings for /predict. Well above the real classify client batch (50,
+# occasionally 100) so legitimate use is unaffected, but they cap the unbounded
+# embed that could OOM the server (the documented memory failure class).
+MAX_BATCH = 256
+MAX_TEXT_CHARS = 50_000
+ENCODE_BATCH_SIZE = 32   # sentence-transformers internal batching → bounded RAM
+
+
+def require_api_key(authorization: str | None = Header(default=None)) -> None:
+    """Opt-in Bearer auth for /predict. Enforced ONLY when CLASSIFIER_API_KEY is
+    set in the server's env; otherwise a no-op, so behaviour is unchanged until
+    the key is configured on the host. The classify client already sends this
+    token as `Authorization: Bearer <key>` when its own CLASSIFIER_API_KEY is set."""
+    expected = os.environ.get("CLASSIFIER_API_KEY")
+    if not expected:
+        return  # auth disabled — no key configured
+    prefix = "Bearer "
+    token = authorization[len(prefix):] if authorization and authorization.startswith(prefix) else ""
+    if not hmac.compare_digest(token, expected):
+        raise HTTPException(status_code=401, detail="invalid or missing API key")
+
 
 # ── Pydantic schemas ──────────────────────────────────────────────────────────
 
 class ArticleIn(BaseModel):
     """One article to classify. text_clean is what the classifier sees."""
     article_id: str = Field(..., description="Caller-supplied id (echoed back in response).")
-    text_clean: str = Field(..., description="The text the model classifies. Title + first ~80 words is the training-time shape.")
+    text_clean: str = Field(..., max_length=MAX_TEXT_CHARS, description="The text the model classifies. Title + first ~80 words is the training-time shape.")
 
 
 class PredictRequest(BaseModel):
-    articles: list[ArticleIn]
+    articles: list[ArticleIn] = Field(..., max_length=MAX_BATCH)
 
 
 class PredictionResult(BaseModel):
@@ -77,18 +100,37 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# Interactive docs (/docs, /redoc, /openapi.json) stay ON by default — the Swagger
+# UI is portfolio evidence. Set DISABLE_DOCS=1 on a hardened deployment to hide the
+# whole API surface (incl. the internal proxy/probe endpoints) from public view.
+_DOCS_ON = os.environ.get("DISABLE_DOCS", "").strip().lower() not in {"1", "true", "yes"}
+
 app = FastAPI(
     title="AM2 ERP newsletter classifier",
     description="Classifies education-policy articles into one of the six ERP newsletter categories.",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _DOCS_ON else None,
+    redoc_url="/redoc" if _DOCS_ON else None,
+    openapi_url="/openapi.json" if _DOCS_ON else None,
 )
 
-# Adds /metrics + standard HTTP metrics (am2_http_requests_total, latency, etc.)
+# Collect standard HTTP metrics (am2_http_requests_total, latency, etc.) but do NOT
+# auto-expose /metrics — we register our own gated endpoint below so operational
+# data (run_id, per-class volumes) isn't public once auth is configured.
 Instrumentator(
     should_group_status_codes=False,
     excluded_handlers=["/metrics", "/health"],
-).instrument(app, metric_namespace="am2", metric_subsystem="").expose(app)
+).instrument(app, metric_namespace="am2", metric_subsystem="")
+
+
+@app.get("/metrics", dependencies=[Depends(require_api_key)], include_in_schema=False)
+def metrics_endpoint() -> Response:
+    """Prometheus exposition. Gated by the same opt-in key as /predict: open when
+    no CLASSIFIER_API_KEY is set, token-required once it is."""
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -192,7 +234,7 @@ def _forward_to_anthropic(body: bytes, headers: dict) -> tuple[bytes, int]:
         return f'{{"error":"upstream unreachable: {e.reason}"}}'.encode(), 502
 
 
-@app.post("/predict", response_model=PredictResponse)
+@app.post("/predict", response_model=PredictResponse, dependencies=[Depends(require_api_key)])
 def predict(request: PredictRequest) -> PredictResponse:
     if not request.articles:
         raise HTTPException(status_code=422, detail="articles list is empty")
@@ -201,7 +243,9 @@ def predict(request: PredictRequest) -> PredictResponse:
 
     # 1. Embed all texts in one batch (much faster than one-by-one).
     texts = [a.text_clean for a in request.articles]
-    embeddings = bundle.embedder.encode(texts, show_progress_bar=False)
+    embeddings = bundle.embedder.encode(
+        texts, show_progress_bar=False, batch_size=ENCODE_BATCH_SIZE,
+    )
 
     # 2. Get the full probability distribution for every article.
     proba = bundle.classifier.predict_proba(embeddings)  # shape: (n_articles, n_classes)

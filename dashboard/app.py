@@ -7,6 +7,7 @@ ESRC ERP Newsletter Curator Dashboard
 # `from dashboard.<…> import` raises ModuleNotFoundError.
 import sys
 import base64
+import hmac
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -119,7 +120,7 @@ def main():
                         expected = st.secrets["CURATOR_PASSWORD"]
                     except (KeyError, FileNotFoundError):
                         expected = None
-                    if expected and pwd == expected:
+                    if expected and hmac.compare_digest(str(pwd), str(expected)):
                         st.session_state.authenticated = True
                         st.rerun()
                     else:

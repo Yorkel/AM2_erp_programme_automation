@@ -10,3 +10,4 @@ joblib==1.5.3
 sentence-transformers==5.3.0
 torch==2.11.0
 prometheus-fastapi-instrumentator==7.1.0
+prometheus-client==0.23.1   # imported directly by api.py's gated /metrics endpoint
