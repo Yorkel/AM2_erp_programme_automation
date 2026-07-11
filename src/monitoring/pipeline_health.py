@@ -36,9 +36,13 @@ _BLANK = {"", "nan", "none", "nat"}
 
 def _is_blank(v) -> bool:
     """True for NULL / NaN / empty / the literal strings 'nan'/'none'/'nat'.
+    Also True for an empty array/collection (topic_tags is an array column, so
+    NULL and [] both mean 'no tags').
     The 'Summary unavailable' placeholder is NOT blank (it's an accepted fallback)."""
     if v is None:
         return True
+    if isinstance(v, (list, tuple, set, dict)):
+        return len(v) == 0
     return str(v).strip().lower() in _BLANK
 
 
@@ -80,7 +84,7 @@ def main() -> int:
     while True:
         r = (
             client.table("articles")
-            .select("url, source, article_date, summary, topic_sentence")
+            .select("url, source, article_date, summary, topic_sentence, topic_tags")
             .gte("article_date", since)
             .range(off, off + 999)
             .execute()
@@ -106,9 +110,10 @@ def main() -> int:
     unclassified = [a for a in articles if a["url"] not in classified]
     blank_summary = [a for a in articles if _is_blank(a.get("summary"))]
     blank_topic = [a for a in articles if _is_blank(a.get("topic_sentence"))]
+    blank_tags = [a for a in articles if _is_blank(a.get("topic_tags"))]
     placeholders = [a for a in articles if (a.get("summary") or "").strip() == PLACEHOLDER]
 
-    healthy = not unclassified and not blank_summary and not blank_topic
+    healthy = not unclassified and not blank_summary and not blank_topic and not blank_tags
 
     lines = [
         "## Pipeline health check",
@@ -117,6 +122,7 @@ def main() -> int:
         f"- Unclassified: **{len(unclassified)}**",
         f"- Blank summaries (NULL/nan): **{len(blank_summary)}**",
         f"- Blank topic sentences (NULL/nan): **{len(blank_topic)}**",
+        f"- Blank topic tags (NULL/empty): **{len(blank_tags)}**",
         f"- 'Summary unavailable' placeholders (accepted): {len(placeholders)}",
         f"- **Status: {'✅ HEALTHY' if healthy else '❌ UNHEALTHY'}**",
     ]
@@ -130,10 +136,12 @@ def main() -> int:
             print(f"  BLANK SUMMARY: {a.get('source')} | {a.get('url')}", file=sys.stderr)
         for a in (blank_topic[:10]):
             print(f"  BLANK TOPIC: {a.get('source')} | {a.get('url')}", file=sys.stderr)
+        for a in (blank_tags[:10]):
+            print(f"  BLANK TAGS: {a.get('source')} | {a.get('url')}", file=sys.stderr)
         print(
             f"UNHEALTHY: {len(unclassified)} unclassified, {len(blank_summary)} blank "
-            f"summaries, {len(blank_topic)} blank topic sentences this week — "
-            f"self-heal did not fully recover.",
+            f"summaries, {len(blank_topic)} blank topic sentences, {len(blank_tags)} blank "
+            f"topic tags this week — self-heal did not fully recover.",
             file=sys.stderr,
         )
         return 1
