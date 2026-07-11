@@ -21,6 +21,7 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, Request, Response
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from src.serving import metrics as m
 from src.serving.model_loader import get_model
@@ -148,8 +149,6 @@ async def anthropic_proxy(request: Request) -> Response:
     the same value as x-proxy-token. This avoids creating an open relay.
     """
     import os
-    import urllib.error
-    import urllib.request
 
     expected = os.environ.get("PROXY_TOKEN")
     if not expected:
@@ -166,21 +165,31 @@ async def anthropic_proxy(request: Request) -> Response:
         if v:
             headers[h] = v
 
+    # Run the blocking upstream call in a worker thread, NOT on the event loop.
+    # This handler is async, and a bare urlopen(timeout=120) would otherwise freeze
+    # the whole worker's event loop for up to 120s — stalling /health and /predict
+    # for every concurrent caller while one Claude call is in flight.
+    content, status = await run_in_threadpool(_forward_to_anthropic, body, headers)
+    return Response(content=content, status_code=status, media_type="application/json")
+
+
+def _forward_to_anthropic(body: bytes, headers: dict) -> tuple[bytes, int]:
+    """Blocking POST to Anthropic. Returns (response_bytes, status_code). Runs in a
+    threadpool via run_in_threadpool so it never blocks the async event loop."""
+    import urllib.error
+    import urllib.request
+
     upstream = urllib.request.Request(
         "https://api.anthropic.com/v1/messages", data=body, method="POST",
         headers=headers,
     )
     try:
         with urllib.request.urlopen(upstream, timeout=120) as r:
-            return Response(content=r.read(), status_code=r.status,
-                            media_type="application/json")
+            return r.read(), r.status
     except urllib.error.HTTPError as e:
-        return Response(content=e.read(), status_code=e.code,
-                        media_type="application/json")
+        return e.read(), e.code
     except urllib.error.URLError as e:
-        return Response(
-            content=f'{{"error":"upstream unreachable: {e.reason}"}}'.encode(),
-            status_code=502, media_type="application/json")
+        return f'{{"error":"upstream unreachable: {e.reason}"}}'.encode(), 502
 
 
 @app.post("/predict", response_model=PredictResponse)

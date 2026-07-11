@@ -58,6 +58,8 @@ def main() -> int:
     print(f"Backing up to {out_dir}")
 
     summary_rows = []
+    errored: list[str] = []
+    row_counts: dict[str, int] = {}
     for table in TABLES:
         try:
             resp = client.table(table).select("*").execute()
@@ -67,11 +69,30 @@ def main() -> int:
             df.to_csv(path, index=False)
             print(f"  {table:<25} {len(rows):>5} rows → {path.relative_to(REPO_ROOT)}")
             summary_rows.append({"table": table, "rows": len(rows)})
+            row_counts[table] = len(rows)
         except Exception as e:
             print(f"  {table:<25} ERROR: {e}")
             summary_rows.append({"table": table, "rows": -1, "error": str(e)[:100]})
+            errored.append(table)
 
+    # Always write the summary first so the artifact exists for diagnosis even
+    # when we fail below.
     pd.DataFrame(summary_rows).to_csv(out_dir / "_summary.csv", index=False)
+
+    # Fail loudly rather than reporting a green run over an empty/partial backup.
+    # (1) any table that errored is a failure; (2) an empty curator_decisions is a
+    # failure — it's the one irreplaceable table this backup exists for, and the
+    # weekly reset never clears it, so 0 rows in live operation means something is
+    # wrong (bad auth, wrong DB, silent API error).
+    if errored:
+        print(f"\n  FAILED: {len(errored)} table(s) errored: {', '.join(errored)}. "
+              f"Backup is incomplete — NOT a valid snapshot.")
+        return 1
+    if row_counts.get("curator_decisions", 0) == 0:
+        print("\n  FAILED: curator_decisions backed up 0 rows — an empty snapshot of "
+              "the irreplaceable table. Check SUPABASE_URL/key point at the live DB.")
+        return 1
+
     print(f"\n  Done. Restore from these CSVs via `supabase-py insert` if needed.")
     return 0
 

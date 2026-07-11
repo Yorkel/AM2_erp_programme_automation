@@ -155,6 +155,31 @@ def main() -> int:
 
     urls = to_delete["url"].tolist()
     print(f"\n  Deleting {len(urls)} articles + their predictions...")
+
+    # Archive any curator decisions BEFORE deleting the articles. curator_decisions
+    # has ON DELETE CASCADE from articles (migration 003), so the article delete
+    # below would otherwise silently wipe any keep/reject/category/summary a curator
+    # already made. Snapshot them into curator_decisions_archive (same JSONB shape as
+    # the dashboard's weekly reset) so the work is recoverable and auditable.
+    week_label = f"cleanup {batch_id}"
+    n_archived = 0
+    for i in range(0, len(urls), DELETE_BATCH):
+        batch = urls[i:i + DELETE_BATCH]
+        rows = (
+            client.table("curator_decisions").select("*").in_("url", batch).execute().data
+            or []
+        )
+        if rows:
+            client.table("curator_decisions_archive").insert(
+                [{"week_label": week_label, "url": r.get("url"), "decision": r} for r in rows]
+            ).execute()
+            n_archived += len(rows)
+    if n_archived:
+        print(f"    Archived {n_archived} curator decision(s) to "
+              f"curator_decisions_archive under '{week_label}' before delete")
+    else:
+        print("    No curator decisions attached to these URLs — nothing to archive")
+
     # Predictions first to satisfy FK constraint
     for i in range(0, len(urls), DELETE_BATCH):
         batch = urls[i:i + DELETE_BATCH]

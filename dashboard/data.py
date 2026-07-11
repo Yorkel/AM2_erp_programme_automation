@@ -211,8 +211,28 @@ def load_decisions() -> dict[str, dict]:
     Fresher cache than articles (60s) so accept/reject updates show quickly.
     """
     client = get_client()
-    resp = client.table("curator_decisions").select("*").execute()
-    return {row["url"]: row for row in (resp.data or [])}
+    # Page through: PostgREST caps a single response at 1000 rows, so a bare
+    # .execute() silently drops decisions once curator_decisions passes 1000 rows
+    # (inevitable — the weekly reset is non-destructive). A missing decision here
+    # makes a kept/accepted article vanish from Categorise, Draft, and the Excel
+    # export. Loop in 1000-row pages, matching load_classified_articles.
+    PAGE = 1000
+    rows: list[dict] = []
+    off = 0
+    while True:
+        batch = (
+            client.table("curator_decisions")
+            .select("*")
+            .range(off, off + PAGE - 1)
+            .execute()
+            .data
+            or []
+        )
+        rows.extend(batch)
+        if len(batch) < PAGE:
+            break
+        off += PAGE
+    return {row["url"]: row for row in rows}
 
 
 # ── Weekly reset (archive + week boundary) ────────────────────────────────────

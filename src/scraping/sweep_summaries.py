@@ -280,7 +280,10 @@ def main() -> int:
         return t == "" or t == PLACEHOLDER
 
     needing_summary = [r for r in rows if _needs_summary(r)]
-    needing_tags = [r for r in rows if not r.get("topic_tags") and not r.get("geographic_focus")]
+    # Re-enrich if EITHER tag field is missing (OR, not AND): a partial row with
+    # topic_tags set but geographic_focus blank (or vice versa) must still be
+    # retried, else it stays stuck and now fails the tag health check (step 1).
+    needing_tags = [r for r in rows if not r.get("topic_tags") or not r.get("geographic_focus")]
     needing_topic = [r for r in rows if _needs_topic(r)]
     print(f"Rows scanned (last {LOOKBACK_DAYS} days): {len(rows)}")
     print(f"  needing summary:        {len(needing_summary)}")

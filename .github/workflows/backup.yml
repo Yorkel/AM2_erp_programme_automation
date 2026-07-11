@@ -40,7 +40,7 @@ jobs:
           name: supabase-backup-${{ github.run_id }}
           path: backups/
           retention-days: 90
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Summary
         if: always()

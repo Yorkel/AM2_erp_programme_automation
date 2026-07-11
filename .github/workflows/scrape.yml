@@ -34,6 +34,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify required secrets are set
+        # Fail fast if a required secret is missing/empty. OpenAI is the PRIMARY
+        # enrichment provider on the runner (ENRICH_PROVIDER=openai), so an empty
+        # OPENAI_API_KEY means summaries + tags silently come back blank — the same
+        # class of failure as the historic missing-ANTHROPIC_API_KEY incident. Only
+        # the presence is checked here; secret values are never printed.
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          missing=""
+          for name in SUPABASE_URL SUPABASE_SERVICE_KEY OPENAI_API_KEY; do
+            if [ -z "${!name}" ]; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "ERROR: required secret(s) unset/empty:$missing" >&2
+            echo "Set them in repo Settings → Secrets and variables → Actions." >&2
+            exit 1
+          fi
+          echo "All required secrets are present."
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
