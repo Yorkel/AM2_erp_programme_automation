@@ -328,8 +328,9 @@ def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> N
     """Populate Article.summary + .geographic_focus + .topic_tags for each kept
     item via model enrichment. Mutates in place.
 
-    Summary generation tries Claude, then OpenAI/local fallback; structured tags
-    still use Claude.
+    Enrichment is provider-aware (see summarise.enrich_provider): OpenAI-primary
+    on the runner (ENRICH_PROVIDER=openai), Claude-primary elsewhere, each with
+    the other provider as fallback.
     Cheap (~$0.001/article with prompt caching). Failures are logged and
     skipped — a single bad article never blocks the scrape.
 
@@ -343,7 +344,7 @@ def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> N
         return
 
     from datetime import datetime
-    from src.inference.summarise import summarise_article, tag_article
+    from src.inference.summarise import enrich_summary, enrich_tags
 
     n_ok_sum = 0
     n_ok_tag = 0
@@ -363,7 +364,7 @@ def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> N
                 # generation returns "Summary unavailable" — better than summarising
                 # from text_clean which is a noisy 80-word truncation that
                 # often starts with nav like "HOME > Blog >".
-                item.summary = summarise_article(
+                item.summary = enrich_summary(
                     title=title, text=item.text or "", category=None,
                 )
                 item.summary_generated_at = datetime.utcnow()
@@ -372,7 +373,7 @@ def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> N
                 n_fail += 1
                 print(f"    WARNING: summary failed for {item.url}: {type(e).__name__}: {e}")
         if not item.geographic_focus and not item.topic_tags:
-            tags = tag_article(title=title, text=body)
+            tags = enrich_tags(title=title, text=body)
             if tags.get("geographic_focus") or tags.get("topic_tags"):
                 item.geographic_focus = tags.get("geographic_focus") or None
                 item.topic_tags = tags.get("topic_tags") or None

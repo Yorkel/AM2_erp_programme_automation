@@ -80,7 +80,7 @@ def main() -> int:
     while True:
         r = (
             client.table("articles")
-            .select("url, source, article_date, summary")
+            .select("url, source, article_date, summary, topic_sentence")
             .gte("article_date", since)
             .range(off, off + 999)
             .execute()
@@ -105,9 +105,10 @@ def main() -> int:
     total = len(articles)
     unclassified = [a for a in articles if a["url"] not in classified]
     blank_summary = [a for a in articles if _is_blank(a.get("summary"))]
+    blank_topic = [a for a in articles if _is_blank(a.get("topic_sentence"))]
     placeholders = [a for a in articles if (a.get("summary") or "").strip() == PLACEHOLDER]
 
-    healthy = not unclassified and not blank_summary
+    healthy = not unclassified and not blank_summary and not blank_topic
 
     lines = [
         "## Pipeline health check",
@@ -115,6 +116,7 @@ def main() -> int:
         f"- Articles this week: **{total}**",
         f"- Unclassified: **{len(unclassified)}**",
         f"- Blank summaries (NULL/nan): **{len(blank_summary)}**",
+        f"- Blank topic sentences (NULL/nan): **{len(blank_topic)}**",
         f"- 'Summary unavailable' placeholders (accepted): {len(placeholders)}",
         f"- **Status: {'✅ HEALTHY' if healthy else '❌ UNHEALTHY'}**",
     ]
@@ -126,14 +128,17 @@ def main() -> int:
             print(f"  UNCLASSIFIED: {a.get('source')} | {a.get('url')}", file=sys.stderr)
         for a in (blank_summary[:10]):
             print(f"  BLANK SUMMARY: {a.get('source')} | {a.get('url')}", file=sys.stderr)
+        for a in (blank_topic[:10]):
+            print(f"  BLANK TOPIC: {a.get('source')} | {a.get('url')}", file=sys.stderr)
         print(
-            f"UNHEALTHY: {len(unclassified)} unclassified, {len(blank_summary)} "
-            f"blank summaries this week — self-heal did not fully recover.",
+            f"UNHEALTHY: {len(unclassified)} unclassified, {len(blank_summary)} blank "
+            f"summaries, {len(blank_topic)} blank topic sentences this week — "
+            f"self-heal did not fully recover.",
             file=sys.stderr,
         )
         return 1
 
-    print("Pipeline healthy — this week's articles are classified and summarised.")
+    print("Pipeline healthy — this week's articles are classified, summarised, and topic-tagged.")
     return 0
 
 

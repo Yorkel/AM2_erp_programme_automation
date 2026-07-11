@@ -70,8 +70,11 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # Route Claude through the HF Space (runner cannot reach Anthropic —
-          # incident 2026-06-29). SDK reads this and posts to {url}/v1/messages.
+          # OpenAI is PRIMARY on the runner (it cannot reliably reach Claude);
+          # Claude stays a best-effort fallback via the proxy below.
+          ENRICH_PROVIDER: openai
+          # Route any Claude fallback through the HF Space (runner cannot reach
+          # Anthropic — incident 2026-06-29); SDK posts to {url}/v1/messages.
           ANTHROPIC_BASE_URL: https://yorkel-erp-classifier.hf.space
           # Shared secret the Space proxy checks, so only this pipeline can use it.
           PROXY_TOKEN: ${{ secrets.PROXY_TOKEN }}

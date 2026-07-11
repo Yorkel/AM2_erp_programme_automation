@@ -69,9 +69,13 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # Route Claude calls through the HF Space, which CAN reach Anthropic;
-          # the runner itself cannot (incident 2026-06-29). The anthropic SDK
-          # picks up this base_url automatically and posts to {url}/v1/messages.
+          # Enrichment uses OpenAI as PRIMARY on the runner, because the runner
+          # cannot reliably reach Claude even via the Space proxy (June 2026
+          # incidents). Claude stays as a best-effort fallback below.
+          ENRICH_PROVIDER: openai
+          # Route any Claude fallback calls through the HF Space, which CAN reach
+          # Anthropic; the runner itself cannot (incident 2026-06-29). The
+          # anthropic SDK picks up this base_url and posts to {url}/v1/messages.
           ANTHROPIC_BASE_URL: https://yorkel-erp-classifier.hf.space
           # Shared secret the Space proxy checks, so only this pipeline can use it.
           PROXY_TOKEN: ${{ secrets.PROXY_TOKEN }}
@@ -88,9 +92,13 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # Route Claude calls through the HF Space, which CAN reach Anthropic;
-          # the runner itself cannot (incident 2026-06-29). The anthropic SDK
-          # picks up this base_url automatically and posts to {url}/v1/messages.
+          # Enrichment uses OpenAI as PRIMARY on the runner, because the runner
+          # cannot reliably reach Claude even via the Space proxy (June 2026
+          # incidents). Claude stays as a best-effort fallback below.
+          ENRICH_PROVIDER: openai
+          # Route any Claude fallback calls through the HF Space, which CAN reach
+          # Anthropic; the runner itself cannot (incident 2026-06-29). The
+          # anthropic SDK picks up this base_url and posts to {url}/v1/messages.
           ANTHROPIC_BASE_URL: https://yorkel-erp-classifier.hf.space
           # Shared secret the Space proxy checks, so only this pipeline can use it.
           PROXY_TOKEN: ${{ secrets.PROXY_TOKEN }}

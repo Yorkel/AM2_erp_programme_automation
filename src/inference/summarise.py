@@ -410,18 +410,72 @@ def extract_topic_sentence(*, title: str, text: str,
         f"TITLE: {title}\n\nARTICLE:\n{body[:6000]}\n\n"
         "Return the single best sentence (verbatim), or NONE."
     )
-    resp = client.messages.create(
-        model=model,
-        max_tokens=200,
-        temperature=0,   # deterministic extraction
-        system=_TOPIC_SENTENCE_SYSTEM,
-        messages=[{"role": "user", "content": user}],
-    )
-    result = resp.content[0].text.strip()
+    try:
+        resp = client.messages.create(
+            model=model,
+            max_tokens=200,
+            temperature=0,   # deterministic extraction
+            system=_TOPIC_SENTENCE_SYSTEM,
+            messages=[{"role": "user", "content": user}],
+        )
+        result = resp.content[0].text.strip()
+    except Exception as e:
+        # Claude/proxy unreachable: defer to the title rather than raising, so
+        # a caller's sweep leaves a usable topic line instead of a NULL that the
+        # dashboard renders blank (mirrors the summary fallback ladder).
+        import sys
+        print(
+            f"  topic sentence: Claude unreachable, using title: {type(e).__name__}",
+            file=sys.stderr,
+        )
+        return title_fallback
     if not result or result.strip().upper() == "NONE" or _looks_like_refusal(result):
         return title_fallback
     # Verbatim guard: the sentence must actually appear in the body, else the
     # model paraphrased or invented it — fall back to the real title.
+    if _normalise_for_match(result) not in _normalise_for_match(body):
+        return title_fallback
+    return result
+
+
+def extract_topic_sentence_openai(*, title: str, text: str,
+                                  model: str | None = None, client=None) -> str:
+    """OpenAI twin of extract_topic_sentence: same verbatim-or-title contract.
+
+    Used when OpenAI is the configured enrichment provider (e.g. on the GitHub
+    runner, which cannot reach Claude). Defers to the article title when there
+    is no real body, the model finds nothing, or the returned sentence is not
+    verbatim in the body — so the topic line is never blank or fabricated."""
+    title_fallback = re.sub(r"\s+", " ", (title or "").strip()) or PLACEHOLDER
+    body = (text or "").strip()
+    if len(body) < 200:
+        return title_fallback
+    if client is None:
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is not set")
+        from openai import OpenAI
+        client = OpenAI(timeout=60.0, max_retries=2)
+
+    user = (
+        f"TITLE: {title}\n\nARTICLE:\n{body[:6000]}\n\n"
+        "Return the single best sentence (verbatim), or NONE."
+    )
+    try:
+        response = client.responses.create(
+            model=_openai_summary_model(model),
+            instructions=_TOPIC_SENTENCE_SYSTEM,
+            input=user,
+            max_output_tokens=200,
+        )
+        result = (getattr(response, "output_text", "") or "").strip()
+    except Exception as e:
+        print(
+            f"  topic sentence: OpenAI unreachable, using title: {type(e).__name__}",
+            file=sys.stderr,
+        )
+        return title_fallback
+    if not result or result.strip().upper() == "NONE" or _looks_like_refusal(result):
+        return title_fallback
     if _normalise_for_match(result) not in _normalise_for_match(body):
         return title_fallback
     return result
@@ -508,6 +562,129 @@ def tag_article(*, title: str, text: str, model: str = DEFAULT_MODEL,
         import sys
         print(f"  tag_article failed: {type(e).__name__}: {e}", file=sys.stderr)
         return {"geographic_focus": "", "topic_tags": []}
+
+
+def _parse_tag_json(raw: str) -> dict:
+    """Parse the {geographic_focus, topic_tags} JSON emitted by either provider,
+    tolerating stray code fences. Returns the empty shape on any parse failure."""
+    import json
+    raw = (raw or "").strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+    parsed = json.loads(raw)
+    return {
+        "geographic_focus": (parsed.get("geographic_focus") or "").strip(),
+        "topic_tags": [
+            t.strip().lower() for t in (parsed.get("topic_tags") or [])
+            if isinstance(t, str) and t.strip()
+        ][:3],
+    }
+
+
+def tag_article_openai(*, title: str, text: str, model: str | None = None,
+                       client=None) -> dict:
+    """OpenAI twin of tag_article. Used when OpenAI is the configured provider.
+
+    Same contract: returns {"geographic_focus": str, "topic_tags": list[str]},
+    and returns the empty shape rather than raising on any failure so a single
+    bad article never breaks the enrichment sweep."""
+    if client is None:
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is not set")
+        from openai import OpenAI
+        client = OpenAI(timeout=60.0, max_retries=2)
+
+    body_truncated = " ".join((text or "").split()[:TEXT_TRUNCATE_WORDS])
+    user_prompt = f"TITLE: {title}\n\nTEXT: {body_truncated}"
+    try:
+        response = client.responses.create(
+            model=_openai_summary_model(model),
+            instructions=_ENRICH_SYSTEM,
+            input=user_prompt,
+            max_output_tokens=200,
+        )
+        return _parse_tag_json(getattr(response, "output_text", ""))
+    except Exception as e:
+        import sys
+        print(f"  tag_article_openai failed: {type(e).__name__}: {e}", file=sys.stderr)
+        return {"geographic_focus": "", "topic_tags": []}
+
+
+# ─── Provider-aware enrichment entry points ──────────────────────────────────
+# The GitHub runner cannot reliably reach Claude (even via the HF Space proxy;
+# see the June 2026 incidents), but it reaches OpenAI fine. Setting
+# ENRICH_PROVIDER=openai on the runner makes OpenAI the primary enrichment
+# provider there, with Claude kept as a best-effort fallback. Dev, the Streamlit
+# dashboard and the Space leave it unset, so they keep Claude-first behaviour
+# (better editorial voice + prompt-cache savings).
+
+def enrich_provider() -> str:
+    """'claude' (default) or 'openai', from the ENRICH_PROVIDER env var."""
+    return (os.environ.get("ENRICH_PROVIDER") or "claude").strip().lower()
+
+
+def enrich_summary(*, title: str, text: str, category: str | None = None,
+                   client=None, openai_client=None) -> str:
+    """Provider-aware summary. OpenAI-primary when ENRICH_PROVIDER=openai
+    (OpenAI → Claude → extractive), else the default Claude → OpenAI → extractive."""
+    if enrich_provider() == "openai" and os.environ.get("OPENAI_API_KEY"):
+        try:
+            return summarise_article_openai(
+                title=title, text=text, category=category, client=openai_client,
+            )
+        except Exception as e:
+            print(f"  OpenAI summary failed; trying Claude: {type(e).__name__}",
+                  file=sys.stderr)
+        # Claude + extractive tail (OpenAI already tried above → disable it here).
+        return summarise_article(
+            title=title, text=text, category=category, client=client,
+            allow_openai_fallback=False,
+        )
+    return summarise_article(
+        title=title, text=text, category=category,
+        client=client, openai_client=openai_client,
+    )
+
+
+def enrich_tags(*, title: str, text: str, client=None, openai_client=None) -> dict:
+    """Provider-aware {geographic_focus, topic_tags}. Tries the configured
+    primary, then the other provider if the primary returns nothing. Never
+    raises (each primitive returns the empty shape on failure)."""
+    have_openai = bool(os.environ.get("OPENAI_API_KEY"))
+    have_claude = bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+    def _nonempty(t: dict) -> bool:
+        return bool(t.get("geographic_focus") or t.get("topic_tags"))
+
+    if enrich_provider() == "openai" and have_openai:
+        tags = tag_article_openai(title=title, text=text, client=openai_client)
+        if _nonempty(tags) or not have_claude:
+            return tags
+        return tag_article(title=title, text=text, client=client)
+
+    if have_claude:
+        tags = tag_article(title=title, text=text, client=client)
+        if _nonempty(tags) or not have_openai:
+            return tags
+        return tag_article_openai(title=title, text=text, client=openai_client)
+
+    if have_openai:
+        return tag_article_openai(title=title, text=text, client=openai_client)
+    return {"geographic_focus": "", "topic_tags": []}
+
+
+def enrich_topic_sentence(*, title: str, text: str, client=None,
+                          openai_client=None) -> str:
+    """Provider-aware topic sentence. Both providers defer to the article title
+    when there is no body, no genuine sentence, or the model is unreachable."""
+    if enrich_provider() == "openai" and os.environ.get("OPENAI_API_KEY"):
+        return extract_topic_sentence_openai(
+            title=title, text=text, client=openai_client,
+        )
+    return extract_topic_sentence(title=title, text=text, client=client)
 
 
 def summarise_batch(items: list[dict], *, model: str = DEFAULT_MODEL,

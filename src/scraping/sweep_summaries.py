@@ -27,11 +27,12 @@ from datetime import datetime, timezone
 
 from src.inference.summarise import (
     DEFAULT_MODEL,
-    extract_topic_sentence,
+    enrich_provider,
+    enrich_summary,
+    enrich_tags,
+    enrich_topic_sentence,
     extractive_fallback_summary,
-    summarise_article,
     summarise_article_openai,
-    tag_article,
 )
 
 
@@ -64,6 +65,25 @@ def _claude_available(ant_client) -> bool:
     except Exception as e:
         print(
             f"ERROR: Claude unreachable before sweep: {type(e).__name__}: {e}",
+            file=sys.stderr,
+        )
+        return False
+
+
+def _openai_available(oai_client) -> bool:
+    """Return False quickly when the sweep cannot reach OpenAI at all (the mirror
+    of _claude_available for the OpenAI-primary runner path)."""
+    from src.inference.summarise import _openai_summary_model
+    try:
+        oai_client.responses.create(
+            model=_openai_summary_model(),
+            input="Reply OK.",
+            max_output_tokens=16,
+        )
+        return True
+    except Exception as e:
+        print(
+            f"ERROR: OpenAI unreachable before sweep: {type(e).__name__}: {e}",
             file=sys.stderr,
         )
         return False
@@ -180,6 +200,42 @@ def _apply_openai_summaries(client, rows: list[dict]) -> tuple[int, int]:
     return ok, fail
 
 
+def _apply_title_topic_sentences(client, rows: list[dict]) -> tuple[int, int]:
+    """Fill missing topic sentences from the article TITLE, with no LLM call.
+
+    Used on the Claude-down path so the dashboard's topic line is never left
+    blank during an outage. This is the same "defer to the title" degradation
+    that extract_topic_sentence uses; a later healthy sweep will not re-touch a
+    row once it is non-blank, so an outage freezes the title in place until the
+    row is cleared (accepted trade-off: a title beats a blank line)."""
+    import re
+
+    ok = 0
+    fail = 0
+    generated_at = datetime.now(timezone.utc).isoformat()
+
+    for row in rows:
+        title = re.sub(r"\s+", " ", (row.get("title") or "").strip())
+        if not title:
+            fail += 1
+            continue
+        try:
+            client.table("articles").update({
+                "topic_sentence": title,
+                "topic_sentence_generated_at": generated_at,
+            }).eq("id", row["id"]).execute()
+            ok += 1
+        except Exception as e:
+            fail += 1
+            print(
+                f"  title topic sentence failed for {row.get('url')}: "
+                f"{type(e).__name__}: {e}",
+                file=sys.stderr,
+            )
+
+    return ok, fail
+
+
 def main() -> int:
     from dotenv import load_dotenv
     from supabase import create_client
@@ -235,35 +291,62 @@ def main() -> int:
         print("Nothing to sweep — exiting clean.")
         return 0
 
-    # Build a single Anthropic client and reuse it across all calls (cheaper +
-    # prompt-cache friendly). Probe connectivity once so a total Claude outage
-    # can use OpenAI/local summary fallback instead of retrying every enrichment
-    # call for every row.
-    from src.inference.anthropic_client import make_anthropic_client
-    probe_client = make_anthropic_client(1)
-    if not _claude_available(probe_client):
-        if os.environ.get("OPENAI_API_KEY"):
-            n_openai_ok, n_openai_fail = _apply_openai_summaries(
+    # Build one reusable client for the configured primary provider (cheaper +
+    # prompt-cache friendly) and probe it once, so a total outage takes the
+    # degraded path instead of retrying every enrichment call for every row.
+    # On the GitHub runner ENRICH_PROVIDER=openai, because it cannot reach Claude.
+    provider = enrich_provider()
+    ant_client = None
+    oai_client = None
+    if provider == "openai":
+        from openai import OpenAI
+        oai_client = OpenAI(timeout=60.0, max_retries=2)
+        primary_ok = _openai_available(oai_client)
+    else:
+        from src.inference.anthropic_client import make_anthropic_client
+        ant_client = make_anthropic_client(5)
+        primary_ok = _claude_available(ant_client)
+    print(f"Enrichment provider: {provider} (reachable: {primary_ok})")
+
+    if not primary_ok:
+        # Primary provider is down. Fill summaries with whatever works, then
+        # STILL fill topic sentences from titles so the dashboard is never left
+        # with a blank topic line. Tags wait for a later healthy sweep (which the
+        # health check now flags — see pipeline_health.py).
+        summary_ok = 0
+        # When Claude is primary-but-down, OpenAI may still work for summaries.
+        # When OpenAI is primary-but-down, don't retry it — go straight to local.
+        if provider != "openai" and os.environ.get("OPENAI_API_KEY"):
+            summary_ok, n_openai_fail = _apply_openai_summaries(
                 client, needing_summary
             )
             print(
-                "Claude unavailable; used OpenAI summaries: "
-                f"{n_openai_ok} ok / {n_openai_fail} fail"
+                "Primary down; used OpenAI summaries: "
+                f"{summary_ok} ok / {n_openai_fail} fail"
             )
-            if n_openai_ok > 0:
-                return 0
+        if summary_ok == 0:
+            summary_ok, n_fallback_fail = _apply_fallback_summaries(
+                client, needing_summary
+            )
+            print(
+                "Providers unavailable; used extractive fallback summaries: "
+                f"{summary_ok} ok / {n_fallback_fail} fail"
+            )
 
-        n_fallback_ok, n_fallback_fail = _apply_fallback_summaries(
-            client, needing_summary
+        n_title_ok, n_title_fail = _apply_title_topic_sentences(
+            client, needing_topic
         )
         print(
-            "Claude/OpenAI unavailable; used fallback summaries: "
-            f"{n_fallback_ok} ok / {n_fallback_fail} fail"
+            "Primary down; topic sentences from title fallback: "
+            f"{n_title_ok} ok / {n_title_fail} fail"
         )
-        if n_fallback_ok > 0:
-            return 0
-        return 1
-    ant_client = make_anthropic_client(5)
+
+        # Progress on either front is enough to exit clean; only a total
+        # standstill (had work, filled nothing) should alarm.
+        had_work = bool(needing_summary or needing_topic)
+        if had_work and summary_ok == 0 and n_title_ok == 0:
+            return 1
+        return 0
 
     n_sum_ok = 0
     n_sum_fail = 0
@@ -290,8 +373,9 @@ def main() -> int:
                 n_sum_ok += 1
             else:
                 try:
-                    summary = summarise_article(
-                        title=title, text=text, category=None, client=ant_client,
+                    summary = enrich_summary(
+                        title=title, text=text, category=None,
+                        client=ant_client, openai_client=oai_client,
                     )
                     update["summary"] = summary
                     update["summary_generated_at"] = datetime.now(timezone.utc).isoformat()
@@ -301,7 +385,10 @@ def main() -> int:
                     print(f"  summary failed for {row.get('url')}: {type(e).__name__}: {e}", file=sys.stderr)
 
         if row["id"] in tag_ids:
-            tags = tag_article(title=title, text=text, client=ant_client)
+            tags = enrich_tags(
+                title=title, text=text,
+                client=ant_client, openai_client=oai_client,
+            )
             if tags.get("geographic_focus") or tags.get("topic_tags"):
                 update["geographic_focus"] = tags.get("geographic_focus") or None
                 update["topic_tags"] = tags.get("topic_tags") or None
@@ -314,8 +401,9 @@ def main() -> int:
                 # Topic sentence must come from the REAL body (not the text_clean
                 # fallback), else it can quote scraped metadata that isn't in the
                 # article. extract_topic_sentence falls back to the title.
-                ts = extract_topic_sentence(
-                    title=title, text=row.get("text") or "", client=ant_client,
+                ts = enrich_topic_sentence(
+                    title=title, text=row.get("text") or "",
+                    client=ant_client, openai_client=oai_client,
                 )
                 update["topic_sentence"] = ts
                 update["topic_sentence_generated_at"] = datetime.now(timezone.utc).isoformat()
