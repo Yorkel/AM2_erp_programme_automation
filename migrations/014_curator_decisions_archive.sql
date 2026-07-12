@@ -8,7 +8,7 @@
 --
 -- Append-only: never updated or deleted by the app. Read by notebooks / audits.
 
-create table public.curator_decisions_archive (
+create table if not exists public.curator_decisions_archive (
   id uuid not null default gen_random_uuid (),
   week_label text not null,                 -- e.g. 'week ending Mon 8 Jun 2026'
   archived_at timestamp with time zone not null default now(),

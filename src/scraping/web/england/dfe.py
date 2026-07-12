@@ -47,6 +47,7 @@
 # =============================================================================
 
 
+from datetime import date
 import requests
 import re
 from bs4 import BeautifulSoup
@@ -229,7 +230,6 @@ def scrape_dfe(since_date: "date | None" = None, until_date: "date | None" = Non
     Returns:
         List of dicts with keys: url, title, date, text
     """
-    from datetime import date as date_type
 
     since_str = since_date.strftime("%Y-%m-%d") if since_date else "2023-01-01"
     until_str = until_date.strftime("%Y-%m-%d") if until_date else None

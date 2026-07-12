@@ -1,0 +1,16 @@
+# Tooling config. Ruff is the linter (see .pre-commit-config.yaml + tests.yml CI).
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+# Notebooks / assessment material / experiments are not part of the shipped code.
+extend-exclude = ["notebooks", "AM2 evidence prep", "experiments", ".venv"]
+
+[tool.ruff.lint]
+# Start with Pyflakes ("F") only: real correctness smells — unused imports (F401),
+# undefined names (F821), f-strings without placeholders (F541), duplicate dict keys
+# (F601). Import-sorting ("I") is deliberately OFF for now (large reorder diff +
+# side-effect import risk). Widen the ruleset later once the tree is clean.
+select = ["F"]
+# F841 (assigned-but-unused local) excluded: several are side-effecting calls whose
+# return value is intentionally discarded (e.g. `response = client...execute()`).
+ignore = ["F841"]

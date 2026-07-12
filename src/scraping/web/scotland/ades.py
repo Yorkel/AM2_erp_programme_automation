@@ -1,9 +1,9 @@
+from datetime import date
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 from pathlib import Path
 import time
-from datetime import datetime
 
 # ----------------------------------------------------------
 # Config
@@ -57,7 +57,7 @@ def scrape_ades(since_date: "date | None" = None, until_date: "date | None" = No
             break
 
         if r.status_code == 400:
-            print(f"  No more pages — stopping.")
+            print("  No more pages — stopping.")
             break
         if r.status_code != 200:
             print(f"  HTTP {r.status_code} — stopping.")
@@ -65,7 +65,7 @@ def scrape_ades(since_date: "date | None" = None, until_date: "date | None" = No
 
         posts = r.json()
         if not posts:
-            print(f"  Empty response — stopping.")
+            print("  Empty response — stopping.")
             break
 
         print(f"  Got {len(posts)} posts")

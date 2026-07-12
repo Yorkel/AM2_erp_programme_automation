@@ -6,7 +6,7 @@
 -- Detailed per-source/per-class breakdowns are saved alongside as a CSV archive
 -- (data/archive/fairness/<date>_<week>.csv); this table holds the headlines.
 
-create table public.fairness_log (
+create table if not exists public.fairness_log (
   id uuid not null default gen_random_uuid (),
   run_id text not null,                              -- model run id (matches models/runs/active.txt)
   batch_id text not null,                            -- pipeline batch identifier (e.g. timestamp + week)

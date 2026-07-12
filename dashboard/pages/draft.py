@@ -21,8 +21,7 @@ import pandas as pd
 from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, source_label
 from dashboard.data import (
     clean_text, fetch_article_text, get_accepted_articles,
-    is_authenticated, load_decisions, record_decision, record_feedback,
-    record_summary,
+    is_authenticated, load_decisions, record_decision, record_summary,
 )
 from src.inference.summarise import summarise_article
 
@@ -67,16 +66,19 @@ def _build_excel(grouped: dict, today: datetime) -> bytes:
         for art in grouped.get(cat_key, []):
             url = art.get("url") or ""
             session_key = f"desc_{url}"
+            # Blank (not the "Summary unavailable" placeholder) when there's no real
+            # summary. This cell is pasted straight into the newsletter form, so an
+            # empty cell is obviously-missing rather than shipping placeholder text.
             summary = (
                 st.session_state.get(session_key)
                 or clean_text(art.get("summary"))
-                or "Summary unavailable"
+                or ""
             )
             src = clean_text(art.get("source"))
             article_date = art.get("article_date") or ""
             # The Form's "Start time" is a real datetime column, so write a real
             # date value (not a DD/MM/YYYY string). Pasting text into a datetime
-            # column gave mixed types — broken sorting + US-locale misparsing
+            # column gave mixed types: broken sorting + US-locale misparsing
             # (Gemma, 2026-06). None → blank cell if the date won't parse.
             try:
                 _d = pd.to_datetime(article_date, errors="coerce", dayfirst=True)

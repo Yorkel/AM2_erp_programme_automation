@@ -12,15 +12,18 @@
     "policy_practice_research",
     "political_environment_key_organisations",
     "teacher_rrd",
-    "update_from_pi",
-    "update_from_programme",
     "what_matters_ed"
   ],
   "training_data": {
     "source": "ESRC ERP newsletters issues 1-104",
-    "n_items_after_cleaning": 1654,
-    "split": "85/15 train/val stratified",
-    "extraction_script": "src/training_data/s00_extract_newsletters.py"
+    "n_items_modelled": 1109,
+    "n_train": 942,
+    "n_val": 167,
+    "n_items_after_cleaning_pre_drop": 1654,
+    "classes_dropped_before_modelling": ["update_from_pi", "update_from_programme"],
+    "split": "stratified train/val (~85/15 of the 1109 modelled rows); no held-out test set in the src pipeline",
+    "extraction_script": "src/training_data/s00_extract_newsletters.py",
+    "note": "The artifact has 6 classes, not 8. The two human-only newsletter sections (update_from_pi, update_from_programme) survive cleaning (part of the 1654-row processed set) but are dropped before modelling, so the model trains on the 1109-row data/modelling/{train,val}.csv 6-class set."
   },
   "metrics": {
     "val_macro_f1": 0.750,

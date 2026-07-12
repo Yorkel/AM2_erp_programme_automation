@@ -1,3 +1,4 @@
+from datetime import date
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -202,11 +203,11 @@ def scrape_gtcs(since_date: "date | None" = None, until_date: "date | None" = No
             time.sleep(1)
 
         if stop_early:
-            print(f"  Reached since_date cutoff — stopping.")
+            print("  Reached since_date cutoff — stopping.")
             break
 
         if new_this_page == 0:
-            print(f"  No new articles — stopping.")
+            print("  No new articles — stopping.")
             break
 
         print(f"  {len(all_articles)} articles so far")

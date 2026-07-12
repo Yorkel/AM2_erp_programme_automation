@@ -360,7 +360,7 @@ def _render_triage_card(row: dict):
                     record_topic_sentence(url, new_ts)
                     st.rerun(scope="fragment")
 
-        # AI summary — same AI-backed generation as the Draft page, surfaced
+        # AI summary: same AI-backed generation as the Draft page, surfaced
         # here so a curator can fill a blank summary at review time. The scheduled
         # pipeline can leave summaries blank when the GitHub runner cannot reach
         # Claude (incident 2026-06-29). Generation now falls back to OpenAI
@@ -378,7 +378,7 @@ def _render_triage_card(row: dict):
                 st.markdown(
                     "<div style='background:#fff4f4;border-left:3px solid #e0a;"
                     "padding:8px 12px;color:#666;font-style:italic;'>"
-                    "No summary yet — generate one below.</div>",
+                    "No summary yet, generate one below.</div>",
                     unsafe_allow_html=True,
                 )
             # Always render the button (greyed when not signed in) so it stays

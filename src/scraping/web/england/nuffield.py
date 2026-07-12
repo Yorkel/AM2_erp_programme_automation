@@ -1,7 +1,7 @@
+from datetime import date
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from datetime import datetime
 from dateutil import parser
 from pathlib import Path
 import time

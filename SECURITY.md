@@ -31,9 +31,10 @@ public disclosure.
 
 ## Access & deployment
 
-- **Least-privilege database access.** The dashboard uses the lower-privilege
-  Supabase anon key for reads; the higher-privilege service key is reserved for
-  backend jobs that genuinely need it.
+- **Database access.** The dashboard and backend jobs currently authenticate with
+  the Supabase service key (Row-Level Security is not yet enabled), so the shared
+  dashboard password is the effective write gate. Moving the dashboard to a
+  restricted/anon key with RLS write policies is a tracked hardening step (below).
 - **Private model serving.** The classifier API runs on a Hugging Face Space; model
   access is mediated through the API/dashboard, not by sharing raw data or weights.
 - **Input validation.** The serving API validates every request against typed

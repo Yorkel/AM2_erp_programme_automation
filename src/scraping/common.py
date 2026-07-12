@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 import time
 from html import unescape as html_unescape
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Iterable
 from urllib.parse import parse_qs, parse_qsl, unquote, urlencode, urljoin, urlparse, urlunparse
@@ -25,7 +25,10 @@ from .nations import nation_for_source
 # Every source (web scraper or newsletter parser) returns Article objects.
 # `to_record()` produces a dict ready for upsert into articles.
 
-MAX_SNIPPET_WORDS = 80  # match s02b_scrape.py — keeps text_clean shape consistent with training
+MAX_SNIPPET_WORDS = 80  # INFERENCE snippet cap (title + first 80 words). NOTE: this is
+# NOT the training shape — training text_clean was the full newsletter description
+# (up to ~815 words). So this is a KNOWN train/serve skew, not a match, and contributes
+# to production weighted-F1 0.630 vs val 0.750. See docs/decisions/datasheet.md.
 
 
 @dataclass

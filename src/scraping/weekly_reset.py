@@ -18,7 +18,6 @@ Env required: SUPABASE_URL, SUPABASE_SERVICE_KEY
 """
 from __future__ import annotations
 
-import sys
 from datetime import datetime, timezone
 
 from src.scraping.supabase_client import get_client

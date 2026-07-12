@@ -4,6 +4,7 @@
 # streamlit). For the full pipeline use requirements.txt; for the API image use
 # requirements-api.txt.
 pytest==8.3.4
+ruff==0.9.6
 requests==2.32.5
 beautifulsoup4==4.14.2
 feedparser==6.0.12

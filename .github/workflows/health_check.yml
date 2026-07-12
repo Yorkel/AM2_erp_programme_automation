@@ -19,6 +19,11 @@ on:
     - cron: '0 6 * * 1,2'
   workflow_dispatch:
 
+# Shared group with scrape/classify so pipeline runs serialise on the DB (queue, not cancel).
+concurrency:
+  group: erp-pipeline
+  cancel-in-progress: false
+
 jobs:
   health:
     runs-on: ubuntu-latest

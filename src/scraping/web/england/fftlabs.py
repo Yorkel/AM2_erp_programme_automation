@@ -1,3 +1,4 @@
+from datetime import date
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -167,7 +168,7 @@ def scrape_fft_datalab(since_date: "date | None" = None, until_date: "date | Non
             result = scrape_article(link, since_date=since_date, until_date=until_date)
 
             if result == "STOP":
-                print(f"⛔ Reached cutoff date — stopping scraper.")
+                print("⛔ Reached cutoff date — stopping scraper.")
                 stop = True
                 break
 

@@ -21,6 +21,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Lint (ruff)
+        run: ruff check src/ dashboard/ tests/
+
       # `python -m pytest` puts the repo root on sys.path so `import src...` works.
       - name: Run tests
         run: python -m pytest tests/ -q

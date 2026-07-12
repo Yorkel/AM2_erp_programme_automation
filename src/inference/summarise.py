@@ -803,7 +803,7 @@ def main() -> int:
         print(f"    {k}: {v}")
 
     if args.dry_run:
-        print(f"\n  --dry-run: not calling the API. Done.")
+        print("\n  --dry-run: not calling the API. Done.")
         return 0
 
     if not os.getenv("ANTHROPIC_API_KEY"):

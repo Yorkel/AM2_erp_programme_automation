@@ -14,7 +14,6 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import date, datetime
-from typing import Iterable
 
 try:
     from dotenv import load_dotenv

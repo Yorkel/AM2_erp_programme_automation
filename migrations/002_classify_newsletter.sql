@@ -3,7 +3,7 @@
 -- Foreign key to articles(url) ensures referential integrity.
 -- Lean (A2) schema: no duplication of article metadata. Use v_dashboard view to read articles + predictions together.
 
-create table public.classify_newsletter (
+create table if not exists public.classify_newsletter (
   id uuid not null default gen_random_uuid (),
   url text not null,
   top1 text not null,

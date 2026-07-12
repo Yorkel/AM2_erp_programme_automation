@@ -70,7 +70,7 @@ GitHub Actions orchestrate scraping, classification, enrichment sweeps, weekly r
 - **Article normalisation:** shared URL cleanup, text extraction, date handling, relevance filtering, deduplication, and Supabase upserts.
 - **Section classifier:** sentence-transformer embeddings (`sentence-transformers/all-MiniLM-L6-v2`) with a scikit-learn classifier.
 - **Model serving:** FastAPI Docker service deployed on a Hugging Face Space, exposing `/health`, `/predict`, and Prometheus `/metrics`.
-- **AI enrichment:** Claude-assisted summaries, topic sentences, and geography/topic tags, with production fallback handling for runner connectivity issues (see `docs/decisions/`).
+- **AI enrichment:** LLM-generated summaries, topic sentences, and geography/topic tags. OpenAI is the primary provider on the CI runner (which cannot reliably reach Claude); Claude is a best-effort fallback. Summaries have a full fallback ladder down to extractive/placeholder (see `docs/decisions/`).
 - **Curator dashboard:** Streamlit app for triage, categorisation, draft assembly, source feedback, and password-gated write actions.
 - **Monitoring:** pipeline health checks, self-healing sweeps for missing classifications/summaries, drift logging, and a fairness audit.
 - **Decision records:** production incidents, modelling choices, data-layer design, monitoring design, and security notes are documented in `docs/decisions/`.
@@ -108,7 +108,7 @@ Manual-only sections (never classified): *Update from Programme*, *Update from P
 
 ## Tech stack
 
-Python · Supabase/Postgres · scikit-learn · sentence-transformers · FastAPI · Docker · Hugging Face Spaces · Streamlit · GitHub Actions · Anthropic Claude · Prometheus metrics.
+Python · Supabase/Postgres · scikit-learn · sentence-transformers · FastAPI · Docker · Hugging Face Spaces · Streamlit · GitHub Actions · OpenAI (primary) + Anthropic Claude (fallback) enrichment · Prometheus metrics.
 
 ---
 
@@ -153,10 +153,13 @@ Create a local `.env` with the variables for the parts you want to run:
 SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_SERVICE_KEY=<service-role-key>
 SUPABASE_ANON_KEY=<anon-key>
+# LLM enrichment — OpenAI is primary on the runner, Claude is a fallback
+ENRICH_PROVIDER=openai
+OPENAI_API_KEY=<openai-key>
 ANTHROPIC_API_KEY=<anthropic-key>
 CLASSIFIER_API_URL=https://<owner>-<space>.hf.space
 CLASSIFIER_API_KEY=<hf-token-if-space-is-private>
-# Optional: when the runner routes Claude through the Space proxy
+# Optional: when the runner routes the Claude FALLBACK through the Space proxy
 ANTHROPIC_BASE_URL=https://<owner>-<space>.hf.space
 PROXY_TOKEN=<shared-secret-for-the-proxy>
 ```

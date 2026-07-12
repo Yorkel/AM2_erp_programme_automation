@@ -15,7 +15,7 @@ honest gaps. Supports K4, K25, K27, S1, S32.
 ## STRIDE
 | Threat | Where | Risk | Control / status |
 |---|---|---|---|
-| **Spoofing** | API, dashboard | Unauthorised caller / curator | Bearer token on the classifier API; password gate on dashboard writes (read-only until login). ⚠️ No per-user identity (shared password). |
+| **Spoofing** | API, dashboard | Unauthorised caller / curator | Opt-in Bearer token on `/predict` + `/metrics` (enforced when `CLASSIFIER_API_KEY` is set on the Space; off by default); password gate on dashboard writes (read-only until login). ⚠️ No per-user identity (shared password); API auth must be turned on by setting the key. |
 | **Tampering** | Scraper, store | Malicious feed content; row tampering | Approved/blocked-domain filters + UK-content rule; Supabase service key server-side only; no client-side writes to source data. |
 | **Repudiation** | Store | "Who changed this?" | Timestamps (`*_at`) on all tables; curator decisions archived weekly; git audit trail for model/version changes. |
 | **Information disclosure** | Store, API, secrets | Data/secret leak | No PII (public content only, snippet-only); secrets in GitHub Actions / env, never committed; `detect-secrets` pre-commit hook. |

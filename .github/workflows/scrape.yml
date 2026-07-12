@@ -22,6 +22,12 @@ on:
     - cron: '23 2 * * 2-5'                 # Tue–Fri 02:23 UTC = 03:23 UK (BST)
   workflow_dispatch:                       # manual trigger from the Actions tab
 
+# Serialise the data-mutating pipeline workflows (scrape/classify/health) so two
+# runs never race on the same Supabase rows. Queue rather than cancel.
+concurrency:
+  group: erp-pipeline
+  cancel-in-progress: false
+
 jobs:
   scrape:
     runs-on: ubuntu-latest

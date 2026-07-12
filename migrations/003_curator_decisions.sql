@@ -3,7 +3,7 @@
 -- Foreign key to articles(url) ensures referential integrity.
 -- Written by the dashboard; read by analysis notebooks via the supabase-py client. NOT read back into the dashboard.
 
-create table public.curator_decisions (
+create table if not exists public.curator_decisions (
   id uuid not null default gen_random_uuid (),
   url text not null,
   action text not null,        -- 'accept_top1', 'accept_top2', 'reject', 'custom_label'

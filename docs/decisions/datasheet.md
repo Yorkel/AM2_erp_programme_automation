@@ -25,7 +25,10 @@ the data behind the section classifier. Pairs with `docs/model_card.md`.
   Mild imbalance (~1.7:1), handled with balanced class weights.
   (Two further newsletter sections, `update_from_pi` / `update_from_programme`,
   are human-only and not modelled.)
-- **Features:** `text` (title + ~80-word snippet, to match inference shape),
+- **Features:** `text` (at training time this was title + the **full** newsletter
+  description, up to ~815 words; inference truncates to a ~80-word snippet, so there is
+  a **known train/serve skew** — the shapes do NOT match, which contributes to the
+  production weighted-F1 of 0.630 vs val 0.750),
   plus metadata kept for analysis but **not used by the production model**
   (`organisation`, `org_broad_category`, `issue_date`, `link`).
 - **Coverage:** issues 1–104, **Oct 2023 → May 2025**; ~173 distinct

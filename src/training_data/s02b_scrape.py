@@ -16,7 +16,6 @@ Output: data/preprocessed/newsletters_preprocessed.csv (updates `text` in place,
 Runtime: scrapes URLs with 10 threads — usually under 2 minutes for one newsletter.
 """
 
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd

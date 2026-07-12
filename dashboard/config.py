@@ -90,7 +90,6 @@ SOURCE_LABELS = {
     "local.gov.uk": "Local Government Association",
     # Media
     "bbc_education": "BBC",
-    "bbc.co.uk": "BBC",
     # Research / think tanks / foundations
     "fft_datalab": "FFT Education Datalab",
     "epi": "Education Policy Institute",

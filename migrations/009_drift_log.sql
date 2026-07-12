@@ -4,7 +4,7 @@
 -- Per-class distribution lives in JSONB so changing the label set later
 -- doesn't need another migration.
 
-create table public.drift_log (
+create table if not exists public.drift_log (
   id uuid not null default gen_random_uuid (),
   run_id text not null,                              -- model run id (matches models/runs/active.txt)
   batch_id text not null,                            -- timestamp identifier

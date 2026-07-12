@@ -9,7 +9,7 @@
 -- Append-only log. To undo a reset, delete its row (the boundary falls back to
 -- the previous reset, or to "show everything" if none remain).
 
-create table public.curator_resets (
+create table if not exists public.curator_resets (
   id uuid not null default gen_random_uuid (),
   reset_at timestamp with time zone not null default now(),
   week_label text not null,                 -- e.g. 'week up to Mon 08 Jun 2026'

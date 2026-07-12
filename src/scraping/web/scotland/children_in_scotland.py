@@ -1,3 +1,4 @@
+from datetime import date
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -140,12 +141,12 @@ def scrape_children_in_scotland(since_date: "date | None" = None, until_date: "d
         links = _extract_links(soup)
 
         if not links:
-            print(f"  No links found — stopping.")
+            print("  No links found — stopping.")
             break
 
         new_links = [l for l in links if l not in seen]
         if not new_links:
-            print(f"  No new links — stopping.")
+            print("  No new links — stopping.")
             break
 
         for link in new_links:

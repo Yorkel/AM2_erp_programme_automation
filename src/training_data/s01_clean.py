@@ -7,7 +7,6 @@ Input:  data/interim/extracted_newsletters.csv
 Output: data/interim/newsletters_cleaned.csv
 """
 
-import re
 import unicodedata as ud
 
 import pandas as pd

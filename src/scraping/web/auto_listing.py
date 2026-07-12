@@ -27,7 +27,7 @@ from __future__ import annotations
 import re
 import time
 from collections import Counter
-from datetime import date, datetime
+from datetime import date
 from bs4 import BeautifulSoup
 
 from src.scraping.common import (

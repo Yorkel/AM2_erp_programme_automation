@@ -28,10 +28,8 @@ All in [0, 1]; composite is too.
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, date
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -190,13 +188,13 @@ def main() -> int:
     print(f"\n  Clustering: {n_clusters} clusters, {n_singletons} singletons, "
           f"{n_multi} articles in multi-article clusters")
 
-    print(f"\n  Composite score quartiles:")
+    print("\n  Composite score quartiles:")
     print(df["composite_score"].describe()[["min", "25%", "50%", "75%", "max"]].to_string())
 
     top = df.nlargest(5, "composite_score")[
         ["source", "title", "composite_score", "cluster_size", "is_cluster_lead"]
     ]
-    print(f"\n  Top 5 by composite score:")
+    print("\n  Top 5 by composite score:")
     print(top.to_string(index=False))
 
     print("  Done.")

@@ -1,3 +1,4 @@
+from datetime import date
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -60,7 +61,7 @@ def _get_search_results(base_url, since_date=None, until_date=None):
         items = soup.find_all("li", class_="ds_search-result")
 
         if not items:
-            print(f"  No results on page — stopping.")
+            print("  No results on page — stopping.")
             break
 
         new_this_page = 0
@@ -118,11 +119,11 @@ def _get_search_results(base_url, since_date=None, until_date=None):
         print(f"  {len(results)} articles so far")
 
         if stop_early:
-            print(f"  Reached since_date cutoff — stopping.")
+            print("  Reached since_date cutoff — stopping.")
             break
 
         if new_this_page == 0 and skipped_future == 0:
-            print(f"  No results on page — stopping.")
+            print("  No results on page — stopping.")
             break
 
         page += 1

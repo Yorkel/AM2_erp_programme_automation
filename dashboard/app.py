@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import streamlit as st
 import pandas as pd
 
-from dashboard.config import NAVY, TEAL
+from dashboard.config import NAVY
 from dashboard.styles import get_css
 from dashboard.data import (
     generate_missing_article_summaries, load_classified_articles,
@@ -130,13 +130,13 @@ def main():
 
     # ── Read-only notice ─────────────────────────────────────────────────────
     # The action buttons (triage / categorise / draft) are disabled until the
-    # curator logs in (top-right), but they "look ready to go" — Rachel opened the
+    # curator logs in (top-right), but they "look ready to go". Rachel opened the
     # dashboard and the in/out buttons did nothing without her realising why
     # (2026-06). Make the gate explicit.
     if not st.session_state.get("authenticated"):
         st.info(
             "🔒 **Read-only mode.** Log in (top-right) to triage, categorise, "
-            "or edit articles — the action buttons stay disabled until you do."
+            "or edit articles. The action buttons stay disabled until you do."
         )
 
     # ── Pipeline status banner ───────────────────────────────────────────────

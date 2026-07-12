@@ -17,7 +17,6 @@ this module unwraps that to the real article URL.
 
 from __future__ import annotations
 
-import time
 from datetime import date, datetime
 from urllib.parse import urlparse
 

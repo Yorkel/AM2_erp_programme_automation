@@ -6,6 +6,11 @@ on:
     types: [completed]
   workflow_dispatch:        # also allow manual triggering
 
+# Shared group with scrape/health so pipeline runs serialise on the DB (queue, not cancel).
+concurrency:
+  group: erp-pipeline
+  cancel-in-progress: false
+
 jobs:
   classify:
     runs-on: ubuntu-latest

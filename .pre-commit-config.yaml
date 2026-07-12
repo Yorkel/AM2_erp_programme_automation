@@ -4,3 +4,9 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
+    hooks:
+      - id: ruff          # lint (config in pyproject.toml [tool.ruff])
+        args: ['--fix']

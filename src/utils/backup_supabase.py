@@ -93,7 +93,7 @@ def main() -> int:
               "the irreplaceable table. Check SUPABASE_URL/key point at the live DB.")
         return 1
 
-    print(f"\n  Done. Restore from these CSVs via `supabase-py insert` if needed.")
+    print("\n  Done. Restore from these CSVs via `supabase-py insert` if needed.")
     return 0
 
 

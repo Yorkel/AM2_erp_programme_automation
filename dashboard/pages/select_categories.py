@@ -13,14 +13,13 @@ Action transitions:
 """
 
 from __future__ import annotations
-from collections import defaultdict
 from html import escape as html_escape
 from urllib.parse import urlparse
 
 import streamlit as st
 import pandas as pd
 
-from dashboard.config import CATEGORY_LABELS, CATEGORY_ORDER, CATEGORY_SHORT_LABELS, source_label
+from dashboard.config import CATEGORY_ORDER, CATEGORY_SHORT_LABELS, source_label
 from dashboard.data import (
     clean_text, get_kept_articles, is_authenticated, record_decision,
 )

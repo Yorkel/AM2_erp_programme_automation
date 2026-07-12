@@ -112,7 +112,7 @@ def main():
 
     # 1. Distribution
     val_dist, real_dist, dist_alerts = check_distribution(classified_df, val_dist, label_names)
-    print(f"\n  Prediction distribution:")
+    print("\n  Prediction distribution:")
     print(f"  {'Category':<45} {'Val':>6} {'Real':>6} {'Delta':>7}")
     print(f"  {'-'*66}")
     for cls in label_names:
@@ -122,13 +122,13 @@ def main():
         print(f"  {cls:<45} {v:>5.1%} {r:>5.1%} {r-v:>+6.1%}{flag}")
 
     if dist_alerts:
-        print(f"\n  ⚠ Distribution alerts:")
+        print("\n  ⚠ Distribution alerts:")
         for alert in dist_alerts:
             print(alert)
 
     # 2. Confidence
     conf = check_confidence(classified_df)
-    print(f"\n  Confidence:")
+    print("\n  Confidence:")
     print(f"    Mean: {conf['mean']:.3f}, Median: {conf['median']:.3f}")
     print(f"    Below 50%: {conf['pct_below_50']:.1%}, Below 30%: {conf['pct_below_30']:.1%}")
 
@@ -136,13 +136,13 @@ def main():
     texts = classified_df["text_clean"].tolist() if "text_clean" in classified_df.columns else []
     if texts:
         drift = check_drift(texts, centroid_matrix, label_names, model)
-        print(f"\n  Embedding drift:")
+        print("\n  Embedding drift:")
         print(f"    Mean similarity: {drift['mean_similarity']:.3f}")
         print(f"    Min similarity:  {drift['min_similarity']:.3f}")
         if drift["n_flagged"] > 0:
             print(f"    ⚠ {drift['n_flagged']} articles flagged as out-of-distribution")
         else:
-            print(f"    ✓ No drift detected")
+            print("    ✓ No drift detected")
 
     # ── RAG status for alert routing (green=log only, amber=digest, red=action) ──
     ood_rate = (drift["n_flagged"] / len(classified_df)) if texts and len(classified_df) else 0.0

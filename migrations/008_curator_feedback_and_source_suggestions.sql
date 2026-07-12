@@ -1,7 +1,7 @@
 -- Migration 008: curator_feedback + source_suggestions
 -- Both are append-only logs written by the dashboard; read by analysis notebooks.
 
-create table public.curator_feedback (
+create table if not exists public.curator_feedback (
   id uuid not null default gen_random_uuid (),
   submitted_at timestamp with time zone not null default now(),
   accuracy_rating text null,                -- 'Very poor' | 'Poor' | 'OK' | 'Good' | 'Excellent'
@@ -15,7 +15,7 @@ create index if not exists idx_curator_feedback_submitted_at
   on public.curator_feedback using btree (submitted_at desc) tablespace pg_default;
 
 
-create table public.source_suggestions (
+create table if not exists public.source_suggestions (
   id uuid not null default gen_random_uuid (),
   suggested_at timestamp with time zone not null default now(),
   source_name text not null,                 -- curator's name for the source
