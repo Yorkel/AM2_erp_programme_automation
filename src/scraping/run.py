@@ -22,12 +22,13 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import traceback
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime
 from pathlib import Path
 
-from src.scraping.common import Article
+from src.scraping.common import Article, normalise_url
 from src.scraping.config import load_sources
 from src.scraping.relevance import (
     DEFAULT_EDUCATION_KEYWORDS,
@@ -346,6 +347,25 @@ def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> N
     from datetime import datetime
     from src.inference.summarise import enrich_summary, enrich_tags
 
+    # Build one client per provider for this whole source and reuse it across every
+    # article (connection reuse + Claude prompt-cache friendly), instead of the
+    # enrich primitives constructing a fresh client on every call. Best-effort: on
+    # any build error, fall back to per-call construction (client stays None).
+    oai_client = None
+    ant_client = None
+    try:
+        if os.environ.get("OPENAI_API_KEY"):
+            from openai import OpenAI
+            oai_client = OpenAI(timeout=60.0, max_retries=2)
+    except Exception as e:
+        print(f"    (client reuse: OpenAI client build skipped: {type(e).__name__})")
+    try:
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            from src.inference.anthropic_client import make_anthropic_client
+            ant_client = make_anthropic_client(5)
+    except Exception as e:
+        print(f"    (client reuse: Anthropic client build skipped: {type(e).__name__})")
+
     n_ok_sum = 0
     n_ok_tag = 0
     n_fail = 0
@@ -366,6 +386,7 @@ def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> N
                 # often starts with nav like "HOME > Blog >".
                 item.summary = enrich_summary(
                     title=title, text=item.text or "", category=None,
+                    client=ant_client, openai_client=oai_client,
                 )
                 item.summary_generated_at = datetime.utcnow()
                 n_ok_sum += 1
@@ -373,7 +394,8 @@ def _generate_summaries(items: list, source: str, *, dry_run: bool = False) -> N
                 n_fail += 1
                 print(f"    WARNING: summary failed for {item.url}: {type(e).__name__}: {e}")
         if not item.geographic_focus and not item.topic_tags:
-            tags = enrich_tags(title=title, text=body)
+            tags = enrich_tags(title=title, text=body,
+                               client=ant_client, openai_client=oai_client)
             if tags.get("geographic_focus") or tags.get("topic_tags"):
                 item.geographic_focus = tags.get("geographic_focus") or None
                 item.topic_tags = tags.get("topic_tags") or None
@@ -487,6 +509,13 @@ def _execute_run(args):
     total_scraped = 0
     total_upserted = 0
     failures: list[str] = []
+    empties: list[str] = []
+    # URLs already processed by an EARLIER source this run. 10 Google Alert feed
+    # IDs are shared across 25 sources (sources.yml), so the same article surfaces
+    # from several sources; without this, each duplicate is body-fetched and
+    # LLM-enriched again before the per-source upsert collapses them. Dedupe once,
+    # here, so a URL is enriched exactly once per run.
+    seen_urls: set[str] = set()
 
     for src in sources:
         name = src["name"]
@@ -502,6 +531,22 @@ def _execute_run(args):
                 src, since=args.since, until=args.until
             )
             items = _filter_items(items, name, apply_filter, require_keywords)
+            # Drop articles already handled by an earlier source this run, BEFORE
+            # the costly body-backfill + enrichment. Same URL = same article.
+            deduped = []
+            n_cross_dupe = 0
+            for it in items:
+                key = normalise_url(it.url) if it.url else None
+                if key and key in seen_urls:
+                    n_cross_dupe += 1
+                    continue
+                if key:
+                    seen_urls.add(key)
+                deduped.append(it)
+            if n_cross_dupe:
+                print(f"  {name}: skipped {n_cross_dupe} article(s) already seen from "
+                      f"an earlier source this run (shared feed) — not re-enriching")
+            items = deduped
             _backfill_bodies(items, name, dry_run=args.dry_run)
             if not args.no_summaries:
                 _generate_summaries(items, name, dry_run=args.dry_run)
@@ -510,6 +555,14 @@ def _execute_run(args):
             rows_upserted = upsert_articles(
                 client, records, label=name, dry_run=args.dry_run,
             ) if records else 0
+            if rows_scraped == 0:
+                # Feed produced nothing this run. Often normal on an incremental
+                # run (no new items), but a source that stays empty across many
+                # consecutive runs is a dead/broken feed. Log a distinct status so
+                # it's queryable, rather than an indistinguishable 'ok'.
+                status = "empty"
+                empties.append(name)
+                print(f"  {name}: 0 rows (feed empty or no new items) — status=empty")
         except Exception as e:
             status = "failed"
             error = f"{type(e).__name__}: {e}"
@@ -532,9 +585,13 @@ def _execute_run(args):
             total_upserted += rows_upserted
 
     print(f"\n=== run {run_id} done ===")
-    print(f"sources={len(sources)} scraped={total_scraped} upserted={total_upserted} failed={len(failures)}")
+    print(f"sources={len(sources)} scraped={total_scraped} upserted={total_upserted} "
+          f"empty={len(empties)} failed={len(failures)}")
     if failures:
         print(f"failed sources: {', '.join(failures)}")
+    if empties:
+        print(f"empty sources (0 rows — check any that stay empty across runs): "
+              f"{', '.join(empties)}")
 
 
 if __name__ == "__main__":

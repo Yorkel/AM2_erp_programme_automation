@@ -17,14 +17,23 @@ from __future__ import annotations
 UK_NATIONS = ("eng", "sco", "wal", "nir", "uk")
 
 SOURCE_NATION: dict[str, str] = {
-    # Scotland
+    # Scotland (slugs + the domains Google Alerts records via _domain_as_source)
     "ades": "sco", "children_in_scotland": "sco", "gov_scot": "sco", "gov.scot": "sco",
     "gtcs": "sco", "scotland_digital_blog": "sco",
     "scotland_scottish_parliament_blog": "sco", "sera": "sco",
-    # Wales
+    "scotland_news": "sco", "education_scotland_alert": "sco", "cosla_alert": "sco",
+    "scotland_scottish_parliament_news": "sco",
+    "parliament.scot": "sco", "spice-spotlight.scot": "sco", "blogs.gov.scot": "sco",
+    "education.gov.scot": "sco", "cosla.gov.uk": "sco",
+    # Wales (slugs + Google-Alert domain forms)
     "wales_centre_for_public_policy": "wal",
+    "welsh_government": "wal", "wales_education": "wal", "wlga_alert": "wal",
+    "gov.wales": "wal", "senedd.wales": "wal", "hwb.gov.wales": "wal", "wlga.wales": "wal",
     # Northern Ireland
     "belfast_telegraph": "nir", "belfasttelegraph.co.uk": "nir", "education-ni.gov.uk": "nir",
+    "nilga_alert": "nir", "deni_dept_education_ni_alert": "nir",
+    "ni_ni_executive_publications": "nir",
+    "nilga.org": "nir", "northernireland.gov.uk": "nir",
     # England (England-only education bodies)
     "dfe": "eng", "ofsted": "eng", "schoolsweek": "eng", "schoolsweek.co.uk": "eng",
     "ascl": "eng", "neu.org.uk": "eng", "epi": "eng", "fft_datalab": "eng",

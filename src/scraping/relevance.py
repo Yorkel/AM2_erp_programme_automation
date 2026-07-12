@@ -80,6 +80,10 @@ BLOCKED_URL_PATTERNS: tuple[str, ...] = (
     "/lifestyle/",
     "/travel/",
     "/slade/",
+    # BBC TV/radio listings scraped as articles (iPlayer/programme pages) —
+    # path-block at source instead of relying on ad-hoc title filtering.
+    "/iplayer/",
+    "/programmes/",
 )
 
 
@@ -145,6 +149,18 @@ NEGATIVE_COUNTRY_KEYWORDS: tuple[str, ...] = (
     # Africa (UK FCDO sometimes publishes overseas-mission stories)
     "kenya", "uganda", "nigeria", "ghana", "south africa", "zimbabwe",
     "tanzania", "ethiopia", "rwanda", "sierra leone",
+    "malawi", "zambia", "mozambique", "somalia", "democratic republic of congo",
+    # South Asia (FCDO development-education coverage)
+    "bangladesh", "dhaka", "sri lanka", "colombo", "nepal", "kathmandu",
+    "myanmar", "yangon", "afghanistan", "kabul",
+    # North Africa / Eastern Europe (FCDO overseas)
+    "egypt", "cairo", "sudan", "khartoum", "ukraine", "kyiv",
+    # South America
+    "brazil", "brasilia", "sao paulo", "colombia", "bogota",
+    "argentina", "buenos aires", "peru", "lima", "chile", "venezuela",
+    # South-East Asia
+    "indonesia", "jakarta", "philippines", "manila", "vietnam",
+    "thailand", "bangkok", "cambodia",
     # Other
     "kremlin", "moscow",
 )

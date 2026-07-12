@@ -140,12 +140,6 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11266738736153395130"}
     # source: Knowledge Exchange Unit - Parliament  |  coverage: gov_uk
 
-  - name: welsh_government_education
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
-    # source: Welsh Government - Education  |  coverage: four_nations_wales
-
   # RE-ENABLED 2026-05-17 with apply_relevance_filter — IPPO publishes broad policy content;
   # filter captures only education-relevant entries.
   - name: ippo_international_public_policy_observatory
@@ -472,30 +466,6 @@ sources:
       apply_relevance_filter: true
     # source: Bridget Phillipson  |  coverage: alert
 
-  - name: wales_children_families
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
-    # source: Wales - Children & families  |  coverage: four_nations_wales
-
-  - name: wales_education_skills
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
-    # source: Wales - Education & Skills  |  coverage: four_nations_wales
-
-  - name: wales_children_young_people
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11662897293359611577"}
-    # source: Wales - Children & Young People  |  coverage: four_nations_wales
-
-  - name: wales_children_young_people_committee
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11662897293359611577"}
-    # source: Wales - Children & Young people committee  |  coverage: four_nations_wales
-
   - name: wales_education
     type: google_alert
     scraper: src.scraping.rss_adapter
@@ -507,12 +477,6 @@ sources:
     scraper: src.scraping.rss_adapter
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10817736755940111392"}
     # source: Scotland - News  |  coverage: four_nations_scotland
-
-  - name: scotland_publications
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10817736755940111392"}
-    # source: Scotland - Publications  |  coverage: four_nations_scotland
 
   # RE-ENABLED 2026-05-17 with apply_relevance_filter — Scottish Gov Digital Services blog;
   # filter captures only education-relevant entries (rare but worth catching).
@@ -684,35 +648,11 @@ sources:
       apply_relevance_filter: true   # education-tagged feed but still ~24% noise (baby sleep, online-safety)
     # source: BBC Education  |  coverage: media
 
-  - name: dr_david_lundie_alert
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/10527568061152985679"}
-    # source: Dr David Lundie (Google Alert)  |  coverage: alert
-
-  - name: professor_stephen_gorard_alert
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/5920908588105611095"}
-    # source: Professor Stephen Gorard (Google Alert)  |  coverage: alert
-
   - name: dr_alison_porter_alert
     type: google_alert
     scraper: src.scraping.rss_adapter
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/8511945294573560178"}
     # source: Dr Alison Porter (Google Alert)  |  coverage: alert
-
-  - name: professor_rob_klassen_alert
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/5461160758534660961"}
-    # source: Professor Rob Klassen (Google Alert)  |  coverage: alert
-
-  - name: sarah_chicken_alert
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11546221543792101603"}
-    # source: Sarah Chicken (Google Alert)  |  coverage: alert
 
   - name: professor_rebecca_eynon_alert
     type: google_alert
@@ -720,23 +660,11 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11125855530750904034"}
     # source: Professor Rebecca Eynon (Google Alert)  |  coverage: alert
 
-  - name: professor_toby_greany_alert
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11120221478670084388"}
-    # source: Professor Toby Greany (Google Alert)  |  coverage: alert
-
   - name: john_gordon_alert
     type: google_alert
     scraper: src.scraping.rss_adapter
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17032043891447016883"}
     # source: John Gordon (Google Alert)  |  coverage: alert
-
-  - name: steph_ainsworth_alert
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/9270356820202612331"}
-    # source: Steph Ainsworth (Google Alert)  |  coverage: alert
 
   - name: neu_news_mentions_alert
     type: google_alert
@@ -778,12 +706,6 @@ sources:
     params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/3621259156722633137"}
     # source: DfE (Google Alert backup)  |  coverage: gov_uk
 
-  - name: senedd_site_alert
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/11662897293359611577"}
-    # source: Senedd (Google Alert, site: scope)  |  coverage: four_nations_wales
-
   - name: wlga_alert
     type: google_alert
     scraper: src.scraping.rss_adapter
@@ -803,12 +725,6 @@ sources:
       feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/2484746571929288238"
       apply_relevance_filter: true   # broad UK-gov catch-all alert, needs filtering
     # source: UK Government broad (Google Alert)  |  coverage: gov_uk
-
-  - name: welsh_gov_site_alert
-    type: google_alert
-    scraper: src.scraping.rss_adapter
-    params: {feed_url: "https://www.google.co.uk/alerts/feeds/11185974656280654352/17587042153893905204"}
-    # source: Welsh Government (Google Alert, site:)  |  coverage: four_nations_wales
 
 
   # ─────────────────────────────────────────────────────────────────────
