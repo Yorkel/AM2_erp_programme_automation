@@ -14,6 +14,10 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import date, datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # import for type-checkers/ruff only; not at runtime
+    from supabase import Client
 
 try:
     from dotenv import load_dotenv
@@ -21,7 +25,10 @@ try:
 except ImportError:
     pass  # env vars injected directly in CI
 
-from supabase import Client, create_client
+# NOTE: `supabase` is imported lazily inside get_client() (not at module top) so the
+# pure helpers here (protect_existing_summaries, _is_real_summary) stay importable in
+# the lean CI/test env, which does not install the supabase SDK. Type annotations use
+# the string "Client" (safe under `from __future__ import annotations`).
 
 BATCH_SIZE = 500
 ARTICLES_TABLE = "articles"
@@ -61,7 +68,8 @@ def protect_existing_summaries(records: list[dict], existing: dict[str, str]) ->
     return protected
 
 
-def get_client() -> Client:
+def get_client() -> "Client":
+    from supabase import create_client  # lazy: keep module importable without the SDK
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_KEY")
     if not url or not key:

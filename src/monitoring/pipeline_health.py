@@ -26,9 +26,8 @@ import os
 import sys
 from datetime import date, datetime, timedelta, timezone
 
-from dotenv import load_dotenv
-
-from src.scraping.supabase_client import get_client
+# dotenv + supabase are imported lazily inside main() so the pure helper `_is_blank`
+# stays importable in the lean CI/test env (which installs neither).
 
 PLACEHOLDER = "Summary unavailable"
 _BLANK = {"", "nan", "none", "nat"}
@@ -70,6 +69,8 @@ def _emit_summary(lines: list[str]) -> None:
 
 
 def main() -> int:
+    from dotenv import load_dotenv
+    from src.scraping.supabase_client import get_client
     load_dotenv()
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_KEY")):
         print("ERROR: SUPABASE_URL and SUPABASE_SERVICE_KEY must be set", file=sys.stderr)
