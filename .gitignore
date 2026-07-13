@@ -264,6 +264,9 @@ data/modelling/classified_articles.csv
 # AM2 assessment / portfolio material - personal, keep out of the shared repo
 AM2 evidence prep/
 AM2_FINAL/
+# Portfolio report drafts, any location (L6 EPA docx). Personal EPA material.
+L6_MLengineer_*.docx
+*_AM2_*.docx
 
 # macOS / Office junk
 .DS_Store
